@@ -1,0 +1,73 @@
+# Configuration file of BSP-SERVER
+[CORE]
+# AppID. Unique in group
+APP_ID                      = 1
+
+# Number of static workers(threads), if zero, this value will be set as 2*(number of cpu cores).
+# If cannot get the number of cpu cores, this value set to 8.
+STATIC_WORKERS              = 0
+
+# Script (LUA) information
+SCRIPT_IDENTIFIER           = script/main.lua
+SCRIPT_FUNC_ON_LOAD         = BSP_on_load
+SCRIPT_FUNC_ON_RELOAD       = BSP_on_reload
+SCRIPT_FUNC_ON_EXIT         = BSP_on_exit
+
+# Debug
+_DEBUG_HEX_CONNECTOR_INPUT_ = 0
+_DEBUG_HEX_OUTPUT_          = 0
+
+# Log
+LOG_DIR                     =
+_DISABLE_LOG_               = 0
+
+# Network servers details
+# Each <SERVER> segment for one server
+
+# The first server
+[SERVER]
+SERVER_ADDR                 = 0.0.0.0
+SERVER_PORT                 = 8254
+SERVER_INET                 = IPV4
+SERVER_SOCK                 = TCP
+HEARTBEAT_CHECK             = 0
+DEFAULT_DATA_TYPE           = PACKET
+MAX_CLIENTS                 = 0
+_MAX_PACKET_LENGTH_         = 65536
+_DEBUG_HEX_CLIENT_INPUT_    = 0
+SCRIPT_FUNC_ON_CONNECT      = BSP_on_accept
+SCRIPT_FUNC_ON_CLOSE        = BSP_on_close
+SCRIPT_FUNC_ON_DATA         = BSP_on_data
+
+# Service for websocket
+[SERVER]
+SERVER_ADDR                 = 0.0.0.0
+SERVER_PORT                 = 8253
+SERVER_INET                 = IPV4
+SERVER_SOCK                 = TCP
+HEARTBEAT_CHECK             = 0
+DEFAULT_CLIENT_TYPE         = WEBSOCKET
+SCRIPT_FUNC_ON_CONNECT      = BSP_on_accept
+SCRIPT_FUNC_ON_CLOSE        = BSP_on_close
+SCRIPT_FUNC_ON_DATA         = BSP_on_data
+
+# And the last
+[SERVER]
+SERVER_ADDR                 = 127.0.0.1
+SERVER_PORT                 = 8255
+SERVER_INET                 = IPV4
+SERVER_SOCK                 = TCP
+WEBSOCKET                   = 0
+DEFAULT_DATA_TYPE           = STREAM
+SCRIPT_FUNC_ON_DATA         = BSP_on_control
+
+[MODULE]
+SCRIPT_LOAD_MODULE          = standard
+SCRIPT_LOAD_MODULE          = online
+SCRIPT_LOAD_MODULE          = json
+SCRIPT_LOAD_MODULE          = http
+SCRIPT_LOAD_MODULE          = sqlite
+SCRIPT_LOAD_MODULE          = mysql
+SCRIPT_LOAD_MODULE          = word_filter
+
+# End of configure

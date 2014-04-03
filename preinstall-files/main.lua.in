@@ -1,0 +1,36 @@
+-- BSP Test logical script
+function BSP_on_load()
+	print("BS.Play -- sickycat demo script loaded");
+    bsp_online_init({
+        uid = 'ii', 
+        name = 's32', 
+        sets = 's100'
+    });
+end
+
+function BSP_on_reload()
+    print("BS.Play -- sickycat demo script reloaded");
+end
+
+function BSP_on_exit()
+    print("BS.Play -- sickycat demo say <goodbye> to you");
+end
+
+function BSP_on_accept(clt_id)
+	print("Client " .. clt_id .. " connected.");
+    bsp_set_online(clt_id, {uid = 1000, name = 'Hacker.NP', sets = 'I am your friend'});
+    bsp_var_dump(bsp_online_list());
+end
+
+function BSP_on_close(clt_id)
+	print("Client " .. clt_id .. " disconnected.");
+    bsp_var_dump(bsp_online_info(clt_id));
+    bsp_var_dump(bsp_online_list());
+    bsp_set_online(clt_id, nil);
+end
+
+function BSP_on_data(clt_id, cmd, params)
+	print("Command " .. cmd .. " from " .. clt_id);
+    bsp_var_dump(params);
+    bsp_net_send(clt_id, cmd + 1, params);
+end
