@@ -59,6 +59,7 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+#include <pthread.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
@@ -67,6 +68,10 @@
 #include <sys/eventfd.h>
 #include <sys/timerfd.h>
 #include <sys/time.h>
+
+#include <lua.h>
+#include <lualib.h>
+#include <lauxlib.h>
 
 #include "bsp_spinlock.h"
 #include "bsp_variable.h"
@@ -91,7 +96,9 @@
 #include "bsp_db_mysql.h"
 #include "bsp_ip_list.h"
 #include "bsp_http.h"
+#include "bsp_fcgi.h"
 #include "bsp_server.h"
+#include "bsp_bootstrap.h"
 #include "bsp_core.h"
 #include "bsp_status.h"
 
@@ -99,8 +106,12 @@
 
 /* Definations */
 // General
-#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20130812-dev"
+#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20140522-dev"
 #define BSP_PACKAGE_NAME                        "bsp"
+
+// Instances
+#define INSTANCE_MANAGER                        0
+#define INSTANCE_UNKNOWN                        -1
 
 // Return values
 #define BSP_RTN_SUCCESS                         0
@@ -122,6 +133,7 @@
 #define BSP_RTN_ERROR_NETWORK                   2001
 #define BSP_RTN_ERROR_SCRIPT                    3001
 
+// Compatible
 #ifndef _POSIX_PATH_MAX
     #define _POSIX_PATH_MAX                     1024
 #endif
@@ -130,8 +142,68 @@
     #define _SYMBOL_NAME_MAX                    64
 #endif
 
+// Runtime
+#define DEFAULT_DB_FILE                         "db/bsp.db"
+#ifdef ENABLE_STANDALONE
+    #define RUNTIME_SETTING_FILE                "etc/runtime-setting.conf"
+    #define BOOTSTRAP_FILE                      "etc/bootstrap.lua"
+#else
+    #define MGR_CMD_SHUTDOWN                    0xFFF0
+    #define MGR_CMD_LOG                         0x3001
+    #define MGR_CMD_LOG_LEVEL                   0x3002
+    #define MGR_CMD_BAN_IP                      0x3003
+    #define MGR_CMD_LIFT_IP                     0x3004
+    #define MGR_I_RUNTIME_SETTING               0x4001
+    #define MGR_M_RUNTIME_SETTING               0x4002
+    #define MGR_I_BOOTSTRAP                     0x4011
+    #define MGR_M_BOOTSTRAP                     0x4012
+    #define MGR_I_STATUS                        0x5001
+    #define MGR_M_STATUS                        0x5002
+    #define MGR_DATA_LOG                        0xA011
+#endif
+
+#ifdef ENABLE_SPIN
+    #define BSP_SPINLOCK_INITIALIZER            {._lock = SPIN_FREE, ._loop_times = 0}
+#else
+    #define BSP_SPINLOCK_INITIALIZER            1
+#endif
+#define MAX_SERVER_PER_CREATION                 128
+
 /* Macros */
 
 /* Functions */
+#ifdef ENABLE_MEMPOOL
+// With BSP.Mempool
+    #define bsp_malloc(size)                    mempool_alloc(size)
+    #define bsp_calloc(nmemb, size)             mempool_calloc(nmemb, size)
+    #define bsp_realloc(ptr, size)              mempool_realloc(ptr, size)
+    #define bsp_strdup(input)                   mempool_strdup(input)
+    #define bsp_strndup(input, len)             mempool_strndup(input, len)
+    #define bsp_malloc_usable_size(ptr)         mempool_alloc_usable_size(ptr)
+    #define bsp_free(ptr)                       mempool_free(ptr)
+#else
+// General memory allocator
+    #define bsp_malloc(size)                    malloc(size)
+    #define bsp_calloc(nmemb, size)             calloc(nmemb, size)
+    #define bsp_realloc(ptr, size)              realloc(ptr, size)
+    #define bsp_strdup(input)                   strdup(input)
+    #define bsp_strndup(input, len)             strndup(input, len)
+    #define bsp_malloc_usable_size(ptr)         malloc_usable_size(ptr)
+    #define bsp_free(ptr)                       free(ptr)
+#endif
+
+#ifdef ENABLE_SPIN
+// With BSP.Spinlock
+    #define bsp_spin_init(lock)                 spin_init(lock)
+    #define bsp_spin_lock(lock)                 spin_lock(lock)
+    #define bsp_spin_unlock(lock)               spin_unlock(lock)
+    #define bsp_spin_destroy(lock)              spin_destroy(lock)
+#else
+// Pthread spinlock
+    #define bsp_spin_init(lock)                 pthread_spin_init(lock, 0)
+    #define bsp_spin_lock(lock)                 pthread_spin_lock(lock)
+    #define bsp_spin_unlock(lock)               pthread_spin_unlock(lock)
+    #define bsp_spin_destroy(lock)              pthread_spin_destroy(lock)
+#endif
 
 #endif  /* _LIB_BSP_CORE_H */

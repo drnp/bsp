@@ -42,7 +42,6 @@
 #define BLOCK_SIZE(i)                           ((slab_size[i] + 8) * slab_nitems[i])
 
 /* Structs */
-#ifdef ENABLE_MEMPOOL
 struct bsp_mempool_slab_t
 {
     int                 slab_id;
@@ -58,27 +57,15 @@ typedef struct bsp_mempool_t
                         slab_list[SLAB_MAX];
     BSP_SPINLOCK        lock;
 } BSP_MEMPOOL;
-#endif
 
 /* Functions */
-#ifdef ENABLE_MEMPOOL
-    int mempool_init();
-    void * mempool_alloc(size_t nsize);
-    void * mempool_calloc(size_t nmemb, size_t size);
-    void * mempool_realloc(void *addr, size_t nsize);
-    char * mempool_strdup(const char *input);
-    char * mempool_strndup(const char *input, ssize_t len);
-    size_t mempool_alloc_usable_size(void *addr);
-    int mempool_free(void *addr);
-#else
-    #define mempool_init()
-    #define mempool_alloc(size)                     malloc(size)
-    #define mempool_calloc(nmemb, size)             calloc(nmemb, size)
-    #define mempool_realloc(ptr, size)              realloc(ptr, size)
-    #define mempool_strdup(input)                   strdup(input)
-    #define mempool_strndup(input, len)             strndup(input, len)
-    #define mempool_alloc_usable_size(ptr)          malloc_usable_size(ptr)
-    #define mempool_free(ptr)                       free(ptr)
-#endif
+int mempool_init();
+void * mempool_alloc(size_t nsize);
+void * mempool_calloc(size_t nmemb, size_t size);
+void * mempool_realloc(void *addr, size_t nsize);
+char * mempool_strdup(const char *input);
+char * mempool_strndup(const char *input, ssize_t len);
+size_t mempool_alloc_usable_size(void *addr);
+int mempool_free(void *addr);
 
 #endif  /* _LIB_BSP_CORE_MEMPOOL_H */

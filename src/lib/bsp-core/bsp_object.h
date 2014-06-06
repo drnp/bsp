@@ -32,7 +32,6 @@
 
 #define _LIB_BSP_CORE_OBJECT_H
 /* Headers */
-#include "lua.h"
 
 /* Definations */
 #define HASH_SIZE_INITIAL                       8
@@ -43,7 +42,7 @@
 /* Macros */
 
 /* Structs */
-struct bsp_var_t
+struct bsp_object_item_val_t
 {
     char                lval[8];
     void                *rval;
@@ -51,16 +50,21 @@ struct bsp_var_t
     char                type;
 };
 
-typedef struct bsp_kv_t
+typedef struct bsp_object_item_t
 {
     char                *key;
     size_t              key_len;
     int64_t             key_int;
-    struct bsp_kv_t     *prev;
-    struct bsp_kv_t     *next;
-    struct bsp_kv_t     *lprev;
-    struct bsp_kv_t     *lnext;
-    struct bsp_var_t    value;
+    struct bsp_object_item_t
+                        *prev;
+    struct bsp_object_item_t
+                        *next;
+    struct bsp_object_item_t
+                        *lprev;
+    struct bsp_object_item_t
+                        *lnext;
+    struct bsp_object_item_val_t
+                        value;
 } BSP_OBJECT_ITEM;
 
 typedef struct bsp_object_t
@@ -74,6 +78,18 @@ typedef struct bsp_object_t
     int                 curr_table;
     BSP_SPINLOCK        obj_lock;
 } BSP_OBJECT;
+
+typedef struct bsp_val_t
+{
+    int64_t             v_int;
+    double              v_float;
+    char                *v_str;
+    size_t              v_str_len;
+    BSP_OBJECT          *v_obj;
+    BSP_OBJECT_ITEM     **v_arr;
+    size_t              v_arr_size;
+    char                type;
+} BSP_VAL;
 
 /* Functions */
 BSP_OBJECT_ITEM * new_object_item(const char *key, ssize_t key_len);
@@ -94,6 +110,7 @@ BSP_OBJECT_ITEM * array_get_item(BSP_OBJECT_ITEM *array, size_t idx);
 int object_insert_item(BSP_OBJECT *obj, BSP_OBJECT_ITEM *item);
 BSP_OBJECT_ITEM * object_remove_item(BSP_OBJECT *obj, BSP_OBJECT_ITEM *item);
 BSP_OBJECT_ITEM * object_get_item(BSP_OBJECT *obj, const char *key, ssize_t key_len);
+BSP_VAL * object_item_value(BSP_OBJECT *obj, BSP_VAL *val, const char *key, ssize_t key_len);
 
 // Set values
 void set_item_int8(BSP_OBJECT_ITEM *item, const int8_t value);

@@ -110,31 +110,31 @@ typedef struct bsp_http_request_t
     char                *version;
     char                *method;
     char                *request_uri;
-
+    
     char                *cache;
     char                *connection;
     char                *date;
     char                *pragma;
     char                *range;
-
+    
     char                *host;
     int                 port;
     char                *referer;
     char                *user_agent;
     char                *upgrade;
     char                *origin;
-
+    
     char                *accept;
     char                *accept_charset;
     char                *accept_encoding;
     char                *accept_language;
-
+    
     char                *cookie;
     char                *raw_post_data;
     size_t              raw_post_data_size;
-
+    
     size_t              raw_post_data_recieved;
-
+    
     int                 sec_websocket_version;
     char                *sec_websocket_protocol;
     char                *sec_websocket_extensions;
@@ -148,7 +148,7 @@ typedef struct bsp_http_response_t
     char                *version;
     char                *status_description;
     int                 status_code;
-
+    
     char                *date;
     char                *pragma;
     char                *server;
@@ -167,11 +167,11 @@ typedef struct bsp_http_response_t
     char                *expires;
     char                *last_modified;
     char                *upgrade;
-
+    
     char                *content;
-
+    
     size_t              content_recieved;
-
+    
     char                *sec_websocket_accept;
     char                *sec_websocket_origin;
     char                *sec_websocket_location;

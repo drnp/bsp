@@ -33,6 +33,7 @@
 /* Headers */
 
 /* Definations */
+#define MAX_MODULES                             1024
 
 /* Macros */
 
@@ -40,8 +41,9 @@
 typedef struct bsp_core_setting_t
 {
     int                 initialized;
-    // Networks
-    int                 app_id;         /* An unique ID */
+    int                 instance_id;
+    
+    // Process
     int                 max_fds;
     int                 is_daemonize;
     int                 tcp_listen_backlog;
@@ -61,6 +63,9 @@ typedef struct bsp_core_setting_t
     void                (* on_proc_usr1) (int signo);
     void                (* on_proc_usr2) (int signo);
 
+    // Server callback
+    BSP_SERVER_CALLBACK *server_callback;
+
     // Main base (1Hz) timer callback
     BSP_TIMER           *main_timer;
 
@@ -69,6 +74,8 @@ typedef struct bsp_core_setting_t
     char                *mod_dir;
     char                *log_dir;
     char                *runtime_dir;
+    char                *script_dir;
+    char                *script_callback_entry;
 
     // Debug
     int                 debug_hex_connector_input;
@@ -84,6 +91,9 @@ BSP_CORE_SETTING * get_core_setting();
 char * get_core_version(void);
 
 // Init
-int core_init(int app_id);
+int core_init(BSP_SERVER_CALLBACK sc[]);
+
+// Start main loop
+int core_loop(void (* timer_event)(unsigned long long));
 
 #endif  /* _LIB_BSP_CORE_CORE_H */

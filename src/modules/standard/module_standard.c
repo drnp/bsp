@@ -30,9 +30,6 @@
  *      [12/17/2013] - Lightuserdata supported
  */
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
 #include "bsp.h"
 
 #include "module_standard.h"
@@ -40,8 +37,8 @@
 // Timer callback
 void standard_script_timer_on_timer(void *arg)
 {
-    const char *func = (const char *) arg;
-    script_call_func(func, NULL);
+    //const char *func = (const char *) arg;
+    //script_call_func(func, NULL);
     
     return;
 }
@@ -209,9 +206,9 @@ static int standard_timer_create(lua_State *s)
         return 0;
     }
     
-    tmr->on_timer = standard_script_timer_on_timer;
-    tmr->on_stop = standard_script_timer_on_stop;
-    tmr->cb_arg = (void *) func;
+    //tmr->on_timer = standard_script_timer_on_timer;
+    //tmr->on_stop = standard_script_timer_on_stop;
+    //tmr->cb_arg = (void *) func;
     start_timer(tmr);
 
     lua_pushinteger(s, tmr->fd);
@@ -426,7 +423,7 @@ static int standard_base64_decode(lua_State *s)
     const char *input = lua_tolstring(s, -1, &len);
     BSP_STRING *str = new_string(NULL, 0);
     string_base64_decode(str, input, len);
-    lua_pushlstring(s, str->str, str->ori_len);
+    lua_pushlstring(s, STR_STR(str), STR_LEN(str));
     del_string(str);
     
     return 1;
@@ -646,7 +643,7 @@ static struct _global_entry_t * _global_new(const char *key)
     // Generate a new hash entry
     uint32_t hash_value = hash(key, -1);
     int slot = hash_value % GLOBAL_HASH_SIZE;
-    struct _global_entry_t *g = mempool_calloc(1, sizeof(struct _global_entry_t));
+    struct _global_entry_t *g = bsp_calloc(1, sizeof(struct _global_entry_t));
     if (!g)
     {
         return NULL;
@@ -722,7 +719,7 @@ static int standard_set_global(lua_State *s)
             memcpy(&value, g->value, sizeof(void *));
             if (value && g->value_len)
             {
-                mempool_free(value);
+                bsp_free(value);
                 memset(g->value, 0, 8);
                 g->value_len = 0;
             }
@@ -758,7 +755,7 @@ static int standard_set_global(lua_State *s)
         case LUA_TSTRING : 
             g->type = LUA_TSTRING;
             vs = lua_tolstring(s, -1, &g->value_len);
-            value = mempool_alloc(g->value_len);
+            value = bsp_malloc(g->value_len);
             if (!value)
             {
                 return 0;

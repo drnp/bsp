@@ -77,27 +77,25 @@ struct bsp_conf_core_t
 struct bsp_conf_server_t
 {
     // Server details
+    char                *server_name;
     char                *server_addr;
     int                 server_port;
     int                 server_inet;
     int                 server_sock;
     int                 heartbeat_check;
-    int                 default_client_type;
-    int                 default_data_type;
+    int                 def_client_type;
+    int                 def_data_type;
     size_t              max_packet_length;
     size_t              max_clients;
-
+    
     // LUA callback
     char                *script_func_on_connect;
     char                *script_func_on_close;
     char                *script_func_on_data;
-
+    
     // Debug switch
-    int                 debug_hex_client_input;
-
-    // Link next
-    struct bsp_conf_server_t
-                        *next;
+    int                 debug_hex_input;
+    int                 debug_hex_output;
 };
 
 struct bsp_conf_module_t
@@ -121,7 +119,7 @@ typedef struct bsp_conf_t
 } BSP_CONF;
 
 /* Functions */
-BSP_CONF * conf_init(const char *conf_file);
+int conf_init(const char *conf_file);
 void conf_set(const char *key, const char *value, int level);
 char * conf_get(const char *key);
 

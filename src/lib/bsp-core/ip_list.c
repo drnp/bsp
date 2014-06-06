@@ -34,30 +34,26 @@
 // New IPv4 table
 BSP_IPV4_LIST * new_ipv4_list()
 {
-    BSP_IPV4_LIST *ret = mempool_alloc(sizeof(BSP_IPV4_LIST));
+    BSP_IPV4_LIST *ret = bsp_calloc(1, sizeof(BSP_IPV4_LIST));
     if (!ret)
     {
-        trace_msg(TRACE_LEVEL_ERROR, "Create IP list error");
+        trace_msg(TRACE_LEVEL_ERROR, "IpList : Create IP list error");
         return NULL;
     }
-
-    memset(ret, 0, sizeof(BSP_IPV4_LIST));
-
+    
     return ret;
 }
 
 // New IPv6 table
 BSP_IPV6_LIST * new_ipv6_list()
 {
-    BSP_IPV6_LIST *ret = mempool_alloc(sizeof(BSP_IPV6_LIST));
+    BSP_IPV6_LIST *ret = bsp_calloc(1, sizeof(BSP_IPV6_LIST));
     if (!ret)
     {
-        trace_msg(TRACE_LEVEL_ERROR, "Create IP list error");
+        trace_msg(TRACE_LEVEL_ERROR, "IpList : Create IP list error");
         return NULL;
     }
-
-    memset(ret, 0, sizeof(BSP_IPV6_LIST));
-
+    
     return ret;
 }
 
@@ -68,7 +64,7 @@ int search_ipv4(BSP_IPV4_LIST *list, uint32_t addr)
     {
         return 0;
     }
-
+    
     int slab_id = ipv4_hash(addr, IPLIST_SIZE);
     struct bsp_ipv4_item_t *item = list->slab[slab_id][0];
     while (item)
@@ -80,7 +76,7 @@ int search_ipv4(BSP_IPV4_LIST *list, uint32_t addr)
         
         item = item->next;
     }
-
+    
     return 0;
 }
 
@@ -97,8 +93,8 @@ void add_ipv4(BSP_IPV4_LIST *list, uint32_t addr)
     {
         return;
     }
-
-    struct bsp_ipv4_item_t *item = mempool_alloc(sizeof(struct bsp_ipv4_item_t));
+    
+    struct bsp_ipv4_item_t *item = bsp_malloc(sizeof(struct bsp_ipv4_item_t));
     item->addr = addr;
     item->next = NULL;
     int slab_id = ipv4_hash(addr, IPLIST_SIZE);
@@ -107,15 +103,15 @@ void add_ipv4(BSP_IPV4_LIST *list, uint32_t addr)
         // Header
         list->slab[slab_id][0] = item;
     }
-
     else
     {
         // Add link
         list->slab[slab_id][1]->next = item;
     }
-
+    
     list->slab[slab_id][1] = item;
-
+    trace_msg(TRACE_LEVEL_VERBOSE, "IpList : Add an IPv4 address to list");
+    
     return;
 }
 
@@ -126,7 +122,7 @@ void del_ipv4(BSP_IPV4_LIST *list, uint32_t addr)
     {
         return;
     }
-
+    
     int slab_id = ipv4_hash(addr, IPLIST_SIZE);
     struct bsp_ipv4_item_t *item = list->slab[slab_id][0];
     while (item)
@@ -139,7 +135,8 @@ void del_ipv4(BSP_IPV4_LIST *list, uint32_t addr)
         
         item = item->next;
     }
-
+    trace_msg(TRACE_LEVEL_VERBOSE, "IpList : Remove an IPv4 address from list");
+    
     return;
 }
 
@@ -150,7 +147,7 @@ int search_ipv6(BSP_IPV6_LIST *list, uint8_t *addr)
     {
         return 0;
     }
-
+    
     int slab_id = ipv6_hash(addr, IPLIST_SIZE);
     struct bsp_ipv6_item_t *item = list->slab[slab_id][0];
     while (item)
@@ -162,7 +159,7 @@ int search_ipv6(BSP_IPV6_LIST *list, uint8_t *addr)
         
         item = item->next;
     }
-
+    
     return 0;
 }
 
@@ -179,8 +176,8 @@ void add_ipv6(BSP_IPV6_LIST *list, uint8_t *addr)
     {
         return;
     }
-
-    struct bsp_ipv6_item_t *item = mempool_alloc(sizeof(struct bsp_ipv6_item_t));
+    
+    struct bsp_ipv6_item_t *item = bsp_malloc(sizeof(struct bsp_ipv6_item_t));
     memcpy(item->addr, addr, 16);
     item->next = NULL;
     int slab_id = ipv6_hash(addr, IPLIST_SIZE);
@@ -189,15 +186,15 @@ void add_ipv6(BSP_IPV6_LIST *list, uint8_t *addr)
         // Header
         list->slab[slab_id][0] = item;
     }
-
     else
     {
         // Add link
         list->slab[slab_id][1]->next = item;
     }
-
+    
     list->slab[slab_id][1] = item;
-
+    trace_msg(TRACE_LEVEL_VERBOSE, "IpList : Add an IPv6 address to list");
+    
     return;
 }
 
@@ -208,7 +205,7 @@ void del_ipv6(BSP_IPV6_LIST *list, uint8_t *addr)
     {
         return;
     }
-
+    
     int slab_id = ipv6_hash(addr, IPLIST_SIZE);
     struct bsp_ipv6_item_t *item = list->slab[slab_id][0];
     while (item)
@@ -221,6 +218,7 @@ void del_ipv6(BSP_IPV6_LIST *list, uint8_t *addr)
         
         item = item->next;
     }
-
+    trace_msg(TRACE_LEVEL_VERBOSE, "IpList : Remove an IPv6 address from list");
+    
     return;
 }

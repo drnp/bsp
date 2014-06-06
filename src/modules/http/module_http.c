@@ -105,7 +105,7 @@ size_t http_on_response(BSP_CONNECTOR *cnt, const char *data, ssize_t len)
         if (!resp)
         {
             // Alloc response error
-            mempool_free(add);
+            bsp_free(add);
             free_connector(cnt);
 
             if (caller)
@@ -224,8 +224,8 @@ size_t http_on_response(BSP_CONNECTOR *cnt, const char *data, ssize_t len)
     {
         trace_msg(TRACE_LEVEL_VERBOSE, "HTTP-M : Request finished");
         _finish_http_resp(add);
-        mempool_free(add->resp);
-        mempool_free(add);
+        bsp_free(add->resp);
+        bsp_free(add);
         cnt->additional = NULL;
 
         // Close connection
@@ -252,8 +252,8 @@ void http_on_close(BSP_CONNECTOR *cnt)
     // Peer closed
     trace_msg(TRACE_LEVEL_DEBUG, "HTTP-M : HTTP peer close by remote server");
     _finish_http_resp(add);
-    mempool_free(add->resp);
-    mempool_free(add);
+    bsp_free(add->resp);
+    bsp_free(add);
 
     return;
 }
@@ -363,7 +363,7 @@ static int http_send_request(lua_State *s)
         BSP_CONNECTOR *cnt = new_connector(req->host, req->port, INET_TYPE_ANY, SOCK_TYPE_TCP);
         if (cnt)
         {
-            struct _http_callback_additional_t *cb = mempool_alloc(sizeof(struct _http_callback_additional_t));
+            struct _http_callback_additional_t *cb = bsp_malloc(sizeof(struct _http_callback_additional_t));
             if (!cb)
             {
                 trace_msg(TRACE_LEVEL_ERROR, "HTTP-M : Alloc HTTP callback additional error");
@@ -378,7 +378,7 @@ static int http_send_request(lua_State *s)
                 cnt->on_close = http_on_close;
                 cnt->additional = cb;
                 trace_msg(TRACE_LEVEL_NOTICE, "HTTP-M : Visit URI: %s on host: %s", req->request_uri, req->host);
-                append_data_socket(&SCK(cnt), (const char *) str->str, str->ori_len);
+                append_data_socket(&SCK(cnt), (const char *) STR_STR(str), STR_LEN(str));
                 flush_socket(&SCK(cnt));
             }
         }
@@ -426,7 +426,7 @@ static int http_urlencode(lua_State *s)
         }
     }
 
-    lua_pushlstring(s, str->str, str->ori_len);
+    lua_pushlstring(s, STR_STR(str), STR_LEN(str));
     del_string(str);
     
     return 1;
@@ -474,7 +474,7 @@ static int http_urldecode(lua_State *s)
         }
     }
 
-    lua_pushlstring(s, str->str, str->ori_len);
+    lua_pushlstring(s, STR_STR(str), STR_LEN(str));
     del_string(str);
     
     return 1;

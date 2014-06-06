@@ -55,13 +55,6 @@
 #define SERIALIZE_TYPE_MSGPACK                  0x2
 #define SERIALIZE_TYPE_AMF                      0x3
 
-/* * Define in bsp_string.h
-#define COMPRESS_TYPE_NONE                      0x0
-#define COMPRESS_TYPE_DEFLATE                   0x1
-#define COMPRESS_TYPE_LZO                       0x2
-#define COMPRESS_TYPE_SNAPPY                    0x3
-* */
-
 #define UDP_PACKET_REG                          0x1
 #define UDP_PACKET_UNREG                        0x2
 #define UDP_PACKET_CTRL                         0x3
@@ -95,21 +88,23 @@ struct bsp_main_loop_t
 };
 
 /* Functions */
+BSP_CLIENT * server_accept(BSP_SERVER *srv, struct sockaddr_storage *addr);
+
 // Set main loop's event callback
 // We support 3 types of events now : 
 //  SERVER_CALLBACK_ON_LOOP_START - When loop start
 //  SERVER_CALLBACK_ON_LOOP_EXIT  - When loop stop / exit
 //  SERVER_CALLBACK_ON_LOOP_TIMER - When main timer(1Hz) triggered
-void set_loop_event(int event_type, void (* callback) (unsigned long long));
+//void set_loop_event(int event_type, void (* callback) (unsigned long long));
 
 // Main loop of a server application
-int start_loop(void);
+//int start_loop(void);
 // Stop main loop
-int exit_loop(void);
+//int exit_loop(void);
 
 // Add server to main loop
-int add_server(int srv_fd);
-int del_server(int srv_fd);
+int add_server(BSP_SERVER *srv);
+//int del_server(int srv_fd);
 size_t output_client_raw(BSP_CLIENT *clt, const char *data, ssize_t len);
 size_t output_client_obj(BSP_CLIENT *clt, BSP_OBJECT *obj);
 size_t output_client_cmd(BSP_CLIENT *clt, int cmd, BSP_OBJECT *obj);

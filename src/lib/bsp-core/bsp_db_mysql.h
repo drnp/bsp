@@ -43,13 +43,16 @@ typedef struct bsp_db_mysql_t
     size_t              queries;
     unsigned int        query_errno;
     BSP_SPINLOCK        query_lock;
+    struct bsp_db_mysql_res_t
+                        *result_list;
 } BSP_DB_MYSQL;
 
 typedef struct bsp_db_mysql_res_t
 {
     MYSQL_RES           *res;
-    MYSQL               *handler;
     my_ulonglong        num_rows;
+    struct bsp_db_mysql_t
+                        *handler;
     struct bsp_db_mysql_res_t
                         *prev;
     struct bsp_db_mysql_res_t

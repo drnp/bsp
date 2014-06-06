@@ -48,7 +48,7 @@ static int _get_new_node(struct word_filter_t *flt)
     while (block_id >= flt->node_list_size)
     {
         int nlen = (flt->node_list_size) ? flt->node_list_size * 2 : BLOCK_LIST_INITIAL;
-        tmp = mempool_realloc(flt->node_list, nlen * sizeof(struct hash_tree_node_t *));
+        tmp = bsp_realloc(flt->node_list, nlen * sizeof(struct hash_tree_node_t *));
         if (tmp)
         {
             for (i = flt->node_list_size; i < nlen; i ++)
@@ -70,11 +70,10 @@ static int _get_new_node(struct word_filter_t *flt)
     // If block
     if (!flt->node_list[block_id])
     {
-        struct hash_tree_node_t *block = mempool_alloc(sizeof(struct hash_tree_node_t) * BLOCK_NODE_SIZE);
+        struct hash_tree_node_t *block = bsp_calloc(BLOCK_NODE_SIZE, sizeof(struct hash_tree_node_t));
         if (block)
         {
             flt->node_list[block_id] = block;
-            memset(block, 0, sizeof(struct hash_tree_node_t) * BLOCK_NODE_SIZE);
         }
 
         else
@@ -118,7 +117,7 @@ static int new_word_filter(lua_State *s)
         return 0;
     }
 
-    struct word_filter_t *flt = mempool_alloc(sizeof(struct word_filter_t));
+    struct word_filter_t *flt = bsp_malloc(sizeof(struct word_filter_t));
     if (!flt)
     {
         trace_msg(TRACE_LEVEL_FATAL, "Filter : Alloc new word filter error");
@@ -149,7 +148,7 @@ static int del_word_filter(lua_State *s)
         return 0;
     }
     // Clean all block
-    mempool_free(flt);
+    bsp_free(flt);
     
     return 0;
 }
@@ -420,7 +419,7 @@ static int do_filter(lua_State *s)
         if (replace)
         {
             lua_pushstring(s, "replaced");
-            lua_pushlstring(s, res->str, res->ori_len);
+            lua_pushlstring(s, STR_STR(res), STR_LEN(res));
             lua_settable(s, -3);
             del_string(res);
         }

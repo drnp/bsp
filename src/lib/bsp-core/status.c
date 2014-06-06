@@ -52,8 +52,8 @@ void status_op_core(int op, size_t value)
 {
     switch (op)
     {
-        case STATUS_OP_APPID : 
-            s.app_id = (int) value;
+        case STATUS_OP_INSTANCE_ID : 
+            s.instance_id = (int) value;
             break;
         case STATUS_OP_START_TIME : 
             s.start_time = (time_t) value;
@@ -65,6 +65,7 @@ void status_op_core(int op, size_t value)
 
 void status_op_mempool(int slab_id, int op, size_t value)
 {
+#ifdef ENABLE_MEMPOOL
     // Huge memory block
     if (STATUS_OP_MEMPOOL_HUGE_ALLOC == op)
     {
@@ -75,17 +76,17 @@ void status_op_mempool(int slab_id, int op, size_t value)
         
         return;
     }
-
+    
     if (STATUS_OP_MEMPOOL_HUGE_FREE == op)
     {
         s.mempool.huge_item_free_times ++;
         s.mempool.huge_item_freed += value;
         s.mempool.free_times ++;
         s.mempool.dissociative_space -= value;
-
+        
         return;
     }
-
+    
     if (slab_id >= SLAB_MAX || slab_id < 0)
     {
         return;
@@ -117,7 +118,7 @@ void status_op_mempool(int slab_id, int op, size_t value)
         default : 
             break;
     }
-
+#endif
     return;
 }
 
@@ -159,7 +160,12 @@ void status_op_socket(int fd, int op, size_t value)
                 trigger_exit(BSP_RTN_FATAL, "Cannot alloc memory space for status service !!!");
             }
             sck_s_list = tmp;
-            sck_s_list[s.socket.servers_total - 1].fd = value;
+            tmp = &sck_s_list[s.socket.servers_total - 1];
+            tmp->fd = value;
+            tmp->connect_times = 0;
+            tmp->disconnect_times = 0;
+            tmp->bytes_read = 0;
+            tmp->bytes_sent = 0;
             break;
         case STATUS_OP_SOCKET_CONNECTOR_CONNECT : 
             s.socket.connector.connect_times ++;
@@ -354,15 +360,15 @@ void debug_status()
     
     fprintf(stderr, "\n\033[1;32m          * * * BSP.Core Statistics dump * * *\033[0m\n");
     fprintf(stderr, "=========================================================\n\n");
-
+    
     // Core
     fprintf(stderr, "\033[1;33m  CORE STATUS :\033[0m\n");
-    fprintf(stderr, "\033[1;36m    App ID                       :\033[0m %d\n"
+    fprintf(stderr, "\033[1;36m    Instance ID                  :\033[0m %d\n"
                     "\033[1;36m    Start time (Unix timestamp)  :\033[0m %d\n", 
-            ds->app_id, 
+            ds->instance_id, 
             (int) ds->start_time);
     fprintf(stderr, "\n");
-    
+#ifdef ENABLE_MEMPOOL
     // Mempool
     fprintf(stderr, "\033[1;33m  MEMORY POOL :\033[0m\n");
     fprintf(stderr, "\033[1;34m    SUMMARY :\033[0m\n");
@@ -404,7 +410,7 @@ void debug_status()
                 (long long unsigned int) ds->mempool.slab[i].items_inuse);
     }
     fprintf(stderr, "\n");
-
+#endif
     // Fds
     fprintf(stderr, "\033[1;33m  FILE DESCRIPTOR :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Total fds                    :\033[0m %llu\n"
@@ -447,7 +453,7 @@ void debug_status()
             (long long unsigned int) ds->socket.connector.bytes_read, 
             (long long unsigned int) ds->socket.connector.bytes_sent);
     fprintf(stderr, "\n");
-
+    
     // Timer
     fprintf(stderr, "\033[1;33m  TIMER :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Timers total                 :\033[0m %llu\n"
@@ -455,7 +461,7 @@ void debug_status()
             (long long unsigned int) ds->timer.timers_total, 
             (long long unsigned int) ds->timer.trigger_times);
     fprintf(stderr, "\n");
-
+    
     // Script
     fprintf(stderr, "\033[1;33m  SCRIPT :\033[0m\n");
     fprintf(stderr, "\033[1;36m    States total                 :\033[0m %llu\n"
@@ -475,7 +481,7 @@ void debug_status()
             (long long unsigned int) ds->script.memory_free_times, 
             (long long unsigned int) ds->script.memory_freed);
     fprintf(stderr, "\n");
-
+    
     // MySQL
     fprintf(stderr, "\033[1;33m  DB::MYSQL :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Connect times                :\033[0m %llu\n"
@@ -491,7 +497,7 @@ void debug_status()
             (long long unsigned int) ds->db_mysql.results_total, 
             (long long unsigned int) ds->db_mysql.free_times);
     fprintf(stderr, "\n");
-
+    
     // SQLite
     fprintf(stderr, "\033[1;33m  DB::SQLITE :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Open times                   :\033[0m %llu\n"
@@ -507,7 +513,7 @@ void debug_status()
             (long long unsigned int) ds->db_sqlite.results_total, 
             (long long unsigned int) ds->db_sqlite.free_times);
     fprintf(stderr, "\n");
-
+    
     // HTTP
     fprintf(stderr, "\033[1;33m  HTTP OPERATES :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Request times                :\033[0m %llu\n"
@@ -515,7 +521,8 @@ void debug_status()
             (long long unsigned int) ds->http.request_times, 
             (long long unsigned int) ds->http.response_times);
     fprintf(stderr, "\n");
-
+    
     fprintf(stderr, "\n");
+    
     return;
 }

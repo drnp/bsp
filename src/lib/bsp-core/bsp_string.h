@@ -38,20 +38,22 @@
 
 #define COMPRESS_TYPE_NONE                      0x0
 #define COMPRESS_TYPE_DEFLATE                   0x1
-#define COMPRESS_TYPE_LZO                       0x2
-#define COMPRESS_TYPE_SNAPPY                    0x3
+#define COMPRESS_TYPE_SNAPPY                    0x2
+#define COMPRESS_TYPE_LZ4                       0x3
 
 #define COMPRESS_ZLIB_CHUNK_SIZE                16384
 
 /* Macros */
+#define STR_LEN(s)                              s->original_len
+#define STR_STR(s)                              s->str
 
 /* Structs */
 typedef struct bsp_string_t
 {
     char                *str;
-    size_t              str_len;
-    size_t              ori_len;
-    char                compressed;
+    size_t              original_len;
+    size_t              compressed_len;
+    char                compress_type;
 } BSP_STRING;
 
 /* Functions */
@@ -59,6 +61,9 @@ typedef struct bsp_string_t
 
 // If data is NULL or len is zero, a empty string will be created
 BSP_STRING * new_string(const char *data, ssize_t len);
+
+// Create string from an ordinary file
+BSP_STRING * new_string_from_file(const char *path);
 
 // Delete a string
 void del_string(BSP_STRING *str);
@@ -80,20 +85,23 @@ ssize_t string_fill(BSP_STRING *str, int code, size_t len);
 size_t string_concat(BSP_STRING *str, const char *data, ssize_t len);
 
 // Print formatted data to the end of a string
-size_t string_printf(BSP_STRING *str, const char *fmt, ...);
+ssize_t string_printf(BSP_STRING *str, const char *fmt, ...);
 
 // Find a sub-string from a string and replace them with new value
-void string_replace(BSP_STRING *str, const char *search, const char *replace);
+void string_replace(BSP_STRING *str, const char *search, ssize_t search_len, const char *replace, ssize_t replace_len);
+
+// String length (\0 terminated)
+ssize_t string_strlen(BSP_STRING *str);
 
 // Compress data
 int string_compress_deflate(BSP_STRING *str);
-int string_compress_lzo(BSP_STRING *str);
 int string_compress_snappy(BSP_STRING *str);
+int string_compress_lz4(BSP_STRING *str);
 
 // Uncompress data
-int string_uncompress_deflate(BSP_STRING *str);
-int string_uncompress_lzo(BSP_STRING *str);
-int string_uncompress_snappy(BSP_STRING *str);
+int string_decompress_deflate(BSP_STRING *str);
+int string_decompress_snappy(BSP_STRING *str);
+int string_decompress_lz4(BSP_STRING *str);
 
 // Base64 encode
 int string_base64_encode(BSP_STRING *str, const char *data, ssize_t len);

@@ -48,7 +48,7 @@ static void _shr_init()
 {
     BSP_CORE_SETTING *settings = get_core_setting();
     int nfds = settings->max_fds;
-    online_list = mempool_calloc(1, sizeof(struct _online_entry_t) * nfds);
+    online_list = bsp_calloc(1, sizeof(struct _online_entry_t) * nfds);
     if (!online_list)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Online : Create online list error");
@@ -132,7 +132,7 @@ static int shr_online_map(lua_State *s)
             continue;
         }
         // New entry
-        item = mempool_calloc(1, sizeof(struct _online_info_map_t));
+        item = bsp_calloc(1, sizeof(struct _online_info_map_t));
         if (item)
         {
             // Key
@@ -229,7 +229,7 @@ static int shr_online_property(lua_State *s)
         // Add or modify
         if (!online_list[client_id].info)
         {
-            online_list[client_id].info = mempool_calloc(1, online_info_size);
+            online_list[client_id].info = bsp_calloc(1, online_info_size);
         }
         online_list[client_id].status = ONLINE_STATUS_ONLINE;
 

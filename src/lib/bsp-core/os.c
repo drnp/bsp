@@ -63,7 +63,7 @@ static void tstp_handler(const int sig)
     fprintf(stderr, "\n\n");
     trace_msg(TRACE_LEVEL_CORE, "Core   : SIGNAL %d handled, TSTP action requested", sig);
     fprintf(stderr, "\n\n");
-
+    
     // Do nothing
     return;
 }
@@ -76,7 +76,7 @@ static void usr1_handler(const int sig)
     {
         settings->on_proc_usr1(sig);
     }
-
+    
     fprintf(stderr, "\n\n");
     trace_msg(TRACE_LEVEL_CORE, "Core   : SIGNAL %d handled, USR1 action requested", sig);
     fprintf(stderr, "\n\n");
@@ -90,7 +90,7 @@ static void usr2_handler(const int sig)
     {
         settings->on_proc_usr2(sig);
     }
-
+    
     fprintf(stderr, "\n\n");
     trace_msg(TRACE_LEVEL_CORE, "Core   : SIGNAL %d handled, USR2 action requested", sig);
     fprintf(stderr, "\n\n");
@@ -107,9 +107,9 @@ void signal_init()
     signal(SIGUSR1, usr1_handler);
     signal(SIGUSR2, usr2_handler);
     signal(SIGPIPE, SIG_IGN);
-
+    
     trace_msg(TRACE_LEVEL_DEBUG, "Core   : Signals set with default behavior");
-
+    
     return;
 }
 
@@ -121,12 +121,12 @@ void set_signal(const int sig, void (cb)(int))
     sa.sa_flags = 0;
     sa.sa_sigaction = NULL;
     sa.sa_handler = (cb) ? cb : SIG_IGN;
-
+    
     if (0 != sigaction(sig, &sa, NULL))
     {
         trace_msg(TRACE_LEVEL_ERROR, "Core   : Set signal %d action failed", sig);
     }
-
+    
     return;
 }
 
@@ -134,7 +134,7 @@ void set_signal(const int sig, void (cb)(int))
 int proc_daemonize()
 {
     int fd;
-
+    
     // Fork a new process
     switch(fork())
     {
@@ -151,7 +151,7 @@ int proc_daemonize()
     {
         return -1;
     }
-
+    
     // Redirect standard IO to null device
     fd = open("/dev/null", O_RDWR, 0);
     if (fd)
@@ -164,7 +164,6 @@ int proc_daemonize()
             (void) close(fd);
         }
     }
-
     else
     {
         trace_msg(TRACE_LEVEL_ERROR, "Cannot open null device");
@@ -185,7 +184,7 @@ int enable_large_pages()
         size_t max = sizes[0];
         struct memcntl_mha arg = {0};
         int ii;
-
+        
         for (ii = 1; ii < avail; ++ii)
         {
             if (max < sizes[ii])
@@ -193,32 +192,30 @@ int enable_large_pages()
                 max = sizes[ii];
             }
         }
-
+        
         arg.mha_flags = 0;
         arg.mha_pagesize = max;
         arg.mha_cmd = MHA_MAPSIZE_BSSBRK;
-
+        
         if (memcntl(0, 0, MC_HAT_ADVISE, (caddr_t) &arg, 0, 0) == -1)
         {
             // memcntl failed
             trace_msg(TRACE_LEVEL_FATAL, "Core   : Memcntl failed");
             _exit(BSP_RTN_ERROR_MEMORY);
         }
-
         else
         {
             ret = 0;
         }
-
+        
         trace_msg(TRACE_LEVEL_CORE, "Core   : Memory page size set as %d", arg.mha_pagesize);
     }
-
     else
     {
         // Get pagesizes failed
         trace_msg(TRACE_LEVEL_ERROR, "Core   : Get memory page size error");
     }
-
+    
     return ret;
 #else
     trace_msg(TRACE_LEVEL_CORE, "Core   : HugeTLB not supported on this system");

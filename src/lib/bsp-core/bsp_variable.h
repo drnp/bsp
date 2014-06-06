@@ -55,6 +55,9 @@
 #define BSP_OP_LT                               0x21
 #define BSP_OP_LE                               0x22
 
+#define BSP_BOOLEAN_TRUE                        1
+#define BSP_BOOLEAN_FALSE                       0
+
 /* Macros */
 
 /* Structs */

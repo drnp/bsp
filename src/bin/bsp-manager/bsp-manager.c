@@ -173,9 +173,11 @@ int main(int argc, char **argv)
     int c;
     int is_daemonize = 0;
     int is_verbose = 0;
+/*
     int enable_sandbox = 0;
     int port = DEFAULT_MANAGER_PORT;
     char *addr = DEFAULT_MANAGER_ADDR;
+*/
     char *prefix = NULL;
 
     while (-1 != (c = getopt(argc, argv, "hdvsp:a:")))
@@ -237,7 +239,7 @@ int main(int argc, char **argv)
     int srv_fds[16];
     int nfds, i, fd_type;
     BSP_SERVER *srv = NULL;
-
+/*
     nfds = 16;
     nfds = new_server(addr, port, INET_TYPE_ANY, SOCK_TYPE_TCP, srv_fds, &nfds);
     for (i = 0; i < nfds; i ++)
@@ -270,10 +272,10 @@ int main(int argc, char **argv)
             }
         }
     }
-
+*/
     // Start local sock service
     nfds = 1;
-    nfds = new_server(CHANNEL_SOCK_FILE, 0666, INET_TYPE_LOCAL, SOCK_TYPE_TCP, srv_fds, &nfds);
+    nfds = new_server(MANAGER_SOCK_FILE, 0666, INET_TYPE_LOCAL, SOCK_TYPE_TCP, srv_fds, &nfds);
     fd_type = FD_TYPE_SOCKET_SERVER;
     srv = (BSP_SERVER *) get_fd(srv_fds[0], &fd_type);
     if (!srv)

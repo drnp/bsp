@@ -38,62 +38,62 @@ static void clear_http_request(BSP_HTTP_REQUEST *req)
     {
         if (req->version)
         {
-            mempool_free(req->version);
+            bsp_free(req->version);
         }
 
         if (req->method)
         {
-            mempool_free(req->method);
+            bsp_free(req->method);
         }
 
         if (req->user_agent)
         {
-            mempool_free(req->user_agent);
+            bsp_free(req->user_agent);
         }
         
         if (req->host)
         {
-            mempool_free(req->host);
+            bsp_free(req->host);
         }
 
         if (req->request_uri)
         {
-            mempool_free(req->request_uri);
+            bsp_free(req->request_uri);
         }
 
         if (req->upgrade)
         {
-            mempool_free(req->upgrade);
+            bsp_free(req->upgrade);
         }
 
         if (req->origin)
         {
-            mempool_free(req->origin);
+            bsp_free(req->origin);
         }
 
         if (req->sec_websocket_protocol)
         {
-            mempool_free(req->sec_websocket_protocol);
+            bsp_free(req->sec_websocket_protocol);
         }
 
         if (req->sec_websocket_key)
         {
-            mempool_free(req->sec_websocket_key);
+            bsp_free(req->sec_websocket_key);
         }
 
         if (req->sec_websocket_key1)
         {
-            mempool_free(req->sec_websocket_key1);
+            bsp_free(req->sec_websocket_key1);
         }
 
         if (req->sec_websocket_key2)
         {
-            mempool_free(req->sec_websocket_key2);
+            bsp_free(req->sec_websocket_key2);
         }
 
         if (req->raw_post_data)
         {
-            mempool_free(req->raw_post_data);
+            bsp_free(req->raw_post_data);
         }
 
         memset(req, 0, sizeof(BSP_HTTP_REQUEST));
@@ -104,14 +104,12 @@ static void clear_http_request(BSP_HTTP_REQUEST *req)
 
 BSP_HTTP_REQUEST * new_http_request()
 {
-    BSP_HTTP_REQUEST *req = mempool_alloc(sizeof(BSP_HTTP_REQUEST));
-
+    BSP_HTTP_REQUEST *req = bsp_calloc(1, sizeof(BSP_HTTP_REQUEST));
     if (!req)
     {
         return NULL;
     }
-
-    memset(req, 0, sizeof(BSP_HTTP_REQUEST));
+    
     // Default values;
     http_request_set_version(req, HTTP_VERSION_1_1, -1);
     http_request_set_method(req, HTTP_METHOD_GET, -1);
@@ -128,7 +126,7 @@ void del_http_request(BSP_HTTP_REQUEST *req)
         clear_http_request(req);
     }
 
-    mempool_free(req);
+    bsp_free(req);
 
     return;
 }
@@ -139,10 +137,10 @@ void http_request_set_version(BSP_HTTP_REQUEST *req, const char *version, ssize_
     {
         if (req->version)
         {
-            mempool_free(req->version);
+            bsp_free(req->version);
         }
         
-        req->version = mempool_strndup(version, len);
+        req->version = bsp_strndup(version, len);
     }
 
     return;
@@ -154,10 +152,10 @@ void http_request_set_method(BSP_HTTP_REQUEST *req, const char *method, ssize_t 
     {
         if (req->method)
         {
-            mempool_free(req->method);
+            bsp_free(req->method);
         }
         
-        req->method = mempool_strndup(method, len);
+        req->method = bsp_strndup(method, len);
     }
 
     return;
@@ -169,10 +167,10 @@ void http_request_set_user_agent(BSP_HTTP_REQUEST *req, const char *agent, ssize
     {
         if (req->user_agent)
         {
-            mempool_free(req->user_agent);
+            bsp_free(req->user_agent);
         }
         
-        req->user_agent = mempool_strndup(agent, len);
+        req->user_agent = bsp_strndup(agent, len);
     }
 
     return;
@@ -184,10 +182,10 @@ void http_request_set_host(BSP_HTTP_REQUEST *req, const char *host, ssize_t len)
     {
         if (req->host)
         {
-            mempool_free(req->host);
+            bsp_free(req->host);
         }
 
-        req->host = mempool_strndup(host, len);
+        req->host = bsp_strndup(host, len);
     }
 
     return;
@@ -199,10 +197,10 @@ void http_request_set_request_uri(BSP_HTTP_REQUEST *req, const char *uri, ssize_
     {
         if (req->request_uri)
         {
-            mempool_free(req->request_uri);
+            bsp_free(req->request_uri);
         }
 
-        req->request_uri = mempool_strndup(uri, len);
+        req->request_uri = bsp_strndup(uri, len);
     }
 
     return;
@@ -214,10 +212,10 @@ void http_request_set_upgrade(BSP_HTTP_REQUEST *req, const char *upgrade, ssize_
     {
         if (req->upgrade)
         {
-            mempool_free(req->upgrade);
+            bsp_free(req->upgrade);
         }
 
-        req->upgrade = mempool_strndup(upgrade, len);
+        req->upgrade = bsp_strndup(upgrade, len);
     }
 
     return;
@@ -229,10 +227,10 @@ void http_request_set_origin(BSP_HTTP_REQUEST *req, const char *origin, ssize_t 
     {
         if (req->origin)
         {
-            mempool_free(req->origin);
+            bsp_free(req->origin);
         }
 
-        req->origin = mempool_strndup(origin, len);
+        req->origin = bsp_strndup(origin, len);
     }
 
     return;
@@ -244,10 +242,10 @@ void http_request_set_connection(BSP_HTTP_REQUEST *req, const char *connection, 
     {
         if (req->connection)
         {
-            mempool_free(req->connection);
+            bsp_free(req->connection);
         }
 
-        req->connection = mempool_strndup(connection, len);
+        req->connection = bsp_strndup(connection, len);
     }
 
     return;
@@ -269,10 +267,10 @@ void http_request_set_sec_websocket_protocol(BSP_HTTP_REQUEST *req, const char *
     {
         if (req->sec_websocket_protocol)
         {
-            mempool_free(req->sec_websocket_protocol);
+            bsp_free(req->sec_websocket_protocol);
         }
 
-        req->sec_websocket_protocol = mempool_strndup(protocol, len);
+        req->sec_websocket_protocol = bsp_strndup(protocol, len);
     }
 
     return;
@@ -284,10 +282,10 @@ void http_request_set_sec_websocket_key(BSP_HTTP_REQUEST *req, const char *key, 
     {
         if (req->sec_websocket_key)
         {
-            mempool_free(req->sec_websocket_key);
+            bsp_free(req->sec_websocket_key);
         }
 
-        req->sec_websocket_key = mempool_strndup(key, len);
+        req->sec_websocket_key = bsp_strndup(key, len);
     }
 
     return;
@@ -299,10 +297,10 @@ void http_request_set_sec_websocket_key1(BSP_HTTP_REQUEST *req, const char *key,
     {
         if (req->sec_websocket_key1)
         {
-            mempool_free(req->sec_websocket_key1);
+            bsp_free(req->sec_websocket_key1);
         }
 
-        req->sec_websocket_key1 = mempool_strndup(key, len);
+        req->sec_websocket_key1 = bsp_strndup(key, len);
     }
 
     return;
@@ -314,10 +312,10 @@ void http_request_set_sec_websocket_key2(BSP_HTTP_REQUEST *req, const char *key,
     {
         if (req->sec_websocket_key2)
         {
-            mempool_free(req->sec_websocket_key2);
+            bsp_free(req->sec_websocket_key2);
         }
 
-        req->sec_websocket_key2 = mempool_strndup(key, len);
+        req->sec_websocket_key2 = bsp_strndup(key, len);
     }
 
     return;
@@ -334,10 +332,10 @@ void http_request_set_post_data(BSP_HTTP_REQUEST *req, const char *data, ssize_t
     {
         if (req->raw_post_data)
         {
-            mempool_free(req->raw_post_data);
+            bsp_free(req->raw_post_data);
         }
 
-        req->raw_post_data = mempool_alloc(len);
+        req->raw_post_data = bsp_malloc(len);
         memcpy(req->raw_post_data, data, len);
         req->raw_post_data_size = len;
         http_request_set_method(req, HTTP_METHOD_POST, -1);
@@ -353,47 +351,47 @@ void clear_http_response(BSP_HTTP_RESPONSE *resp)
     {
         if (resp->version)
         {
-            mempool_free(resp->version);
+            bsp_free(resp->version);
         }
 
         if (resp->status_description)
         {
-            mempool_free(resp->status_description);
+            bsp_free(resp->status_description);
         }
 
         if (resp->content_type)
         {
-            mempool_free(resp->content_type);
+            bsp_free(resp->content_type);
         }
 
         if (resp->content)
         {
-            mempool_free(resp->content);
+            bsp_free(resp->content);
         }
 
         if (resp->transfer_encoding)
         {
-            mempool_free(resp->transfer_encoding);
+            bsp_free(resp->transfer_encoding);
         }
 
         if (resp->upgrade)
         {
-            mempool_free(resp->upgrade);
+            bsp_free(resp->upgrade);
         }
 
         if (resp->connection)
         {
-            mempool_free(resp->connection);
+            bsp_free(resp->connection);
         }
 
         if (resp->sec_websocket_accept)
         {
-            mempool_free(resp->sec_websocket_accept);
+            bsp_free(resp->sec_websocket_accept);
         }
 
         if (resp->sec_websocket_protocol)
         {
-            mempool_free(resp->sec_websocket_protocol);
+            bsp_free(resp->sec_websocket_protocol);
         }
 
         memset(resp, 0, sizeof(BSP_HTTP_RESPONSE));
@@ -404,7 +402,7 @@ void clear_http_response(BSP_HTTP_RESPONSE *resp)
 
 BSP_HTTP_RESPONSE * new_http_response()
 {
-    BSP_HTTP_RESPONSE *resp = mempool_alloc(sizeof(BSP_HTTP_RESPONSE));
+    BSP_HTTP_RESPONSE *resp = bsp_malloc(sizeof(BSP_HTTP_RESPONSE));
     if (!resp)
     {
         return NULL;
@@ -422,7 +420,7 @@ void del_http_response(BSP_HTTP_RESPONSE *resp)
         clear_http_response(resp);
     }
     
-    mempool_free(resp);
+    bsp_free(resp);
 
     return;
 }
@@ -433,10 +431,10 @@ void http_response_set_version(BSP_HTTP_RESPONSE *resp, const char *version, ssi
     {
         if (resp->version)
         {
-            mempool_free(resp->version);
+            bsp_free(resp->version);
         }
 
-        resp->version = mempool_strndup(version, len);
+        resp->version = bsp_strndup(version, len);
     }
 
     return;
@@ -458,10 +456,10 @@ void http_response_set_status_description(BSP_HTTP_RESPONSE *resp, const char *d
     {
         if (resp->status_description)
         {
-            mempool_free(resp->status_description);
+            bsp_free(resp->status_description);
         }
 
-        resp->status_description = mempool_strndup(description, len);
+        resp->status_description = bsp_strndup(description, len);
     }
 
     return;
@@ -473,10 +471,10 @@ void http_response_set_content_type(BSP_HTTP_RESPONSE *resp, const char *type, s
     {
         if (resp->content_type)
         {
-            mempool_free(resp->content_type);
+            bsp_free(resp->content_type);
         }
 
-        resp->content_type = mempool_strndup(type, len);
+        resp->content_type = bsp_strndup(type, len);
     }
 
     return;
@@ -503,11 +501,11 @@ void http_response_set_content(BSP_HTTP_RESPONSE *resp, const char *content, ssi
     {
         if (resp->content)
         {
-            mempool_free(resp->content);
+            bsp_free(resp->content);
             resp->content_language = 0;
         }
 
-        resp->content = mempool_alloc(len);
+        resp->content = bsp_malloc(len);
         if (resp->content)
         {
             memcpy(resp->content, content, len);
@@ -528,7 +526,7 @@ void http_response_append_content(BSP_HTTP_RESPONSE *resp, const char *content, 
 
     if (resp)
     {
-        resp->content = mempool_realloc(resp->content, resp->content_length + len);
+        resp->content = bsp_realloc(resp->content, resp->content_length + len);
         if (resp->content)
         {
             memcpy(resp->content + resp->content_length, content, len);
@@ -545,10 +543,10 @@ void http_response_set_transfer_encoding(BSP_HTTP_RESPONSE *resp, const char *en
     {
         if (resp->transfer_encoding)
         {
-            mempool_free(resp->transfer_encoding);
+            bsp_free(resp->transfer_encoding);
         }
 
-        resp->transfer_encoding = mempool_strndup(encoding, len);
+        resp->transfer_encoding = bsp_strndup(encoding, len);
     }
 
     return;
@@ -560,10 +558,10 @@ void http_response_set_upgrade(BSP_HTTP_RESPONSE *resp, const char *upgrade, ssi
     {
         if (resp->upgrade)
         {
-            mempool_free(resp->upgrade);
+            bsp_free(resp->upgrade);
         }
 
-        resp->upgrade = mempool_strndup(upgrade, len);
+        resp->upgrade = bsp_strndup(upgrade, len);
     }
 
     return;
@@ -575,10 +573,10 @@ void http_response_set_connection(BSP_HTTP_RESPONSE *resp, const char *connectio
     {
         if (resp->connection)
         {
-            mempool_free(resp->connection);
+            bsp_free(resp->connection);
         }
 
-        resp->connection = mempool_strndup(connection, len);
+        resp->connection = bsp_strndup(connection, len);
     }
 
     return;
@@ -590,10 +588,10 @@ void http_response_set_sec_websocket_accept(BSP_HTTP_RESPONSE *resp, const char 
     {
         if (resp->sec_websocket_accept)
         {
-            mempool_free(resp->sec_websocket_accept);
+            bsp_free(resp->sec_websocket_accept);
         }
 
-        resp->sec_websocket_accept = mempool_strndup(accept, len);
+        resp->sec_websocket_accept = bsp_strndup(accept, len);
     }
 
     return;
@@ -605,10 +603,10 @@ void http_response_set_sec_websocket_protocol(BSP_HTTP_RESPONSE *resp, const cha
     {
         if (resp->sec_websocket_protocol)
         {
-            mempool_free(resp->sec_websocket_protocol);
+            bsp_free(resp->sec_websocket_protocol);
         }
 
-        resp->sec_websocket_protocol = mempool_strndup(protocol, len);
+        resp->sec_websocket_protocol = bsp_strndup(protocol, len);
     }
 
     return;
@@ -620,10 +618,10 @@ void http_response_set_sec_websocket_origin(BSP_HTTP_RESPONSE *resp, const char 
     {
         if (resp->sec_websocket_origin)
         {
-            mempool_free(resp->sec_websocket_origin);
+            bsp_free(resp->sec_websocket_origin);
         }
 
-        resp->sec_websocket_origin = mempool_strndup(origin, len);
+        resp->sec_websocket_origin = bsp_strndup(origin, len);
     }
 
     return;

@@ -29,10 +29,6 @@
 
 #include "bsp.h"
 
-BSP_TIMER **free_timer_list = NULL;
-size_t free_timer_list_size = 0;
-size_t free_timer_total = 0;
-
 // Create a new timer with event callback
 BSP_TIMER * new_timer(time_t it_sec, long it_nsec, uint64_t loop)
 {
@@ -43,32 +39,28 @@ BSP_TIMER * new_timer(time_t it_sec, long it_nsec, uint64_t loop)
         return NULL;
     }
     // Create new
-    tmr = mempool_alloc(sizeof(BSP_TIMER));
+    tmr = bsp_calloc(1, sizeof(BSP_TIMER));
     if (!tmr)
     {
-        _exit(BSP_RTN_ERROR_MEMORY);
+        trigger_exit(BSP_RTN_ERROR_MEMORY, "Timer create error");
     }
-
-    memset(tmr, 0, sizeof(BSP_TIMER));
+    
     tmr->tm.it_value.tv_sec = it_sec;
     tmr->tm.it_value.tv_nsec = it_nsec;
     tmr->tm.it_interval.tv_sec = it_sec;
     tmr->tm.it_interval.tv_nsec = it_nsec;
-
+    
     tmr->ev.events = EPOLLIN;
     tmr->ev.data.fd = fd;
     tmr->fd = fd;
-
+    
     tmr->on_timer = NULL;
     tmr->on_stop = NULL;
-    tmr->cb_arg = NULL;
     tmr->loop = loop;
-
+    
     reg_fd(fd, FD_TYPE_TIMER, (void *) tmr);
     status_op_timer(STATUS_OP_TIMER_ADD);
-
-    dispatch_to_worker(fd, -1);
-
+    
     return tmr;
 }
 
@@ -79,12 +71,12 @@ int free_timer(BSP_TIMER *tmr)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-
+    
     stop_timer(tmr);
-    remove_from_worker(tmr->fd);
+    remove_from_thread(tmr->fd);
     unreg_fd(tmr->fd);
     status_op_timer(STATUS_OP_TIMER_DEL);
-    mempool_free(tmr);
+    bsp_free(tmr);
     
     return BSP_RTN_SUCCESS;
 }
@@ -111,14 +103,14 @@ void stop_timer(BSP_TIMER *tmr)
     {
         return;
     }
-
+    
     tmr->tm.it_value.tv_sec = 0;
     tmr->tm.it_value.tv_nsec = 0;
     tmr->tm.it_interval.tv_sec = 0;
     tmr->tm.it_interval.tv_nsec = 0;
-
+    
     timerfd_settime(tmr->fd, 0, &tmr->tm, NULL);
     trace_msg(TRACE_LEVEL_DEBUG, "Timer  : Timer %d stoped", tmr->fd);
-
+    
     return;
 }

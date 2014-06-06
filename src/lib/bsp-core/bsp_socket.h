@@ -109,10 +109,10 @@ struct bsp_socket_t
                         saddr;
     struct addrinfo     addr;
     struct epoll_event  ev;
-
+    
     // State
     int                 state;
-
+    
     // Buffers
     char                *read_block;
     char                *read_buffer;
@@ -125,9 +125,9 @@ struct bsp_socket_t
     ssize_t             iov_list_size;
     ssize_t             iov_list_sent;
     ssize_t             iov_list_curr;
-
+    
     time_t              conn_time;
-
+    
     // Lock
     BSP_SPINLOCK        send_lock;
 };
@@ -141,12 +141,15 @@ typedef struct bsp_connector_t
     // Callbacks
     void                (* on_close) (struct bsp_connector_t *cnt);
     size_t              (* on_data) (struct bsp_connector_t *cnt, const char *data, ssize_t len);
-
+    
     // For other object
     void                *additional;
-
+    
     // UDP protocol
     int32_t             udp_proto;
+    
+    // Script runner
+    BSP_SCRIPT_STACK    script_stack;
 } BSP_CONNECTOR;
 
 typedef struct bsp_client_t
@@ -155,38 +158,42 @@ typedef struct bsp_client_t
     int                 srv_fd;
     struct bsp_socket_t sck;
     time_t              last_hb_time;
-
+    
     // For other object
     void                *additional;
-
+    
     // Connection type (Raw / WebSocket)
     int                 client_type;
-
+    
     // Data type (Stream / Packet)
     int                 data_type;
-
+    
     // UDP Protocol
     int32_t             udp_proto;
-
+    
     // Packet
     int                 packet_length_type;
     int                 packet_serialize_type;
     int                 packet_compress_type;
     int                 packet_heartbeat;
+    
+    // Script runner
+    BSP_SCRIPT_STACK    script_stack;
 } BSP_CLIENT;
 
 typedef struct bsp_server_t
 {
     // Summaries
     struct bsp_socket_t sck;
+    char                *name;
     
     // Callbacks
     size_t              (* on_data) (BSP_CLIENT *clt, const char *data, ssize_t len);
     void                (* on_events) (BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len);
-
+    
     // Status
     size_t              nclients;
-
+    
     // Client default behavior
     int                 heartbeat_check;
     int                 def_client_type;
@@ -194,9 +201,20 @@ typedef struct bsp_server_t
     size_t              max_packet_length;
     size_t              max_clients;
 
+    // Debug
+    int                 debug_hex_input;
+    int                 debug_hex_output;
+    
     // Other entry
     void                *additional;
 } BSP_SERVER;
+
+typedef struct bsp_server_callback_t
+{
+    const char          *server_name;
+    size_t              (* on_data) (BSP_CLIENT *clt, const char *data, ssize_t len);
+    void                (* on_events) (BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len);
+} BSP_SERVER_CALLBACK;
 
 /* Functions */
 // Initialization

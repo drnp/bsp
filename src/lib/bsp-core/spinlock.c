@@ -26,11 +26,11 @@
  * @changelog 
  *      [06/06/2012] - Creation
  *      [12/18/2012] - Two-Bytes spinlock
+ *      [05/21/2014] - Combined into bsp.h
  */
 
 #include "bsp.h"
-
-#ifdef ENABLE_BSP_SPIN
+#ifdef ENABLE_SPIN
 struct timespec ts = {0, 500000};
 static inline uint8_t _spin_cas(uint8_t compare, uint8_t val, uint8_t *lock)
 {
@@ -79,7 +79,7 @@ static inline uint8_t _spin_trylock(BSP_SPINLOCK *lock)
 }
 
 // Initialize a spinlock
-void bsp_spin_init(BSP_SPINLOCK *lock)
+void spin_init(BSP_SPINLOCK *lock)
 {
     if (lock)
     {
@@ -89,7 +89,7 @@ void bsp_spin_init(BSP_SPINLOCK *lock)
 }
 
 // Try lock a spin
-void bsp_spin_lock(BSP_SPINLOCK *lock)
+void spin_lock(BSP_SPINLOCK *lock)
 {
     if (!lock)
     {
@@ -112,7 +112,7 @@ void bsp_spin_lock(BSP_SPINLOCK *lock)
 }
 
 // Try unlock a spin
-void bsp_spin_unlock(BSP_SPINLOCK *lock)
+void spin_unlock(BSP_SPINLOCK *lock)
 {
     if (!lock)
     {
@@ -126,11 +126,10 @@ void bsp_spin_unlock(BSP_SPINLOCK *lock)
 }
 
 // We do nothing here, just a interface corresponding to pthread_spinlock
-void bsp_spin_destroy(BSP_SPINLOCK *lock)
+void spin_destroy(BSP_SPINLOCK *lock)
 {
     // Do nothing
 
     return;
 }
-
 #endif

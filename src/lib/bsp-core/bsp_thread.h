@@ -32,14 +32,16 @@
 
 #define _LIB_BSP_CORE_THREAD_H
 /* Headers */
-#include <pthread.h>
 
 /* Definations */
 #define DEFAULT_STATIC_WORKERS                  8
 #define FREE_TASK_LIST_INITIAL                  1024
+#define MAIN_THREAD                             -1
+#define UNBOUNDED_THREAD                        -2
+#define STATIC_WORKER                           -3
+#define MAIN_THREAD_PID                         -1
 
 /* Macros */
-#define DISPATCH_TO_IDLE_WORKER(fd)             dispatch_to_worker(fd, most_idle_worker())
 
 /* Structs */
 struct bsp_thread_task_t
@@ -63,7 +65,7 @@ typedef struct bsp_thread_t
     BSP_SPINLOCK        fd_lock;
 
     // Critical
-    lua_State           *runner;
+    BSP_SCRIPT_STATE    script_runner;
     char                read_block[READ_ONCE];
 } BSP_THREAD;
 
@@ -86,17 +88,23 @@ typedef struct bsp_dispacher_t
 // Initialization
 int thread_init();
 
+// Static thread loop
+void * thread_process(void *arg);
+
 // Add a fd to thread, if tid < 0, the most idle (has the least file descriptor) worker will be selected
-int dispatch_to_worker(const int fd, int tid);
+int dispatch_to_thread(const int fd, int tid);
 
 // Remove a fd from thread
-int remove_from_worker(const int fd);
+int remove_from_thread(const int fd);
 
 // Modify fd's listening event in epoll
 int modify_fd_events(const int fd, struct epoll_event *ev);
 
 // Set main server looper
-void set_main_loop_fd(int fd);
+//void set_main_loop_fd(int fd);
+
+// Trigger script garbage-collection
+int trigger_gc(int tid);
 
 // Stop all static worker
 void stop_workers(void);

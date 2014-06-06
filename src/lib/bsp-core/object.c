@@ -31,8 +31,6 @@
  *      [12/17/2013] - Lightuserdata supported
  */
 
-#include "config.h"
-
 #include "bsp.h"
 
 /* Set values */
@@ -84,7 +82,7 @@ void set_item_boolean(BSP_OBJECT_ITEM *item, const int value)
 {
     if (item)
     {
-        set_int8((value == 0) ? 0 : 1, item->value.lval);
+        set_int8((value == 0) ? BSP_BOOLEAN_FALSE : BSP_BOOLEAN_TRUE, item->value.lval);
         item->value.type = BSP_VAL_BOOLEAN;
     }
 
@@ -125,7 +123,7 @@ void set_item_string(BSP_OBJECT_ITEM *item, const char *value, ssize_t len)
             len = strlen(value);
         }
         
-        item->value.rval = mempool_alloc(len);
+        item->value.rval = bsp_malloc(len);
         if (item->value.rval)
         {
             memcpy(item->value.rval, value, len);
@@ -142,10 +140,9 @@ void set_item_array(BSP_OBJECT_ITEM *item)
 {
     if (item)
     {
-        item->value.rval = mempool_alloc(sizeof(BSP_OBJECT_ITEM *) * ARRAY_SIZE_INITIAL);
+        item->value.rval = bsp_calloc(ARRAY_SIZE_INITIAL, sizeof(BSP_OBJECT_ITEM *));
         if (item->value.rval)
         {
-            memset(item->value.rval, 0, sizeof(BSP_OBJECT_ITEM *) * ARRAY_SIZE_INITIAL);
             // Set length
             item->value.rval_len = ARRAY_SIZE_INITIAL;
         }
@@ -244,16 +241,15 @@ BSP_OBJECT_ITEM * new_object_item(const char *key, ssize_t key_len)
         key_len = strlen(key);
     }
     
-    item = (BSP_OBJECT_ITEM *) mempool_alloc(sizeof(BSP_OBJECT_ITEM));
+    item = (BSP_OBJECT_ITEM *) bsp_calloc(1, sizeof(BSP_OBJECT_ITEM));
     if (!item)
     {
         return NULL;
     }
     
-    memset(item, 0, sizeof(BSP_OBJECT_ITEM));
     if (key)
     {
-        item->key = (char *) mempool_alloc(key_len);
+        item->key = (char *) bsp_malloc(key_len);
         memcpy(item->key, key, key_len);
         item->key_len = key_len;
     }
@@ -315,12 +311,12 @@ void free_object_item(BSP_OBJECT_ITEM *item)
     
     if (item->key)
     {
-        mempool_free(item->key);
+        bsp_free(item->key);
     }
     
     if (item->value.rval && (item->value.type == BSP_VAL_STRING || item->value.type == BSP_VAL_ARRAY))
     {
-        mempool_free(item->value.rval);
+        bsp_free(item->value.rval);
     }
     
     memset(item, 0, sizeof(BSP_OBJECT_ITEM));
@@ -337,7 +333,7 @@ void del_object_item(BSP_OBJECT_ITEM *item)
     }
     
     free_object_item(item);
-    mempool_free(item);
+    bsp_free(item);
     
     return;
 }
@@ -345,17 +341,15 @@ void del_object_item(BSP_OBJECT_ITEM *item)
 // Create a new object
 BSP_OBJECT * new_object()
 {
-    BSP_OBJECT *obj = (BSP_OBJECT *) mempool_alloc(sizeof(BSP_OBJECT));
+    BSP_OBJECT *obj = (BSP_OBJECT *) bsp_calloc(1, sizeof(BSP_OBJECT));
     if (!obj)
     {
         return NULL;
     }
     
-    memset(obj, 0, sizeof(BSP_OBJECT));
-    
     obj->hash_size = HASH_SIZE_INITIAL;
-    obj->hash_table[0] = (BSP_OBJECT_ITEM *) mempool_alloc(sizeof(BSP_OBJECT_ITEM) * obj->hash_size);
-    obj->hash_table[1] = (BSP_OBJECT_ITEM *) mempool_alloc(sizeof(BSP_OBJECT_ITEM) * obj->hash_size);
+    obj->hash_table[0] = (BSP_OBJECT_ITEM *) bsp_calloc(obj->hash_size, sizeof(BSP_OBJECT_ITEM));
+    obj->hash_table[1] = (BSP_OBJECT_ITEM *) bsp_calloc(obj->hash_size, sizeof(BSP_OBJECT_ITEM));
     
     if (!obj->hash_table[0] || !obj->hash_table[1])
     {
@@ -363,9 +357,6 @@ BSP_OBJECT * new_object()
     }
     
     obj->curr_table = 0;
-    memset(obj->hash_table[0], 0, sizeof(BSP_OBJECT_ITEM) * obj->hash_size);
-    memset(obj->hash_table[1], 0, sizeof(BSP_OBJECT_ITEM) * obj->hash_size);
-
     bsp_spin_init(&obj->obj_lock);
     
     return obj;
@@ -409,9 +400,10 @@ void del_object(BSP_OBJECT *obj)
     }
     
     free_object(obj);
-    mempool_free((void *) obj->hash_table[0]);
-    mempool_free((void *) obj->hash_table[1]);
-    mempool_free((void *) obj);
+    bsp_spin_destroy(&obj->obj_lock);
+    bsp_free((void *) obj->hash_table[0]);
+    bsp_free((void *) obj->hash_table[1]);
+    bsp_free((void *) obj);
     
     return;
 }
@@ -622,12 +614,13 @@ int sort_object(BSP_OBJECT *obj)
     }
 
     // Make a copy of item link
-    BSP_OBJECT_ITEM **list = mempool_alloc(sizeof(BSP_OBJECT_ITEM *) * obj->nitems);
+    BSP_OBJECT_ITEM **list = bsp_calloc(obj->nitems, sizeof(BSP_OBJECT_ITEM *));
     if (!list)
     {
         return BSP_RTN_ERROR_MEMORY;
     }
     
+    bsp_spin_lock(&obj->obj_lock);
     BSP_OBJECT_ITEM *curr = NULL;
     int i = 0;
     
@@ -661,8 +654,9 @@ int sort_object(BSP_OBJECT *obj)
     list[obj->nitems - 1]->lnext = NULL;
     list[obj->nitems - 1]->lprev = list[obj->nitems - 2];
     obj->tail = list[obj->nitems - 1];
+    bsp_spin_unlock(&obj->obj_lock);
 
-    mempool_free(list);
+    bsp_free(list);
 
     return BSP_RTN_SUCCESS;
 }
@@ -677,8 +671,8 @@ static int rehash_object(BSP_OBJECT *obj, size_t new_hash_size)
         return BSP_RTN_ERROR_GENERAL;
     }
 
-    obj->hash_table[0] = (BSP_OBJECT_ITEM *) mempool_realloc(obj->hash_table[0], sizeof(BSP_OBJECT_ITEM) * new_hash_size);
-    obj->hash_table[1] = (BSP_OBJECT_ITEM *) mempool_realloc(obj->hash_table[1], sizeof(BSP_OBJECT_ITEM) * new_hash_size);
+    obj->hash_table[0] = (BSP_OBJECT_ITEM *) bsp_realloc(obj->hash_table[0], sizeof(BSP_OBJECT_ITEM) * new_hash_size);
+    obj->hash_table[1] = (BSP_OBJECT_ITEM *) bsp_realloc(obj->hash_table[1], sizeof(BSP_OBJECT_ITEM) * new_hash_size);
     
     if (!obj->hash_table[0] || !obj->hash_table[1])
     {
@@ -738,7 +732,7 @@ int object_insert_item(BSP_OBJECT *obj, BSP_OBJECT_ITEM *item)
     if (check)
     {
         // Duplicated, just replace value here
-        memcpy(&check->value, &item->value, sizeof(struct bsp_var_t));
+        memcpy(&check->value, &item->value, sizeof(struct bsp_object_item_val_t));
 
         del_object_item(item);
         bsp_spin_unlock(&obj->obj_lock);
@@ -880,6 +874,58 @@ BSP_OBJECT_ITEM * object_get_item(BSP_OBJECT *obj, const char *key, ssize_t key_
     return item;
 }
 
+// Get item value
+BSP_VAL * object_item_value(BSP_OBJECT *obj, BSP_VAL *val, const char *key, ssize_t key_len)
+{
+    memset(val, 0, sizeof(BSP_VAL));
+    BSP_OBJECT_ITEM *item = object_get_item(obj, key, key_len);
+    if (item)
+    {
+        val->type = item->value.type;
+        switch (item->value.type)
+        {
+            case BSP_VAL_BOOLEAN : 
+            case BSP_VAL_INT8 : 
+                val->v_int = (int64_t) get_int8(item->value.lval);
+                break;
+            case BSP_VAL_INT16 : 
+                val->v_int = (int64_t) get_int16(item->value.lval);
+                break;
+            case BSP_VAL_INT32 : 
+                val->v_int = (int64_t) get_int32(item->value.lval);
+                break;
+            case BSP_VAL_INT64 : 
+                val->v_int = (int64_t) get_int64(item->value.lval);
+                break;
+            case BSP_VAL_FLOAT : 
+                val->v_float = (double) get_float(item->value.lval);
+                break;
+            case BSP_VAL_DOUBLE : 
+                val->v_float = (double) get_double(item->value.lval);
+                break;
+            case BSP_VAL_STRING : 
+                val->v_str = (char *) get_string(item->value.rval);
+                val->v_str_len = (size_t) item->value.rval_len;
+                break;
+            case BSP_VAL_OBJECT : 
+                val->v_obj = (BSP_OBJECT *) item->value.rval;
+                break;
+            case BSP_VAL_ARRAY : 
+                val->v_arr = (BSP_OBJECT_ITEM **) item->value.rval;
+                val->v_arr_size = (size_t) item->value.rval_len;
+                break;
+            default : 
+                break;
+        }
+
+        return val;
+    }
+    else
+    {
+        return NULL;
+    }
+}
+
 // Insert item into array
 int array_set_item(BSP_OBJECT_ITEM *array, BSP_OBJECT_ITEM *item, size_t idx)
 {
@@ -907,7 +953,7 @@ int array_set_item(BSP_OBJECT_ITEM *array, BSP_OBJECT_ITEM *item, size_t idx)
 
         // New size
         new_array_size = 2 << bit;
-        void *tmp = mempool_realloc(array->value.rval, sizeof(BSP_OBJECT_ITEM *) * new_array_size);
+        void *tmp = bsp_realloc(array->value.rval, sizeof(BSP_OBJECT_ITEM *) * new_array_size);
         if (!tmp)
         {
             return BSP_RTN_ERROR_MEMORY;
@@ -937,7 +983,7 @@ int array_set_item(BSP_OBJECT_ITEM *array, BSP_OBJECT_ITEM *item, size_t idx)
     // We don't need string key any more
     if (item->key)
     {
-        mempool_free(item->key);
+        bsp_free(item->key);
         item->key = NULL;
         item->key_len = 0;
     }
@@ -954,7 +1000,7 @@ BSP_OBJECT_ITEM * array_get_item(BSP_OBJECT_ITEM *array, size_t idx)
     }
     
     BSP_OBJECT_ITEM **list = (BSP_OBJECT_ITEM **) array->value.rval;
-
+    
     return (idx >= array->value.rval_len) ? NULL : list[idx];
 }
 
@@ -996,37 +1042,30 @@ static void _insert_item_to_string(BSP_OBJECT_ITEM *item, BSP_STRING *str, int m
             string_append(str, &item->value.type, 1);
             string_append(str, item->value.lval, 1);
             break;
-
         case BSP_VAL_INT16 : 
             string_append(str, &item->value.type, 1);
             string_append(str, item->value.lval, 2);
             break;
-
         case BSP_VAL_INT32 : 
             string_append(str, &item->value.type, 1);
             string_append(str, item->value.lval, 4);
             break;
-
         case BSP_VAL_INT64 : 
             string_append(str, &item->value.type, 1);
             string_append(str, item->value.lval, 8);
             break;
-
         case BSP_VAL_BOOLEAN : 
             string_append(str, &item->value.type, 1);
             string_append(str, item->value.lval, 1);
             break;
-
         case BSP_VAL_FLOAT : 
             string_append(str, &item->value.type, 1);
             string_append(str, item->value.lval, 4);
             break;
-
         case BSP_VAL_DOUBLE : 
             string_append(str, &item->value.type, 1);
             string_append(str, item->value.lval, 8);
             break;
-
         case BSP_VAL_STRING : 
             string_append(str, &item->value.type, 1);
             if (LENGTH_TYPE_32B == length_mark)
@@ -1034,7 +1073,6 @@ static void _insert_item_to_string(BSP_OBJECT_ITEM *item, BSP_STRING *str, int m
                 set_int32((int32_t) item->value.rval_len, len);
                 string_append(str, len, 4);
             }
-
             else
             {
                 // Write string length, size_t recognized as uint64_t
@@ -1043,7 +1081,6 @@ static void _insert_item_to_string(BSP_OBJECT_ITEM *item, BSP_STRING *str, int m
             }
             string_append(str, item->value.rval, item->value.rval_len);
             break;
-
         case BSP_VAL_ARRAY : 
             // Loop for each item
             string_append(str, &item->value.type, 1);
@@ -1062,7 +1099,6 @@ static void _insert_item_to_string(BSP_OBJECT_ITEM *item, BSP_STRING *str, int m
             }
             string_append(str, end_tags, 1);
             break;
-
         case BSP_VAL_OBJECT : 
             string_append(str, &item->value.type, 1);
             next_obj = (BSP_OBJECT *) item->value.rval;
@@ -1076,11 +1112,9 @@ static void _insert_item_to_string(BSP_OBJECT_ITEM *item, BSP_STRING *str, int m
                     _insert_item_to_string(curr, str, SERIALIZE_OBJECT, length_mark);
                     next_item(next_obj);
                 }
-                
                 string_append(str, end_tags + 1, 1);
             }
             break;
-        
         case BSP_VAL_NULL : 
         default : 
             // Null item
@@ -1096,7 +1130,7 @@ int object_serialize(BSP_OBJECT *obj, BSP_STRING *output, int length_mark)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-
+    
     BSP_OBJECT_ITEM *curr = NULL;
     reset_object(obj);
     while ((curr = curr_item(obj)))
@@ -1117,11 +1151,11 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
     {
         return 0;
     }
-
+    
     size_t remaining = len;
     char *curr = (char *) input;
     int64_t str_len;
-
+    
     switch (val_type)
     {
         case BSP_VAL_INT8 : 
@@ -1133,7 +1167,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 curr += 1;
             }
             break;
-
         case BSP_VAL_INT16 : 
             if (remaining >= 2)
             {
@@ -1143,7 +1176,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 curr += 2;
             }
             break;
-
         case BSP_VAL_INT32 : 
             if (remaining >= 4)
             {
@@ -1153,7 +1185,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 curr += 4;
             }
             break;
-
         case BSP_VAL_INT64 : 
             if (remaining >= 8)
             {
@@ -1163,7 +1194,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 curr += 8;
             }
             break;
-
         case BSP_VAL_BOOLEAN : 
             if (remaining >= 2)
             {
@@ -1173,7 +1203,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 curr += 1;
             }
             break;
-
         case BSP_VAL_FLOAT : 
             if (remaining >= 4)
             {
@@ -1183,7 +1212,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 curr += 4;
             }
             break;
-
         case BSP_VAL_DOUBLE : 
             if (remaining >= 8)
             {
@@ -1193,7 +1221,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 curr += 8;
             }
             break;
-
         case BSP_VAL_STRING : 
             if (LENGTH_TYPE_32B == length_mark)
             {
@@ -1210,7 +1237,6 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                     }
                 }
             }
-
             else
             {
                 if (remaining >= 8)
@@ -1227,11 +1253,9 @@ size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char va
                 }
             }
             break;
-
         case BSP_VAL_NULL : 
             set_item_null(item);
             break;
-
         default : 
             break;
     }
@@ -1252,14 +1276,14 @@ size_t _parse_object(const char *input, size_t len, BSP_OBJECT *obj, int length_
     char *curr = (char *) input;
     char *key = NULL;
     int64_t key_len = 0;
-
+    
     BSP_OBJECT *next_obj = NULL;
     BSP_OBJECT_ITEM *item = NULL;
-
+    
     while (remaining > 0)
     {
         key = NULL;
-
+        
         // Key
         val_type = *curr;
         remaining -= 1;
@@ -1276,31 +1300,31 @@ size_t _parse_object(const char *input, size_t len, BSP_OBJECT *obj, int length_
             // Stream broken
             break;
         }
-
+        
         if (LENGTH_TYPE_32B == length_mark)
         {
             key_len = get_int32(curr);
             remaining -= 4;
             curr += 4;
         }
-
+        
         else
         {
             key_len = get_int64(curr);
             remaining -= 8;
             curr += 8;
         }
-
+        
         if (remaining < key_len)
         {
             // Key not enough
             break;
         }
-
+        
         key = curr;
         remaining -= key_len;
         curr += key_len;
-
+        
         // Value
         if (remaining > 0)
         {
@@ -1318,24 +1342,20 @@ size_t _parse_object(const char *input, size_t len, BSP_OBJECT *obj, int length_
                     item = new_object_item(key, key_len);
                     set_item_object(item, next_obj);
                     break;
-
                 case BSP_VAL_ARRAY : 
                     item = new_object_item(key, key_len);
                     set_item_array(item);
                     pn = _parse_array(curr, remaining, item, length_mark);
                     break;
-                
                 default : 
                     item = new_object_item(key, key_len);
                     pn = _parse_item(curr, remaining, item, val_type, length_mark);
                     break;
             }
-
             object_insert_item(obj, item);
             remaining -= pn;
             curr += pn;
         }
-
         // No value
         else
         {
@@ -1358,7 +1378,7 @@ size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int l
     char val_type;
     char *curr = (char *) input;
     size_t idx = 0;
-
+    
     BSP_OBJECT *next_obj = NULL;
     BSP_OBJECT_ITEM *item = NULL;
     while (1)
@@ -1379,17 +1399,14 @@ size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int l
                     item = new_object_item(NULL, 0);
                     set_item_object(item, next_obj);
                     break;
-
                 case BSP_VAL_ARRAY : 
                     item = new_object_item(NULL, 0);
                     set_item_array(item);
                     pn = _parse_array(curr, remaining, item, length_mark);
                     break;
-
                 case BSP_VAL_ARRAY_END : 
                     return len - remaining;
                     break;
-                
                 default : 
                     item = new_object_item(NULL, 0);
                     pn = _parse_item(curr, remaining, item, val_type, length_mark);
@@ -1400,7 +1417,6 @@ size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int l
             {
                 array_set_item(array, item, idx ++);
             }
-
             else
             {
                 del_object_item(item);
@@ -1409,7 +1425,6 @@ size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int l
             remaining -= pn;
             curr += pn;
         }
-
         else
         {
             break;
@@ -1425,7 +1440,7 @@ size_t object_unserialize(const char *input, size_t len, BSP_OBJECT *obj, int le
     {
         return 0;
     }
-
+    
     size_t pn = _parse_object(input, len, obj, length_mark);
     
     return pn;
@@ -1438,7 +1453,7 @@ static void _array_to_lua(BSP_OBJECT_ITEM *array, lua_State *s)
     {
         return;
     }
-
+    
     BSP_OBJECT *next_obj;
     BSP_OBJECT_ITEM **list = (BSP_OBJECT_ITEM **) array->value.rval;
     BSP_OBJECT_ITEM *item = NULL;
@@ -1450,7 +1465,7 @@ static void _array_to_lua(BSP_OBJECT_ITEM *array, lua_State *s)
     size_t idx;
     lua_checkstack(s, 16);
     lua_newtable(s);
-
+    
     for (idx = 0; idx < array->value.rval_len; idx ++)
     {
         item = list[idx];
@@ -1459,7 +1474,7 @@ static void _array_to_lua(BSP_OBJECT_ITEM *array, lua_State *s)
             // Last ?
             continue;
         }
-
+        
         switch (item->value.type)
         {
             case BSP_VAL_INT8 : 
@@ -1506,9 +1521,9 @@ static void _array_to_lua(BSP_OBJECT_ITEM *array, lua_State *s)
                 lua_pushnil(s);
                 break;
         }
-
         lua_rawseti(s, -2, idx + 1);
     }
+    
     return;
 }
 
@@ -1518,10 +1533,10 @@ void object_to_lua(BSP_OBJECT *obj, lua_State *s)
     {
         return;
     }
-
+    
     BSP_OBJECT *next_obj;
     BSP_OBJECT_ITEM *curr;
-
+    
     lua_checkstack(s, 16);
     lua_newtable(s);
     reset_object(obj);
@@ -1579,7 +1594,6 @@ void object_to_lua(BSP_OBJECT *obj, lua_State *s)
                 lua_pushnil(s);
                 break;
         }
-        
         lua_settable(s, -3);
         next_item(obj);
     }
@@ -1594,12 +1608,12 @@ static void _array_from_lua(BSP_OBJECT_ITEM *array, lua_State *s, int idx)
     {
         return;
     }
-
+    
     if (!lua_istable(s, idx))
     {
         return;
     }
-
+    
     int64_t v_longlong = 0;
     double v_double = 0.0f;
     int v_boolean = 0;
@@ -1612,7 +1626,7 @@ static void _array_from_lua(BSP_OBJECT_ITEM *array, lua_State *s, int idx)
     {
         item = new_object_item(NULL, 0);
         lua_rawgeti(s, idx, n);
-
+        
         if (lua_isnumber(s, -1))
         {
             v_longlong = (int64_t) lua_tointeger(s, -1);
@@ -1624,36 +1638,30 @@ static void _array_from_lua(BSP_OBJECT_ITEM *array, lua_State *s, int idx)
                 {
                     set_item_int8(item, (const int8_t) v_longlong);
                 }
-
                 else if (v_longlong == (int16_t) v_longlong)
                 {
                     set_item_int16(item, (const int16_t) v_longlong);
                 }
-
                 else if (v_longlong == (int32_t) v_longlong)
                 {
                     set_item_int32(item, (const int32_t) v_longlong);
                 }
-
                 else
                 {
                     set_item_int64(item, (const int64_t) v_longlong);
                 }
             }
-
             else
             {
                 // Float
                 set_item_double(item, (const double) v_double);
             }
         }
-
         else if (lua_isboolean(s, -1))
         {
             v_boolean = lua_toboolean(s, -1);
             set_item_boolean(item, (const int) v_boolean);
         }
-
         else if (lua_isstring(s, -1))
         {
             v_string = lua_tolstring(s, -1, &v_string_len);
@@ -1661,13 +1669,11 @@ static void _array_from_lua(BSP_OBJECT_ITEM *array, lua_State *s, int idx)
             {
                 set_item_string(item, (const char *) v_string, v_string_len);
             }
-
             else
             {
                 set_item_string(item, "NULL", -1);
             }
         }
-        
         else if (lua_istable(s, -1))
         {
             // Recursive
@@ -1687,7 +1693,6 @@ static void _array_from_lua(BSP_OBJECT_ITEM *array, lua_State *s, int idx)
                 set_item_array(item);
                 _array_from_lua(item, s, -1);
             }
-
             else
             {
                 // Object
@@ -1696,16 +1701,16 @@ static void _array_from_lua(BSP_OBJECT_ITEM *array, lua_State *s, int idx)
                 set_item_object(item, next_obj);
             }
         }
-
         else
         {
             set_item_null(item);
         }
-
-        array_set_item(array, item, n - 1);
         
+        array_set_item(array, item, n - 1);
         lua_pop(s, 1);
     }
+
+    return;
 }
 
 void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
@@ -1715,13 +1720,13 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
     {
         return;
     }
-
+    
     if (!lua_istable(s, idx))
     {
         // Not table
         return;
     }
-
+    
     const char *key = NULL;
     size_t key_len = 0;
     int64_t v_longlong = 0;
@@ -1731,7 +1736,7 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
     int v_boolean = 0;
     void *v_pointer = NULL;
     BSP_OBJECT_ITEM *item = NULL;
-
+    
     lua_checkstack(s, 1);
     lua_pushnil(s);
     while (lua_next(s, idx - 1))
@@ -1756,36 +1761,30 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
                     {
                         set_item_int8(item, (const int8_t) v_longlong);
                     }
-
                     else if (v_longlong == (int16_t) v_longlong)
                     {
                         set_item_int16(item, (const int16_t) v_longlong);
                     }
-
                     else if (v_longlong == (int32_t) v_longlong)
                     {
                         set_item_int32(item, (const int32_t) v_longlong);
                     }
-
                     else
                     {
                         set_item_int64(item, (const int64_t) v_longlong);
                     }
                 }
-
                 else
                 {
                     // Float
                     set_item_double(item, (const double) v_double);
                 }
             }
-
             else if (lua_isboolean(s, -1))
             {
                 v_boolean = lua_toboolean(s, -1);
                 set_item_boolean(item, (const int) v_boolean);
             }
-
             else if (lua_isstring(s, -1))
             {
                 v_string = lua_tolstring(s, -1, &v_string_len);
@@ -1793,19 +1792,16 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
                 {
                     set_item_string(item, (const char *) v_string, v_string_len);
                 }
-
                 else
                 {
                     set_item_string(item, "NULL", -1);
                 }
             }
-
             else if (lua_islightuserdata(s, -1))
             {
                 v_pointer = lua_touserdata(s, -1);
                 set_item_pointer(item, v_pointer);
             }
-            
             else if (lua_istable(s, -1))
             {
                 // Recursive
@@ -1818,14 +1814,13 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
                     n ++;
                     lua_pop(s, 1);
                 }
-
+                
                 if (n == luaL_len(s, -1))
                 {
                     // Array
                     set_item_array(item);
                     _array_from_lua(item, s, -1);
                 }
-
                 else
                 {
                     // Object
@@ -1834,7 +1829,6 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
                     set_item_object(item, next_obj);
                 }
             }
-
             else
             {
                 set_item_null(item);
@@ -1842,14 +1836,13 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
 
             object_insert_item(obj, item);
         }
-
         else
         {
             lua_pop(s, 1);
         }
-
+        
         lua_pop(s, 1);
     }
-
+    
     return;
 }

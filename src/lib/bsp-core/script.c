@@ -47,24 +47,23 @@ struct bsp_script_t *script = NULL;
 BSP_STRING *code = NULL;
 
 // Memory allocator for LUA
-static void * _allocator(void *ud, void *ptr, size_t osize, size_t nsize)
+static void * _default_allocator(void *ud, void *ptr, size_t osize, size_t nsize)
 {
     (void) ud;
 
     if (0 == nsize)
     {
         status_op_script(STATUS_OP_SCRIPT_MEMORY_FREE, osize);
-        mempool_free(ptr);
+        bsp_free(ptr);
         return NULL;
     }
-
     else
     {
         status_op_script(STATUS_OP_SCRIPT_MEMORY_ALLOC, nsize);
-        return mempool_realloc(ptr, nsize);
+        return bsp_realloc(ptr, nsize);
     }
 }
-
+/*
 // Default code reader -- Get string from file with identifier as filename
 static void _default_code_reader(const char *identifier, BSP_STRING *code)
 {
@@ -100,11 +99,20 @@ static void _default_code_reader(const char *identifier, BSP_STRING *code)
 
     return;
 }
-
+*/
+/*
 // Create a new script handler
-int script_init(void (reader) (const char *identifier, BSP_STRING *code))
+int script_init()
 {
-    BSP_CORE_SETTING *settings = get_core_setting();
+    //BSP_CORE_SETTING *settings = get_core_setting();
+    script = bsp_calloc(1, sizeof(struct bsp_script_t));
+    if (!script)
+    {
+        trigger_exit(BSP_RTN_ERROR_MEMORY, "Script : Script alloc error");
+    }
+    script->allocator = _default_allocator;
+    script->code = new_string(NULL, 0);
+    
     BSP_THREAD *thread = NULL;
     int i;
 
@@ -182,7 +190,44 @@ int script_init(void (reader) (const char *identifier, BSP_STRING *code))
     
     return BSP_RTN_SUCCESS;
 }
+*/
+// Load script code block
+int script_load_string(lua_State *l, const char *code, ssize_t len)
+{
+    if (!l || !code)
+    {
+        return BSP_RTN_ERROR_SCRIPT;
+    }
+    
+    if (len < 0)
+    {
+        len = strlen(code);
+    }
 
+    int ret = luaL_loadbufferx(l, code, len, NULL, NULL);
+    switch (ret)
+    {
+        case LUA_OK : 
+            return BSP_RTN_SUCCESS;
+            break;
+        case LUA_ERRSYNTAX : 
+            trace_msg(TRACE_LEVEL_ERROR, "Lua script syntax error : %s", lua_tostring(l, -1));
+            return BSP_RTN_ERROR_SCRIPT;
+            break;
+        case LUA_ERRMEM : 
+            trace_msg(TRACE_LEVEL_ERROR, "Memory error to load Lua script");
+            return BSP_RTN_ERROR_MEMORY;
+            break;
+        case LUA_ERRGCMM : 
+        default : 
+            trigger_exit(BSP_RTN_FATAL, "Script error");
+            break;
+    }
+    
+    return BSP_RTN_ERROR_GENERAL;
+}
+
+/*
 // Set script identifier
 void script_set_identifier(const char *identifier)
 {
@@ -190,10 +235,10 @@ void script_set_identifier(const char *identifier)
     {
         if (script->identifier)
         {
-            mempool_free(script->identifier);
+            bsp_free(script->identifier);
         }
 
-        script->identifier = mempool_strdup(identifier);
+        script->identifier = bsp_strdup(identifier);
     }
 
     return;
@@ -333,10 +378,10 @@ static lua_State * _get_caller()
     
     return thread->runner;
 }
-
-static void _real_call(lua_State *caller, BSP_SCRIPT_CALL_PARAM p[])
+*/
+int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
 {
-    int ret;
+    int ret, status;
     size_t len;
     int nargs = 0;
     BSP_SCRIPT_CALL_PARAM *curr;
@@ -344,91 +389,120 @@ static void _real_call(lua_State *caller, BSP_SCRIPT_CALL_PARAM p[])
     int64_t vl;
     float vf;
     double vd;
+    BSP_STRING *str;
 
     if (!caller)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Script : Not available state");
-        return;
+        return BSP_RTN_ERROR_SCRIPT;
     }
+
+    if (func)
+    {
+        lua_checkstack(caller, 1);
+        lua_getglobal(caller, func);
+    }
+    
     if (!lua_isfunction(caller, -1))
     {
-        trace_msg(TRACE_LEVEL_ERROR, "Script : Function not found");
+        debug_lua_stack(caller);
+        trace_msg(TRACE_LEVEL_ERROR, "Script : No function specified");
     }
-    while (p)
+    else
     {
-        curr = &p[nargs];
-        if (!curr || CALL_PTYPE_END == curr->type || !curr->ptr)
+        while (p)
         {
-            break;
+            curr = &p[nargs];
+            if (!curr || CALL_PTYPE_END == curr->type || !curr->ptr)
+            {
+                break;
+            }
+            
+            if (!lua_checkstack(caller, 1))
+            {
+                // Stack full!
+                trace_msg(TRACE_LEVEL_ERROR, "Script : Lua stack full when call");
+                lua_settop(caller, 0);
+                return BSP_RTN_ERROR_SCRIPT;
+            }
+            
+            switch (curr->type)
+            {
+                case CALL_PTYPE_BOOLEAN : 
+                    // Boolean
+                    memcpy(&vi, curr->ptr, sizeof(int32_t));
+                    lua_pushboolean(caller, (int) vi);
+                    break;
+                case CALL_PTYPE_INTEGER : 
+                    // Integer
+                    memcpy(&vi, curr->ptr, sizeof(int32_t));
+                    lua_pushinteger(caller, (lua_Integer) vi);
+                    break;
+                case CALL_PTYPE_INTEGER64 : 
+                    // Integer
+                    memcpy(&vl, curr->ptr, sizeof(int64_t));
+                    lua_pushinteger(caller, (lua_Integer) vl);
+                    break;
+                case CALL_PTYPE_FLOAT : 
+                    // Float
+                    memcpy(&vf, curr->ptr, sizeof(float));
+                    lua_pushnumber(caller, (lua_Number) vf);
+                    break;
+                case CALL_PTYPE_DOUBLE : 
+                    // Integer
+                    memcpy(&vd, curr->ptr, sizeof(double));
+                    lua_pushnumber(caller, (lua_Number) vd);
+                    break;
+                case CALL_PTYPE_OSTRING : 
+                case CALL_PTYPE_OSTRING_F : 
+                    // String / Binary
+                    len = (curr->len < 0) ? strlen((const char *) curr->ptr) : curr->len;
+                    lua_pushlstring(caller, (const char *) curr->ptr, len);
+                    break;
+                case CALL_PTYPE_STRING : 
+                case CALL_PTYPE_STRING_F : 
+                    // BSP.String
+                    str = (BSP_STRING *) curr->ptr;
+                    lua_pushlstring(caller, STR_STR(str), STR_LEN(str));
+                    break;
+                case CALL_PTYPE_OBJECT : 
+                case CALL_PTYPE_OBJECT_F : 
+                    // BSP Object
+                    object_to_lua((BSP_OBJECT *) curr->ptr, caller);
+                    break;
+                default : 
+                    // Unknown
+                    break;
+            }
+            nargs ++;
+        }
+        status = lua_status(caller);
+        if (LUA_OK == status)
+        {
+            // Pcall
+            ret = lua_pcall(caller, nargs, 0, 0);
+        }
+        else if (LUA_YIELD == status)
+        {
+            // Resume
+            ret = lua_resume(caller, NULL, nargs);
+        }
+        else
+        {
+            // We cannot run
+            trace_msg(TRACE_LEVEL_ERROR, "Script : Stack status error, cannot run any more");
+            ret = LUA_OK;
         }
         
-        if (!lua_checkstack(caller, 1))
+        if (LUA_YIELD != ret && LUA_OK != ret)
         {
-            // Stack full!
-            trace_msg(TRACE_LEVEL_ERROR, "Script : Lua stack full when call");
-            lua_settop(caller, 0);
-            return;
+            status_op_script(STATUS_OP_SCRIPT_FAILURE, 0);
+            trace_msg(TRACE_LEVEL_ERROR, "Script : Call lua function error : %s", lua_tostring(caller, -1));
         }
-
-        switch (curr->type)
-        {
-            case CALL_PTYPE_BOOLEAN : 
-                // Boolean
-                memcpy(&vi, curr->ptr, sizeof(int32_t));
-                lua_pushboolean(caller, (int) vi);
-            case CALL_PTYPE_INTEGER : 
-                // Integer
-                memcpy(&vi, curr->ptr, sizeof(int32_t));
-                lua_pushinteger(caller, (lua_Integer) vi);
-                break;
-            case CALL_PTYPE_INTEGER64 : 
-                // Integer
-                memcpy(&vl, curr->ptr, sizeof(int64_t));
-                lua_pushinteger(caller, (lua_Integer) vl);
-                break;
-            case CALL_PTYPE_FLOAT : 
-                // Float
-                memcpy(&vf, curr->ptr, sizeof(float));
-                lua_pushnumber(caller, (lua_Number) vf);
-                break;
-            case CALL_PTYPE_DOUBLE : 
-                // Integer
-                memcpy(&vd, curr->ptr, sizeof(double));
-                lua_pushnumber(caller, (lua_Number) vd);
-                break;
-            case CALL_PTYPE_OSTRING : 
-            case CALL_PTYPE_OSTRING_F : 
-                // String / Binary
-                len = (curr->len < 0) ? strlen((const char *) curr->ptr) : curr->len;
-                lua_pushlstring(caller, (const char *) curr->ptr, len);
-                break;
-            case CALL_PTYPE_STRING : 
-            case CALL_PTYPE_STRING_F : 
-                // BSP.String
-                lua_pushlstring(caller, ((BSP_STRING *) curr->ptr)->str, ((BSP_STRING *) curr->ptr)->ori_len);
-                break;
-            case CALL_PTYPE_OBJECT : 
-            case CALL_PTYPE_OBJECT_F : 
-                // BSP Object
-                object_to_lua((BSP_OBJECT *) curr->ptr, caller);
-                break;
-
-            default : 
-                // Unknown
-                break;
-        }
-
-        nargs ++;
+        status_op_script(STATUS_OP_SCRIPT_CALL, 0);
     }
-    ret = lua_resume(caller, NULL, nargs);
-    if (LUA_YIELD != ret && LUA_OK != ret)
-    {
-        status_op_script(STATUS_OP_SCRIPT_FAILURE, 0);
-        trace_msg(TRACE_LEVEL_ERROR, "Script : Call lua function error : %s", lua_tostring(caller, -1));
-    }
-
-    status_op_script(STATUS_OP_SCRIPT_CALL, 0);
-
+    lua_settop(caller, 0);
+    
     // Recycle
     while (p)
     {
@@ -442,7 +516,7 @@ static void _real_call(lua_State *caller, BSP_SCRIPT_CALL_PARAM p[])
         {
             case CALL_PTYPE_OSTRING_F : 
                 // Try to free
-                mempool_free(curr->ptr);
+                bsp_free(curr->ptr);
                 break;
             case CALL_PTYPE_STRING_F : 
                 del_string(curr->ptr);
@@ -455,10 +529,10 @@ static void _real_call(lua_State *caller, BSP_SCRIPT_CALL_PARAM p[])
         }
         nargs ++;
     }
-
-    return;
+    
+    return BSP_RTN_SUCCESS;
 }
-
+/*
 // Call LUA function with specified state
 void script_caller_call_func(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
 {
@@ -506,52 +580,64 @@ void script_call_idx(int idx, BSP_SCRIPT_CALL_PARAM p[])
     
     return;
 }
+*/
+// New state(runner), create a new LUA state
+int script_new_state(BSP_SCRIPT_STATE *ss)
+{
+    if (!ss)
+    {
+        return BSP_RTN_ERROR_GENERAL;
+    }
+    
+    lua_State *state = lua_newstate(_default_allocator, NULL);
+    if (!state)
+    {
+        return BSP_RTN_ERROR_SCRIPT;
+    }
+    luaL_openlibs(state);
+    ss->state = state;
+    ss->load_times = 0;
+    trace_msg(TRACE_LEVEL_DEBUG, "Script : Create a new script state");
+
+    return BSP_RTN_SUCCESS;
+}
 
 // New stack(caller), create a new LUA thread and bind to state
 // The new stack can bind to a socket client
-struct bsp_script_stack_t * script_new_stack(lua_State *s)
+int script_new_stack(BSP_SCRIPT_STACK *ts)
 {
-    if (!s)
+    if (!ts || !ts->state)
     {
-        return NULL;
+        return -1;
     }
-    lua_State *stack = lua_newthread(s);
+    lua_State *stack = lua_newthread(ts->state);
     if (!stack)
     {
-        return NULL;
+        return -1;
     }
-
-    struct bsp_script_stack_t *ts = mempool_calloc(1, sizeof(struct bsp_script_stack_t));
-    if (!ts)
-    {
-        return NULL;
-    }
-
-    ts->stack = stack;
-    ts->state = s;
-    ts->stack_ref = luaL_ref(s, LUA_REGISTRYINDEX);
-    trace_msg(TRACE_LEVEL_NOTICE, "Script : Generate a new LUA thread registed at index %d", ts->stack_ref);
     
-    return ts;
+    ts->stack = stack;
+    int ref = ts->stack_ref = luaL_ref(ts->state, LUA_REGISTRYINDEX);
+    trace_msg(TRACE_LEVEL_NOTICE, "Script : Generate a new LUA thread registed at index %d", ref);
+    
+    return ref;
 }
 
 // Delete a thread stack
 // LUA_THREAD will be removed by GC automatically, so we needn't free it by hand
-void script_remove_stack(struct bsp_script_stack_t *ts)
+int script_remove_stack(BSP_SCRIPT_STACK *ts)
 {
-    if (!ts || !ts->state)
+    if (!ts || !ts->state || !ts->stack)
     {
-        return;
+        return BSP_RTN_ERROR_GENERAL;
     }
 
-    if (ts->stack)
-    {
-        luaL_unref(ts->state, LUA_REGISTRYINDEX, ts->stack_ref);
-    }
-    mempool_free(ts);
+    luaL_unref(ts->state, LUA_REGISTRYINDEX, ts->stack_ref);
     trace_msg(TRACE_LEVEL_NOTICE, "Script : unregisted a LUA thread from index %d", ts->stack_ref);
+    ts->stack = NULL;
+    ts->stack_ref = 0;
 
-    return;
+    return BSP_RTN_SUCCESS;
 }
 
 // Load module (C library) into script
@@ -560,6 +646,7 @@ int script_load_module(const char *module_name)
     lt_dlhandle dl;
     int (* loader)(lua_State *) = NULL;
     int i;
+    BSP_THREAD *t;
 
     if (!module_name)
     {
@@ -573,7 +660,7 @@ int script_load_module(const char *module_name)
     lt_dlinit();
     snprintf(filename, _POSIX_PATH_MAX - 1, "%s/module-%s.so", settings->mod_dir, module_name);
     snprintf(symbol, _SYMBOL_NAME_MAX - 1, "bsp_module_%s", module_name);
-    trace_msg(TRACE_LEVEL_VERBOSE, "Script : Try to load module %s from %s", symbol, filename);
+    trace_msg(TRACE_LEVEL_DEBUG, "Script : Try to load module %s from %s", symbol, filename);
     dl = lt_dlopen(filename);
 
     // Try load
@@ -582,26 +669,35 @@ int script_load_module(const char *module_name)
         loader = (int (*)(lua_State *)) lt_dlsym(dl, (const char *) symbol);
         if (loader)
         {
-            loader(script->main_state);
-            for (i = 0; i < script->nsub_states; i ++)
+            // Main thread)
+            t = get_thread(MAIN_THREAD);
+            if (t)
             {
-                loader(script->sub_states[i]);
+                loader(t->script_runner.state);
+                trace_msg(TRACE_LEVEL_VERBOSE, "Script : Symbol %s loaded into main thread", symbol);
             }
-            trace_msg(TRACE_LEVEL_DEBUG, "Script : Symbol %s loaded", symbol);
+            for (i = 0; i < settings->static_workers; i ++)
+            {
+                t = get_thread(i);
+                if (t)
+                {
+                    loader(t->script_runner.state);
+                    trace_msg(TRACE_LEVEL_VERBOSE, "Script : Symbol %s loaded into thread %d", symbol, i);
+                }
+            }
+            trace_msg(TRACE_LEVEL_NOTICE, "Script : Symbol %s loaded", symbol);
         }
-
         else
         {
-            trace_msg(TRACE_LEVEL_DEBUG, "Script : Symbol %s load error", symbol);
+            trace_msg(TRACE_LEVEL_ERROR, "Script : Symbol %s load error", symbol);
             return BSP_RTN_ERROR_RESOURCE;
         }
     }
-
     else
     {
         trace_msg(TRACE_LEVEL_ERROR, "Script : Cannot open module file %s", filename);
         return BSP_RTN_ERROR_IO;
     }
-
+    
     return BSP_RTN_SUCCESS;
 }

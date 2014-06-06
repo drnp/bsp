@@ -36,7 +36,7 @@ BSP_SPINLOCK log_lock;
 void log_init()
 {
     bsp_spin_init(&log_lock);
-
+    
     return;
 }
 
@@ -46,7 +46,7 @@ void log_add(time_t now, int level, const char *msg)
     struct tm *loctime;
     char tgdate[64];
     char line[MAX_LOG_LINE_LENGTH];
-
+    
     if (!level || !msg)
     {
         return;
@@ -62,7 +62,7 @@ void log_add(time_t now, int level, const char *msg)
         write(log_fd, line, nbytes);
         bsp_spin_unlock(&log_lock);
     }
-
+    
     return;
 }
 // Open log file
@@ -72,28 +72,31 @@ void log_open()
     char path[_POSIX_PATH_MAX];
     char *dir = settings->log_dir ? settings->log_dir : DEFAULT_LOG_DIR;
     memset(path, 0, _POSIX_PATH_MAX);
-
+    
     // Check sub-directory
-    snprintf(path, _POSIX_PATH_MAX - 1, "%s/%d/", dir, settings->app_id);
+    snprintf(path, _POSIX_PATH_MAX - 1, "%s/%d/", dir, settings->instance_id);
     if (0 != mkdir(path, 0755) && errno != EEXIST)
     {
         // Dir error
         return;
     }
-
+    
     time_t now = time(NULL);
     struct tm *loctime = localtime(&now);
     char tgdate[64];
     strftime(tgdate, 63, "%Y%m%d%H%M", loctime);
-    snprintf(path, _POSIX_PATH_MAX - 1, "%s/%d/%s%s.log", dir, settings->app_id, LOG_FILENAME_PREFIX, tgdate);
-
+    snprintf(path, _POSIX_PATH_MAX - 1, "%s/%d/%s%s.log", 
+             dir, 
+             settings->instance_id, 
+             LOG_FILENAME_PREFIX, 
+             tgdate);
     log_close();
     log_fd = open(path, O_WRONLY | O_CREAT | O_APPEND | O_CLOEXEC, 0644);
     if (log_fd > 0)
     {
         reg_fd(log_fd, FD_TYPE_LOG, NULL);
     }
-
+    
     return;
 }
 
@@ -106,6 +109,6 @@ void log_close()
         close(log_fd);
         log_fd = -1;
     }
-
+    
     return;
 }

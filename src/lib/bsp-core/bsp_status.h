@@ -33,7 +33,7 @@
 /* Headers */
 
 /* Definations */
-#define STATUS_OP_APPID                         0x0001
+#define STATUS_OP_INSTANCE_ID                   0x0001
 #define STATUS_OP_START_TIME                    0x0002
 
 #define STATUS_OP_MEMPOOL_ALLOC                 0x1001
@@ -194,7 +194,7 @@ struct bsp_status_http_t
 
 typedef struct bsp_status_t
 {
-    int                 app_id;
+    int                 instance_id;
     time_t              start_time;
     struct bsp_status_mempool_t
                         mempool;

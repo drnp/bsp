@@ -29,67 +29,6 @@
 
 #include "bsp.h"
 
-BSP_DB_SQLITE_RES sqlite_query_res_list_head = {.next = NULL};
-BSP_DB_SQLITE_RES *sqlite_query_res_list_tail = NULL;
-BSP_SPINLOCK sqlite_res_list_lock;
-
-static inline void _add_to_list(BSP_DB_SQLITE_RES *res)
-{
-    if (!res)
-    {
-        return;
-    }
-
-    res->next = NULL;
-    bsp_spin_lock(&sqlite_res_list_lock);
-    if (!sqlite_query_res_list_head.next)
-    {
-        sqlite_query_res_list_head.next = res;
-        res->prev = &sqlite_query_res_list_head;
-    }
-
-    else
-    {
-        if (!sqlite_query_res_list_tail)
-        {
-            sqlite_query_res_list_tail = &sqlite_query_res_list_head;
-        }
-
-        res->prev = sqlite_query_res_list_tail;
-        sqlite_query_res_list_tail->next = res;
-    }
-
-    sqlite_query_res_list_tail = res;
-    
-    bsp_spin_unlock(&sqlite_res_list_lock);
-
-    return;
-}
-
-static inline void _remove_from_list(BSP_DB_SQLITE_RES *res)
-{
-    if (!res)
-    {
-        return;
-    }
-
-    // Remove from list
-    bsp_spin_lock(&sqlite_res_list_lock);
-    if (res->prev)
-    {
-        res->prev->next = res->next;
-    }
-
-    if (res->next)
-    {
-        res->next->prev = res->prev;
-    }
-    
-    bsp_spin_unlock(&sqlite_res_list_lock);
-
-    return;
-}
-
 // Open a sqlite database
 BSP_DB_SQLITE * db_sqlite_open(const char *dbfile)
 {
@@ -109,7 +48,7 @@ BSP_DB_SQLITE * db_sqlite_open(const char *dbfile)
         return NULL;
     }
 
-    BSP_DB_SQLITE *l = mempool_alloc(sizeof(BSP_DB_SQLITE));
+    BSP_DB_SQLITE *l = bsp_malloc(sizeof(BSP_DB_SQLITE));
     if (l)
     {
         l->conn = db;
@@ -117,7 +56,7 @@ BSP_DB_SQLITE * db_sqlite_open(const char *dbfile)
         bsp_spin_init(&l->query_lock);
     }
 
-    bsp_spin_init(&sqlite_res_list_lock);
+    //bsp_spin_init(&sqlite_res_list_lock);
     status_op_db_sqlite(STATUS_OP_DB_SQLITE_OPEN);
 
     return l;
@@ -132,29 +71,27 @@ void db_sqlite_close(BSP_DB_SQLITE *l)
     } 
 
     // Clear results
-    BSP_DB_SQLITE_RES *curr = sqlite_query_res_list_head.next, *next = NULL;
+    bsp_spin_lock(&l->query_lock);
+    BSP_DB_SQLITE_RES *curr = l->result_list, *next = NULL;
     while (curr)
     {
         next = curr->next;
-        if (curr->handler == l->conn)
+        if (curr->stmt)
         {
-            _remove_from_list(curr);
-            if (curr->stmt)
-            {
-                sqlite3_finalize(curr->stmt);
-            }
-            mempool_free(curr);
+            sqlite3_finalize(curr->stmt);
+            status_op_db_sqlite(STATUS_OP_DB_SQLITE_FREE);
         }
+        bsp_free(curr);
         curr = next;
     }
 
     trace_msg(TRACE_LEVEL_NOTICE, "SQLite : Try to close SQLite handler");
     sqlite3_close(l->conn);
     status_op_db_sqlite(STATUS_OP_DB_SQLITE_CLOSE);
-    mempool_free(l);
+    bsp_spin_unlock(&l->query_lock);
+    bsp_spin_destroy(&l->query_lock);
+    bsp_free(l);
     l = NULL;
-
-    bsp_spin_destroy(&sqlite_res_list_lock);
 
     return;
 }
@@ -166,14 +103,28 @@ void db_sqlite_free_result(BSP_DB_SQLITE_RES *r)
     {
         return;
     }
-
-    _remove_from_list(r);
+    
     if (r->stmt)
     {
         sqlite3_finalize(r->stmt);
+        status_op_db_sqlite(STATUS_OP_DB_SQLITE_FREE);
     }
-    status_op_db_sqlite(STATUS_OP_DB_SQLITE_FREE);
-    mempool_free(r);
+
+    if (r->next)
+    {
+        r->next->prev = r->prev;
+    }
+    
+    if (r->prev)
+    {
+        r->prev->next = r->next;
+    }
+    else
+    {
+        // Head
+        r->handler->result_list = r->next;
+    }
+    bsp_free(r);
     r = NULL;
     
     return;
@@ -208,21 +159,25 @@ BSP_DB_SQLITE_RES * db_sqlite_query(BSP_DB_SQLITE *l, const char *query, ssize_t
         {
             // Storage statement
             sqlite3_reset(res);
-            res_node = mempool_alloc(sizeof(BSP_DB_SQLITE_RES));
+            res_node = bsp_malloc(sizeof(BSP_DB_SQLITE_RES));
             res_node->stmt = res;
-            res_node->handler = l->conn;
-            _add_to_list(res_node);
+            res_node->handler = l;
+            res_node->next = l->result_list;
+            res_node->prev = NULL;
+            if (l->result_list)
+            {
+                l->result_list->prev = res_node;
+            }
+            l->result_list = res_node;
             status_op_db_sqlite(STATUS_OP_DB_SQLITE_QUERY);
             trace_msg(TRACE_LEVEL_VERBOSE, "SQLite : SQLite query result storaged");
         }
-
         else
         {
             // Just finalize
             sqlite3_finalize(res);
         }
     }
-
     else
     {
         status_op_db_sqlite(STATUS_OP_DB_SQLITE_ERROR);
@@ -252,7 +207,6 @@ BSP_OBJECT * db_sqlite_fetch_row(BSP_DB_SQLITE_RES *r)
     BSP_OBJECT *ret = NULL;
     BSP_OBJECT_ITEM *item;
     int col, cols, bytes;
-
     int qr = sqlite3_step(r->stmt);
     if (SQLITE_ROW == qr)
     {

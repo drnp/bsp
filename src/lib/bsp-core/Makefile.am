@@ -74,14 +74,18 @@ libbsp_core_la_SOURCES = \
     ../../../deps/snappy/snappy-c.h \
     ../../../deps/snappy/snappy-c.cc \
     bsp.h \
-    core.c \
-    bsp_core.h \
+    bootstrap.c \
+    bsp_bootstrap.h \
     conf.c \
     bsp_conf.h \
+    core.c \
+    bsp_core.h \
     debugger.c \
     bsp_debugger.h \
     fd.c \
     bsp_fd.h \
+    fcgi.c \
+    bsp_fcgi.h \
     hash.c \
     bsp_hash.h \
     http.c \

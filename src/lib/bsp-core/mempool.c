@@ -69,14 +69,14 @@ int mempool_init()
         _exit(BSP_RTN_ERROR_MEMORY);
     }
     bsp_spin_init(&pool->lock);
-
+    
     int i;
     for (i = 0; i < SLAB_MAX; i ++)
     {
         pool->slab_list[i].slab_id = i;
         bsp_spin_init(&pool->slab_list[i].slab_lock);
     }
-
+    
     trace_msg(TRACE_LEVEL_CORE, "Memory : Memory pool initialized as %d slabs", SLAB_MAX);
     
     return BSP_RTN_SUCCESS;
@@ -92,7 +92,7 @@ static void _mempool_free_item(void *addr, struct bsp_mempool_slab_t *slab)
     // Recycle to free link
     set_pointer(slab->next_free_item, addr);
     slab->next_free_item = addr;
-
+    
     return;
 }
 
@@ -103,7 +103,7 @@ static void * _pop_next_free_item(struct bsp_mempool_slab_t *slab)
     {
         slab->next_free_item = get_pointer(ret);
     }
-
+    
     return ret;
 }
 
@@ -115,7 +115,7 @@ static int _get_slab_id(int nsize)
     {
         return -1;
     }
-
+    
     // Slab item size = 1.25 * 1.25 * 1.28 * 1.25 * 1.25 * 1.28 ...
     for (slab_id = 0; slab_id < SLAB_MAX; slab_id ++)
     {
@@ -124,7 +124,7 @@ static int _get_slab_id(int nsize)
             break;
         }
     }
-
+    
     return slab_id;
 }
 
@@ -145,7 +145,7 @@ void * mempool_alloc(size_t nsize)
         // Not initialized
         trigger_exit(BSP_RTN_FATAL, "Memory : Mempool not initialized!!!");
     }
-
+    
     if (!nsize)
     {
         return NULL;
@@ -161,7 +161,6 @@ void * mempool_alloc(size_t nsize)
         bsp_spin_unlock(&pool->lock);
         trace_msg(TRACE_LEVEL_VERBOSE, "Memory : Alloc a big memory block, size %lld", (long long int) nsize);
     }
-
     else
     {
         slab = &pool->slab_list[slab_id];
@@ -171,7 +170,6 @@ void * mempool_alloc(size_t nsize)
             // Recycled item
             ret = _pop_next_free_item(slab);
         }
-
         else
         {
             if (!slab->curr_block || slab->curr_block_alloced >= slab_nitems[slab_id])
@@ -184,14 +182,13 @@ void * mempool_alloc(size_t nsize)
                     trigger_exit(BSP_RTN_FATAL, "Memory : Allocate memory block error!!!");
                     return NULL;
                 }
-                //slab->used_blocks ++;
                 slab->curr_block = block;
                 slab->curr_block_alloced = 0;
                 status_op_mempool(slab_id, STATUS_OP_MEMPOOL_BLOCK, BLOCK_SIZE(slab_id));
                 status_op_mempool(slab_id, STATUS_OP_MEMPOOL_ITEM, slab_nitems[slab_id]);
                 trace_msg(TRACE_LEVEL_VERBOSE, "Memory : Allocated a new memory block to slab %d.", slab_id);
             }
-
+            
             ret = slab->curr_block + (slab->curr_block_alloced ++) * (slab_size[slab_id] + 8);
         }
         status_op_mempool(slab_id, STATUS_OP_MEMPOOL_ALLOC, 0);
@@ -213,7 +210,7 @@ void * mempool_calloc(size_t nmemb, size_t size)
     {
         memset(ptr, 0, nmemb * size);
     }
-
+    
     return ptr;
 }
 
@@ -230,7 +227,7 @@ void * mempool_realloc(void *addr, size_t nsize)
     {
         return mempool_alloc(nsize);
     }
-
+    
     void *old_addr = addr - 8;
     void *new_addr = NULL;
     struct bsp_mempool_slab_t *slab = get_pointer(old_addr);
@@ -246,7 +243,6 @@ void * mempool_realloc(void *addr, size_t nsize)
         // Needn't move data, just return the same addr
         return addr;
     }
-    
     else
     {
         // Move data to a new slab
@@ -274,7 +270,7 @@ char * mempool_strdup(const char *input)
         memcpy(new, input, len);
         new[len - 1] = 0x0;
     }
-
+    
     return new;
 }
 
@@ -285,6 +281,7 @@ char * mempool_strndup(const char *input, ssize_t len)
     {
         return NULL;
     }
+    
     if (len < 0)
     {
         len = strlen(input);
@@ -296,7 +293,7 @@ char * mempool_strndup(const char *input, ssize_t len)
         memcpy(new, input, len);
         new[len] = 0x0;
     }
-
+    
     return new;
 }
 
@@ -315,7 +312,7 @@ size_t mempool_alloc_usable_size(void *addr)
         // Huge block
         return malloc_usable_size(oaddr);
     }
-
+    
     return _get_slab_item_size(slab->slab_id);
 }
 
@@ -326,7 +323,7 @@ int mempool_free(void *addr)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-
+    
     void *ori_addr = addr - 8;
     struct bsp_mempool_slab_t *slab = get_pointer(ori_addr);
     if (!slab)
@@ -337,7 +334,6 @@ int mempool_free(void *addr)
         bsp_spin_unlock(&pool->lock);
         free(ori_addr);
     }
-
     else
     {
         // Recycle
@@ -346,7 +342,6 @@ int mempool_free(void *addr)
             // Double free
             trace_msg(TRACE_LEVEL_DEBUG, "Memory : Double free occurred");
         }
-
         else
         {
             bsp_spin_lock(&slab->slab_lock);

@@ -40,7 +40,7 @@ inline void set_bit(int bit, char *addr, size_t idx)
     int rears = idx & 7;
     int mask = bit > 0 ? 0xFF : (0xFF - (1 << rears));
     addr[offset] = (char) ((int) addr[offset] & mask);
-
+    
     return;
 }
 inline void set_int8(int8_t data, char *addr)
@@ -60,7 +60,7 @@ inline void set_int16(int16_t data, char *addr)
         addr[0] = data >> 8;
         addr[1] = data & 0xFF;
     }
-
+    
     return;
 }
 
@@ -73,7 +73,7 @@ inline void set_int32(int32_t data, char *addr)
         addr[2] = (data >> 8) & 0xFF;
         addr[3] = data & 0xFF;
     }
-
+    
     return;
 }
 
@@ -90,7 +90,7 @@ inline void set_int64(int64_t data, char *addr)
         addr[6] = ((int64_t) data >> 8) & 0xFF;
         addr[7] = (int64_t) data & 0xFF;
     }
-
+    
     return;
 }
 
@@ -100,7 +100,7 @@ inline void set_float(float data, char *addr)
     {
         memcpy(addr, &data, sizeof(float));
     }
-
+    
     return;
 }
 
@@ -110,7 +110,7 @@ inline void set_double(double data, char *addr)
     {
         memcpy(addr, &data, sizeof(double));
     }
-
+    
     return;
 }
 
@@ -120,12 +120,12 @@ inline void set_string(const char *data, ssize_t len, char *addr)
     {
         len = strlen(data);
     }
-
+    
     if (addr)
     {
         memcpy(addr, data, len);
     }
-
+    
     return;
 }
 
@@ -136,7 +136,7 @@ inline void set_pointer(const void *p, char *addr)
     {
         memcpy(addr, &ptr, sizeof(intptr_t));
     }
-
+    
     return;
 }
 
@@ -144,7 +144,7 @@ inline int get_bit(const char *addr, size_t idx)
 {
     size_t offset = idx >> 3;
     int rears = idx & 7;
-
+    
     return ((int) addr[offset] >> rears) & 1;
 }
 
@@ -177,7 +177,7 @@ inline float get_float(const char *addr)
     {
         memcpy(&ret, addr, sizeof(float));
     }
-
+    
     return ret;
 }
 
@@ -189,7 +189,7 @@ inline double get_double(const char *addr)
     {
         memcpy(&ret, addr, sizeof(double));
     }
-
+    
     return ret;
 }
 
@@ -207,7 +207,7 @@ inline void * get_pointer(const char *addr)
         memcpy(&ptr, addr, sizeof(intptr_t));
         ret = (void *) ptr;
     }
-
+    
     return ret;
 }
 
@@ -217,7 +217,7 @@ void get_rand(char *data, size_t len)
 {
     uint32_t seed = 0;
     struct timeval tm;
-
+    
     bsp_spin_lock(&rand_lock);
     if (-2 == rand_fd)
     {
@@ -229,7 +229,7 @@ void get_rand(char *data, size_t len)
             // An old old old linux system has no urandom block device
             rand_fd = open("/dev/random", O_RDONLY | O_NONBLOCK);
         }
-
+        
         if (rand_fd > 0)
         {
             reg_fd(rand_fd, FD_TYPE_GENERAL, NULL);
@@ -240,7 +240,7 @@ void get_rand(char *data, size_t len)
     {
         return;
     }
-
+    
     int i, nbytes = len;
     while (nbytes > 0)
     {
@@ -249,18 +249,18 @@ void get_rand(char *data, size_t len)
         {
             continue;
         }
-
+        
         nbytes -= i;
     }
-
+    
     gettimeofday(&tm, NULL);
     seed = (getpid() << 0x10) ^ getuid() ^ tm.tv_sec ^ tm.tv_usec;
-
+    
     for (i = 0; i < len; i ++)
     {
         data[i] ^= rand_r(&seed) & 0xFF;
     }
-
+    
     return;
 }
 
@@ -270,12 +270,12 @@ ssize_t trimmed_strlen(const char *input)
     int i;
     ssize_t ret = 0;
     int started = 0;
-
+    
     if (!input)
     {
         return 0;
     }
-
+    
     for (i = 0; i < strlen(input); i ++)
     {
         if (!started)
@@ -285,13 +285,13 @@ ssize_t trimmed_strlen(const char *input)
                 started = 1;
             }
         }
-
+        
         if (started)
         {
             ret ++;
         }
     }
-
+    
     // Reverse
     if (ret > 0)
     {
@@ -301,14 +301,13 @@ ssize_t trimmed_strlen(const char *input)
             {
                 ret --;
             }
-
             else
             {
                 break;
             }
         }
     }
-
+    
     return ret;
 }
 // Escape charactors by backslash
@@ -332,12 +331,12 @@ const char * escape_char(unsigned char c)
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 
         NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL
     };
-
+    
     if (c >= 0 && c < 127)
     {
         return escape_char_list[c];
     }
-
+    
     return NULL;
 }
 
@@ -345,18 +344,18 @@ const char * escape_char(unsigned char c)
 int32_t utf8_to_value(const char *data, ssize_t len, int *size)
 {
     int32_t value = 0;
-
+    
     if (len < 0)
     {
         len = strlen(data);
     }
-
+    
     if (!data || !len)
     {
         *size = 0;
         return 0;
     }
-
+    
     unsigned char c = *data;
     unsigned char u1 = 0, u2 = 0, u3 = 0;
     // Check head first
@@ -373,18 +372,16 @@ int32_t utf8_to_value(const char *data, ssize_t len, int *size)
                 value = c;
                 *size = 1;
             }
-                
+            
             value = c & 0x1f;
             value = (value << 6) + (u1 & 0x3f);
         }
-
         else
         {
             value = c;
             *size = 1;
         }
     }
-
     else if (c >= 0xe0 && c <= 0xef)
     {
         // Three bytes sequence
@@ -398,19 +395,17 @@ int32_t utf8_to_value(const char *data, ssize_t len, int *size)
                 value = c;
                 *size = 1;
             }
-
+            
             value = c & 0x1f;
             value = (value << 6) + (u1 & 0x3f);
             value = (value << 6) + (u2 & 0x3f);
         }
-
         else
         {
             value = c;
             *size = 1;
         }
     }
-
     else if (c >= 0xf0 && c <= 0xf4)
     {
         // Four bytes sequence
@@ -425,47 +420,43 @@ int32_t utf8_to_value(const char *data, ssize_t len, int *size)
                 value = c;
                 *size = 1;
             }
-
+            
             value = c & 0x1f;
             value = (value << 6) + (u1 & 0x3f);
             value = (value << 6) + (u2 & 0x3f);
             value = (value << 6) + (u3 & 0x3f);
         }
-
         else
         {
             value = c;
             *size = 1;
         }
     }
-
     else if (c >= 0x80)
     {
         // Invalid utf head
         value = c;
         *size = 1;
     }
-
+    
     if (value > 0x10ffff)
     {
         // Not in unicode range
         value = c;
         *size = 1;
     }
-
     else if (value >= 0xd800 && value <= 0xdfff)
     {
         // Two UTF-16
         value = c;
         *size = 1;
     }
-
     else if ((*size == 2 && value < 0x80) || (*size == 3 && value < 0x800) || (*size == 4 && value < 0x10000))
     {
         // Overlong
         value = c;
         *size = 1;
     }
-
+    
     return value;
 }

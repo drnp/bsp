@@ -42,12 +42,15 @@ typedef struct bsp_db_sqlite_t
     size_t              queries;
     int                 query_errno;
     BSP_SPINLOCK        query_lock;
+    struct bsp_db_sqlite_res_t
+                        *result_list;
 } BSP_DB_SQLITE;
 
 typedef struct bsp_db_sqlite_res_t
 {
     sqlite3_stmt        *stmt;
-    sqlite3             *handler;
+    struct bsp_db_sqlite_t
+                        *handler;
     struct bsp_db_sqlite_res_t
                         *prev;
     struct bsp_db_sqlite_res_t

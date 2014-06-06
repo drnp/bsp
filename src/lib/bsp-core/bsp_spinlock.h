@@ -33,41 +33,28 @@
 
 #define _LIB_BSP_CORE_SPINLOCK_H
 /* Headers */
-#include <pthread.h>
 
 /* Definations */
 #define SPIN_FREE                               0
 #define SPIN_LOCKED                             1
-#ifdef ENABLE_BSP_SPIN
-    #define BSP_SPINLOCK_INITIALIZER                {._lock = SPIN_FREE, ._loop_times = 0}
-#else
-    #define BSP_SPINLOCK_INITIALIZER                1
-#endif
 
 /* Macros */
 
 /* Structs */
-#ifdef ENABLE_BSP_SPIN
-typedef struct bsp_spinlock_t
-{
-    uint8_t             _lock;
-    uint8_t             _loop_times;
-} BSP_SPINLOCK;
+#ifdef ENABLE_SPIN
+    typedef struct bsp_spinlock_t
+    {
+        uint8_t             _lock;
+        uint8_t             _loop_times;
+    } BSP_SPINLOCK;
 #else
-typedef pthread_spinlock_t BSP_SPINLOCK;
+    typedef pthread_spinlock_t BSP_SPINLOCK;
 #endif
 
 /* Functions */
-#ifdef ENABLE_BSP_SPIN
-    void bsp_spin_init(BSP_SPINLOCK *lock);
-    void bsp_spin_lock(BSP_SPINLOCK *lock);
-    void bsp_spin_unlock(BSP_SPINLOCK *lock);
-    void bsp_spin_destroy(BSP_SPINLOCK *lock);
-#else
-    #define bsp_spin_init(lock)                     pthread_spin_init(lock, 0)
-    #define bsp_spin_lock(lock)                     pthread_spin_lock(lock)
-    #define bsp_spin_unlock(lock)                   pthread_spin_unlock(lock)
-    #define bsp_spin_destroy(lock)                  pthread_spin_destroy(lock)
-#endif
+void spin_init(BSP_SPINLOCK *lock);
+void spin_lock(BSP_SPINLOCK *lock);
+void spin_unlock(BSP_SPINLOCK *lock);
+void spin_destroy(BSP_SPINLOCK *lock);
 
 #endif  /* _LIB_BSP_CORE_SPINLOCK_H */

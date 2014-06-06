@@ -36,15 +36,8 @@
 #include "bsp.h"
 
 /* Definations */
-#define DEFAULT_PID_FILE                        "/var/run/bsp-server.pid"
-#define DEFAULT_CONF_FILE                       "etc/bsp-server.conf"
-#define DEFAULT_LOG_FILE                        "log/bsp-server.log"
-#define DEFAULT_SCRIPT_IDENTIFIER               "script/main.lua"
 #define HEARTBEAT_CHECK_RATE                    60
-
-#ifndef CHANNEL_SOCK_FILE
-    #define CHANNEL_SOCK_FILE                       "/var/run/bsp-manager.sock"
-#endif
+#define SCRIPT_GC_RATE                          300
 
 /* Macros */
 

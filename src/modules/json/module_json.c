@@ -193,7 +193,7 @@ static void _json_append_obj(BSP_STRING *str, lua_State *s, int idx)
 
         if (has_item)
         {
-            str->str[str->ori_len - 1] = ']';
+            str->str[STR_LEN(str) - 1] = ']';
         }
 
         else
@@ -273,7 +273,7 @@ static void _json_append_obj(BSP_STRING *str, lua_State *s, int idx)
         // Last ',' ?
         if (has_item)
         {
-            str->str[str->ori_len - 1] = '}';
+            str->str[STR_LEN(str) - 1] = '}';
         }
 
         else
@@ -443,7 +443,7 @@ static int _json_decode_item(const char *input, size_t len, lua_State *s, int la
                 {
                     return i;
                 }
-                lua_pushlstring(s, str->str, str->ori_len);
+                lua_pushlstring(s, STR_STR(str), STR_LEN(str));
                 if (layer == JSON_LAYER_ARRAY && lua_istable(s, -2))
                 {
                     // Write index
@@ -854,7 +854,7 @@ static int json_encode(lua_State *s)
     {
         return 0;
     }
-    lua_pushlstring(s, str->str, str->ori_len);
+    lua_pushlstring(s, STR_STR(str), STR_LEN(str));
 
     return 1;
 }

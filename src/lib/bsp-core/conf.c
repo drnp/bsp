@@ -35,6 +35,7 @@ struct bsp_conf_param_t conf_list[CONF_HASH_SIZE];
 struct bsp_conf_param_t **conf_index;
 BSP_SPINLOCK conf_lock;
 size_t conf_total, conf_index_size;
+/*
 BSP_CONF conf;
 
 // Parse ini-style expression as values
@@ -158,26 +159,28 @@ static void _parse_ini_line(char *line, struct bsp_conf_param_t *p)
     
     return;
 }
-
+*/
 // Initialization
-BSP_CONF * conf_init(const char *conf_file)
+int conf_init(const char *conf_file)
 {
-    memset(&conf, 0, sizeof(BSP_CONF));
+    //memset(&conf, 0, sizeof(BSP_CONF));
     // Conf hash
     bsp_spin_init(&conf_lock);
     memset(conf_list, 0, CONF_HASH_SIZE * sizeof(struct bsp_conf_param_t));
-    conf_index = mempool_alloc(sizeof(struct bsp_conf_param_t *) * CONF_INDEX_INITIAL);
-
+    conf_index = bsp_calloc(CONF_INDEX_INITIAL, sizeof(struct bsp_conf_param_t *));
+    
     if (!conf_index)
     {
-        trace_msg(TRACE_LEVEL_FATAL, "Conf   : Configure table alloc error");
-        return NULL;
+        trigger_exit(BSP_RTN_ERROR_MEMORY, "Configure table alloc error");
     }
-
+    
     conf_total = 0;
     conf_index_size = CONF_INDEX_INITIAL;
     trace_msg(TRACE_LEVEL_VERBOSE, "Conf   : Configure table initialized");
     
+    return BSP_RTN_SUCCESS;
+}
+/*
     // Read config data
     char line[MAX_CONF_LINE_LENGTH];
     struct bsp_conf_param_t p;
@@ -475,7 +478,7 @@ BSP_CONF * conf_init(const char *conf_file)
     
     return &conf;
 }
-
+*/
 // Set a configure item
 void conf_set(const char *key, const char *value, int level)
 {
@@ -483,24 +486,19 @@ void conf_set(const char *key, const char *value, int level)
     int hash_key = (int) hash(key, strlen(key)) % CONF_HASH_SIZE;
     struct bsp_conf_param_t *last = &conf_list[hash_key];
     struct bsp_conf_param_t *head = last->next, **tmp;
-
-    if (!key)
+    
+    if (!key || !conf_index)
     {
         return;
     }
-
+    
     if (!value)
     {
         value = "";
     }
-
-    if (!conf_index)
-    {
-        return;
-    }
-
+    
     bsp_spin_lock(&conf_lock);
-
+    
     while (head)
     {
         if (0 == strcmp(head->key, key))
@@ -509,52 +507,52 @@ void conf_set(const char *key, const char *value, int level)
             {
                 if (head->value)
                 {
-                    mempool_free(head->value);
+                    bsp_free(head->value);
                 }
-
-                head->value = mempool_strdup(value);
+                
+                head->value = bsp_strdup(value);
                 head->level = level;
             }
             
             modified = 0x1;
-
+            
             break;
         }
-
+        
         last = head;
         head = head->next;
     }
-
+    
     if (!modified)
     {
         // Add new node
-        head = mempool_alloc(sizeof(struct bsp_conf_param_t));
+        head = bsp_malloc(sizeof(struct bsp_conf_param_t));
         if (!head)
         {
             return;
         }
-
-        head->key = mempool_strdup(key);
-        head->value = mempool_strdup(value);
+        
+        head->key = bsp_strdup(key);
+        head->value = bsp_strdup(value);
         head->level = level;
         head->next = NULL;
         last->next = head;
-
+        
         while (conf_total >= conf_index_size)
         {
-            tmp = mempool_realloc(conf_index, sizeof(struct bsp_conf_param_t *) * conf_index_size * 2);
+            tmp = bsp_realloc(conf_index, sizeof(struct bsp_conf_param_t *) * conf_index_size * 2);
             if (!tmp)
             {
                 continue;
             }
-
+            
             conf_index = tmp;
             conf_index_size *= 2;
         }
-
+        
         conf_index[conf_total ++] = head;
     }
-
+    
     bsp_spin_unlock(&conf_lock);
     
     return;
@@ -567,11 +565,11 @@ char * conf_get(const char *key)
     int hash_key;
     struct bsp_conf_param_t *curr = NULL;
     
-    if (key)
+    if (key && conf_index)
     {
         hash_key = (int) hash(key, strlen(key)) % CONF_HASH_SIZE;
         curr = conf_list[hash_key].next;
-
+        
         while (curr)
         {
             if (0 == strcmp(key, curr->key))

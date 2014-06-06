@@ -34,13 +34,13 @@
 #include "bsp.h"
 
 /* Definations */
-#define DEFAULT_MANAGER_PORT                    65530
+#define DEFAULT_MANAGER_PORT                    8254
 #define DEFAULT_MANAGER_ADDR                    "0.0.0.0"
-#define MANAGER_PID_FILE                        "/var/run/bsp-manager.pid"
-#define CHANNEL_SOCK_FILE                       "/var/run/bsp-manager.sock"
+#define MANAGER_PID_FILE                        "run/bsp-manager.pid"
+#define MANAGER_SOCK_FILE                       "run/bsp-manager.sock"
 
-#define AS3_SANDBOX_PORT                        843
-#define AS3_SANDBOX_CONTENT                     "<cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\" /></cross-domain-policy>"
+//#define AS3_SANDBOX_PORT                        843
+//#define AS3_SANDBOX_CONTENT                     "<cross-domain-policy><allow-access-from domain=\"*\" to-ports=\"*\" /></cross-domain-policy>"
 
 // Commands
 

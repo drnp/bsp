@@ -43,10 +43,13 @@ typedef struct bsp_timer_t
     int                 fd;
     struct itimerspec   tm;
     struct epoll_event  ev;
-    void                (* on_timer) (void *);
-    void                (* on_stop) (void *);
-    void                *cb_arg;
+    void                (* on_timer) (unsigned long long);
+    void                (* on_stop) (unsigned long long);
+    uint64_t            timer;
     uint64_t            loop;
+
+    // Script runner
+    BSP_SCRIPT_STACK    script_stack;
 } BSP_TIMER;
 
 /* Functions */

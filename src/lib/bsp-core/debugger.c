@@ -26,6 +26,7 @@
  * @changelog 
  *      [06/14/2012] - Creation
  *      [12/17/2013] - BSP_VAL_POINTER added
+ *      [06/04/2014] - debug_lua_stack() added
  */
 
 #include "bsp.h"
@@ -95,7 +96,6 @@ void debug_str(const char *fmt, ...)
 
     loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
-
     fprintf(stderr, "\n\033[1;37m=== [Debug String] === <%s START> ===\033[0m\n"
                     "\033[1;33m %s\033[0m\n"
                     "\033[1;37m=== [Debug String] === <%s END  > ===\033[0m\n\n", tgdate, msg, tgdate);
@@ -117,7 +117,6 @@ void debug_hex(const char *data, ssize_t len)
     char tgdate[64];
     loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
-    
     fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s START> ===\033[0m\n", (int) len, tgdate);
     for (i = 0; i < len; i ++)
     {
@@ -140,7 +139,6 @@ void debug_hex(const char *data, ssize_t len)
         {
             fprintf(stderr, "\033[1;35m %c \033[0m", data[i]);
         }
-
         else
         {
             fprintf(stderr, "\033[0;34m . \033[0m");
@@ -150,7 +148,6 @@ void debug_hex(const char *data, ssize_t len)
         {
             fprintf(stderr, "\n");
         }
-
         else if (i % 8 == 7)
         {
             fprintf(stderr, "  ");
@@ -177,38 +174,30 @@ static void _var_dump_item(BSP_OBJECT_ITEM *item, const char *curr_key)
         case BSP_VAL_INT8 : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT8)\033[0m => %d\n", curr_key, get_int8(item->value.lval));
             break;
-
         case BSP_VAL_INT16 : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT16)\033[0m => %d\n", curr_key, get_int16(item->value.lval));
             break;
-
         case BSP_VAL_INT32 : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT32)\033[0m => %d\n", curr_key, get_int32(item->value.lval));
             break;
-
         case BSP_VAL_INT64 : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT64)\033[0m => %lld\n", curr_key, (long long int) get_int64(item->value.lval));
             break;
-
         case BSP_VAL_BOOLEAN : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(BOOLEAN)\033[0m => %s\n", curr_key, (get_int8(item->value.lval) == 0) ? "false" : "true");
             break;
-
         case BSP_VAL_FLOAT : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(FLOAT)\033[0m => %f\n", curr_key, get_float(item->value.lval));
             break;
-
         case BSP_VAL_DOUBLE : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(DOUBLE)\033[0m => %f\n", curr_key, get_double(item->value.lval));
             break;
-
         case BSP_VAL_STRING : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(STRING)\033[0m => ", curr_key);
             if (item->value.rval)
             {
                 write(STDERR_FILENO, (char *) item->value.rval, item->value.rval_len);
             }
-
             else
             {
                 fprintf(stderr, "### NULL STRING ###");
@@ -216,15 +205,12 @@ static void _var_dump_item(BSP_OBJECT_ITEM *item, const char *curr_key)
             
             fprintf(stderr, "\n");
             break;
-
         case BSP_VAL_POINTER : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(POINTER)\033[0m => %p\n", curr_key, item->value.rval);
             break;
-        
         case BSP_VAL_NULL : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(NULL)\033[0m\n", curr_key);
             break;
-
         default : 
             fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(UNKNOWN)\033[0m\n", curr_key);
             break;
@@ -264,7 +250,6 @@ void _var_dump_object(BSP_OBJECT *obj, int layer)
             strncpy(curr_key, curr->key, 1023);
             curr_key[1023] = 0x0;
         }
-
         else
         {
             strncpy(curr_key, curr->key, curr->key_len);
@@ -277,7 +262,6 @@ void _var_dump_object(BSP_OBJECT *obj, int layer)
                 fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(ARRAY)\033[0m =>\n", curr_key);
                 _var_dump_array(curr, layer + 1);
                 break;
-
             case BSP_VAL_OBJECT : 
                 next_obj = (BSP_OBJECT *) curr->value.rval;
                 if (next_obj)
@@ -286,7 +270,6 @@ void _var_dump_object(BSP_OBJECT *obj, int layer)
                     _var_dump_object(next_obj, layer + 1);
                 }
                 break;
-
             default : 
                 _var_dump_item(curr, curr_key);
         }
@@ -341,7 +324,6 @@ void _var_dump_array(BSP_OBJECT_ITEM *array, int layer)
                     fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(ARRAY)\033[0m =>\n", curr_key);
                     _var_dump_array(curr, layer + 1);
                     break;
-
                 case BSP_VAL_OBJECT : 
                     next_obj = (BSP_OBJECT *) curr->value.rval;
                     if (next_obj)
@@ -350,7 +332,6 @@ void _var_dump_array(BSP_OBJECT_ITEM *array, int layer)
                         _var_dump_object(next_obj, layer + 1);
                     }
                     break;
-
                 default : 
                     _var_dump_item(curr, curr_key);
             }
@@ -378,5 +359,56 @@ void debug_object(BSP_OBJECT *obj)
     _var_dump_object(obj, 0);
     fprintf(stderr, "\033[1;37m=== [Debug Object] === < END > ===\033[0m\n\n");
 
+    return;
+}
+
+// Print lua stack
+void debug_lua_stack(lua_State *l)
+{
+    if (!l)
+    {
+        return;
+    }
+    
+    fprintf(stderr, "\n\033[1;33m== [Stack top] ==\033[0m\n");
+    int size = lua_gettop(l), n, type;
+    for (n = 1; n <= size; n ++)
+    {
+        type = lua_type(l, n);
+        switch (type)
+        {
+            case LUA_TNIL : 
+                fprintf(stderr, "\t\033[1;37m[NIL]\033[0m\n");
+                break;
+            case LUA_TNUMBER : 
+                fprintf(stderr, "\t\033[1;37m[NUMBER]    => %f\033[0m\n", lua_tonumber(l, n));
+                break;
+            case LUA_TBOOLEAN : 
+                fprintf(stderr, "\t\033[1;37m[BOOLEAN]   => %d\033[0m\n", lua_toboolean(l, n));
+                break;
+            case LUA_TSTRING : 
+                fprintf(stderr, "\t\033[1;37m[STRING]    => %s\033[0m\n", lua_tostring(l, n));
+                break;
+            case LUA_TTABLE : 
+                fprintf(stderr, "\t\033[1;37m[TABLE]\033[0m\n");
+                break;
+            case LUA_TFUNCTION : 
+                fprintf(stderr, "\t\033[1;37m[FUNCTION]\033[0m\n");
+                break;
+            case LUA_TUSERDATA : 
+                fprintf(stderr, "\t\033[1;37m[USERDATA]  => %p\033[0m\n", lua_touserdata(l, n));
+                break;
+            case LUA_TTHREAD : 
+                fprintf(stderr, "\t\033[1;37m[THREAD]\033[0m\n");
+                break;
+            case LUA_TLIGHTUSERDATA : 
+                fprintf(stderr, "\t\033[1;37m[LUSERDATA] => %p\033[0m\n", lua_touserdata(l, n));
+                break;
+            default : 
+                break;
+        }
+    }
+    fprintf(stderr, "\033[1;33m== [Stack button] ==\033[0m\n\n");
+    
     return;
 }

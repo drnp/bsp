@@ -43,18 +43,17 @@ char * get_dir()
     char *ret = NULL;
     char *curr;
     ssize_t nbytes = readlink("/proc/self/exe", self_name, _POSIX_PATH_MAX - 1);
-
+    
     if (-1 == nbytes)
     {
         ret = "./";
     }
-
     else
     {
         self_name[nbytes] = 0x0;
         ret = realpath(self_name, NULL);
         curr = strrchr(ret, '/');
-
+        
         if (curr)
         {
             curr[0] = 0x0;
@@ -66,7 +65,7 @@ char * get_dir()
             }
         }
     }
-
+    
     return ret;
 }
 
@@ -77,12 +76,11 @@ void set_dir(const char *dir)
     {
         trace_msg(TRACE_LEVEL_NOTICE, "Misc   : Change current working directory to %s", dir);
     }
-
     else
     {
         trace_msg(TRACE_LEVEL_ERROR, "Misc   : Change current working directory failed");
     }
-
+    
     BSP_CORE_SETTING *settings = get_core_setting();
     settings->base_dir = dir;
     if (settings->mod_dir)
@@ -100,13 +98,17 @@ void set_dir(const char *dir)
         free(settings->runtime_dir);
     }
     asprintf(&settings->runtime_dir, "%s/run/", dir);
-
+    
     return;
 }
 
 // Save PID file (a text file whose content is process ID)
-void save_pid(const char *filename)
+void save_pid()
 {
+    BSP_CORE_SETTING *settings = get_core_setting();
+    char filename[_POSIX_PATH_MAX];
+    memset(filename, 0, _POSIX_PATH_MAX);
+    snprintf(filename, _POSIX_PATH_MAX - 1, "%s/bsp.%d.pid", settings->runtime_dir, settings->instance_id);
     // Try open
     FILE *fp = fopen(filename, "w");
     if (!fp)
@@ -114,13 +116,12 @@ void save_pid(const char *filename)
         trace_msg(TRACE_LEVEL_ERROR, "Misc   : Write PID file failed");
         return;
     }
-
+    
     pid_t pid = getpid();
     fprintf(fp, "%d", (int) pid);
     fclose(fp);
-
     trace_msg(TRACE_LEVEL_CORE, "Misc   : Saved process ID %d to file %s", (int) pid, filename);
-
+    
     return;
 }
 
@@ -136,13 +137,13 @@ size_t trace_msg(int level, const char *fmt, ...)
         // Nothing to do
         return 0;
     }
-
+    
     if (0 == (level & settings->trace_level))
     {
         // Level ignored
         return 0;
     }
-
+    
     bsp_spin_lock(&trace_lock);
     time_t now = time((time_t *) NULL);
     va_list ap;
@@ -153,18 +154,19 @@ size_t trace_msg(int level, const char *fmt, ...)
         msg[nbytes] = 0;
     }
     va_end(ap);
-
+    
     if (settings->trace_recorder)
     {
         settings->trace_recorder(now, level, msg);
     }
-
+    
     if (settings->trace_printer)
     {
         settings->trace_printer(now, level, msg);
     }
+    
     bsp_spin_unlock(&trace_lock);
-
+    
     return nbytes;
 }
 
@@ -176,31 +178,25 @@ char * get_trace_level_str(int level, int with_color)
         case TRACE_LEVEL_CORE : 
             return (with_color) ? "\033[1;34m CORE    \033[0m" : " CORE    ";
             break;
-
         case TRACE_LEVEL_FATAL : 
             return (with_color) ? "\033[1;31m FATAL   \033[0m" : " FATAL   ";
             break;
-
         case TRACE_LEVEL_ERROR : 
             return (with_color) ? "\033[1;33m ERROR   \033[0m" : " ERROR   ";
             break;
-
         case TRACE_LEVEL_NOTICE : 
             return (with_color) ? "\033[1;35m NOTICE  \033[0m" : " NOTICE  ";
             break;
-
         case TRACE_LEVEL_DEBUG : 
             return (with_color) ? "\033[1;36m DEBUG   \033[0m" : " DEBUG   ";
             break;
-
         case TRACE_LEVEL_VERBOSE : 
             return (with_color) ? "\033[1;32m VERBOSE \033[0m" : " VERBOSE ";
             break;
-
         default : 
             return " UNKNOWN ";
     }
-
+    
     return "         ";
 }
 
@@ -211,14 +207,14 @@ int filter_non_pritable_char(char *input, ssize_t len, char r)
     {
         return 0;
     }
-
+    
     if (len < 0)
     {
         len = strlen(input);
     }
-
+    
     int i, nfiltered = 0;
-
+    
     for (i = 0; i < len; i ++)
     {
         if (input[i] < 32 || input[i] > 127)
@@ -227,6 +223,6 @@ int filter_non_pritable_char(char *input, ssize_t len, char r)
             nfiltered ++;
         }
     }
-
+    
     return nfiltered;
 }

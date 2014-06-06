@@ -52,7 +52,6 @@ static inline void _json_append_str(BSP_STRING *str, const char *data, ssize_t l
     }
     
     string_append(str, "\"", 1);
-
     for (i = 0; i < len; i ++)
     {
         c = (unsigned char) data[i];
@@ -72,7 +71,6 @@ static inline void _json_append_str(BSP_STRING *str, const char *data, ssize_t l
                 // Append escaped data
                 string_append(str, esc, -1);
             }
-
             else
             {
                 // Continue normal characters
@@ -82,7 +80,6 @@ static inline void _json_append_str(BSP_STRING *str, const char *data, ssize_t l
                 }
             }
         }
-
         else
         {
             if (seg >= 0 && i > seg)
@@ -97,7 +94,7 @@ static inline void _json_append_str(BSP_STRING *str, const char *data, ssize_t l
             seg = -1;
         }
     }
-
+    
     if (seg >= 0)
     {
         string_append(str, data + seg, (len - seg));
@@ -172,7 +169,7 @@ static void _json_append_arr(BSP_STRING *str, BSP_OBJECT_ITEM *arr)
     BSP_OBJECT_ITEM **list = (BSP_OBJECT_ITEM **) arr->value.rval;
     size_t idx;
     int has_item = 0;
-
+    
     string_append(str, "[", 1);
     for (idx = 0; idx < arr->value.rval_len; idx ++)
     {
@@ -202,7 +199,7 @@ static void _json_append_obj(BSP_STRING *str, BSP_OBJECT *obj)
 
     int has_item = 0;
     BSP_OBJECT_ITEM *curr = NULL;
-
+    
     reset_object(obj);
     string_append(str, "{", 1);
     while ((curr = curr_item(obj)))
@@ -219,7 +216,6 @@ static void _json_append_obj(BSP_STRING *str, BSP_OBJECT *obj)
         // Value
         _json_append_value(str, curr);
         has_item = 1;
-
         next_item(obj);
     }
     string_append(str, "}", 1);
@@ -241,17 +237,14 @@ static inline void _json_decode_int(BSP_OBJECT_ITEM *item, int64_t data)
     {
         set_item_int64(item, (const int64_t) data);
     }
-
     else if (0 != llabs(data) >> 15)
     {
         set_item_int32(item, (const int32_t) data);
     }
-
     else if (0 != llabs(data) >> 7)
     {
         set_item_int16(item, (const int16_t) data);
     }
-
     else
     {
         set_item_int8(item, (const int8_t) data);
@@ -266,12 +259,12 @@ static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t l
     {
         return;
     }
-
+    
     if (len < 0)
     {
         len = strlen(data);
     }
-
+    
     ssize_t i, seg = -1;
     char c;
     char utf[5];
@@ -298,35 +291,27 @@ static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t l
                     case 'b' : 
                         string_append(str, "\b", 1);
                         break;
-
                     case 't' : 
                         string_append(str, "\t", 1);
                         break;
-
                     case 'n' : 
                         string_append(str, "\n", 1);
                         break;
-
                     case 'f' : 
                         string_append(str, "\f", 1);
                         break;
-
                     case 'r' : 
                         string_append(str, "\r", 1);
                         break;
-
                     case '"' : 
                         string_append(str, "\"", 1);
                         break;
-
                     case '/' : 
                         string_append(str, "/", 1);
                         break;
-
                     case '\\' : 
                         string_append(str, "\\", 1);
                         break;
-
                     case 'u' : 
                         // UTF code
                         if (len - i > 4)
@@ -334,13 +319,12 @@ static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t l
                             memcpy(utf, data + i + 1, 4);
                             utf[4] = 0x0;
                             utf_value = strtol(utf, NULL, 16);
-
+                            
                             if (utf_value < 0x80)
                             {
                                 utf_data[0] = utf_value;
                                 string_append(str, utf_data, 1);
                             }
-
                             else if (utf_value < 0x800)
                             {
                                 // 2 bytes
@@ -348,7 +332,6 @@ static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t l
                                 utf_data[1] = (utf_value & 0x3f) | 0x80;
                                 string_append(str, utf_data, 2);
                             }
-
                             else
                             {
                                 // 3 bytes
@@ -357,23 +340,20 @@ static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t l
                                 utf_data[2] = (utf_value & 0x3f) | 0x80;
                                 string_append(str, utf_data, 3);
                             }
-
+                            
                             i += 4;
                         }
-
                         else
                         {
                             string_append(str, "u", 1);
                         }
                         
                         break;
-
                     default : 
                         break;
                 }
             }
         }
-
         else
         {
             // Normal char
@@ -383,12 +363,12 @@ static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t l
             }
         }
     }
-
+    
     if (seg >= 0 && seg < len)
     {
         string_append(str, data + seg, (len - seg));
     }
-
+    
     return;
 }
 
@@ -404,7 +384,7 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
     {
         len = strlen(data);
     }
-
+    
     int in_str = 0, str_start = 0;
     size_t i, next_len, idx = 0;
     char *digit_next;
@@ -412,7 +392,7 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
     BSP_STRING *str = new_string(NULL, 0);
     BSP_OBJECT_ITEM *curr_item = NULL;
     BSP_OBJECT *next_obj;
-
+    
     for (i = 0; i < len; i ++)
     {
         if (data[i] == '"')
@@ -431,19 +411,17 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
                 curr_item = new_object_item(NULL, 0);
                 if (curr_item)
                 {
-                    set_item_string(curr_item, str->str, str->ori_len);
+                    set_item_string(curr_item, STR_STR(str), STR_LEN(str));
                     array_set_item(arr, curr_item, idx ++);
                 }
                 in_str = 0;
             }
-
             else
             {
                 in_str = 1;
                 str_start = i;
             }
         }
-        
         else if (!in_str)
         {
             if (data[i] == '{')
@@ -459,7 +437,6 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
                     i += next_len;
                 }
             }
-
             else if (data[i] == '[')
             {
                 // Next array
@@ -474,14 +451,12 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
                     }
                 }
             }
-
             else if (data[i] == ']')
             {
                 // Array ending
                 del_string(str);
                 return i + 1;
             }
-            
             else if (len - i >= 4 && 0 == strncasecmp(data + i, "true", 4))
             {
                 // Boolean true
@@ -490,7 +465,6 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
                 array_set_item(arr, curr_item, idx ++);
                 i += 3;
             }
-
             else if (len - i >= 5 && 0 == strncasecmp(data + i, "false", 5))
             {
                 // Boolean false
@@ -499,7 +473,6 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
                 array_set_item(arr, curr_item, idx ++);
                 i += 4;
             }
-
             else if (len - i >= 4 && 0 == strncasecmp(data + i, "null", 4))
             {
                 // Null
@@ -508,7 +481,6 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
                 array_set_item(arr, curr_item, idx ++);
                 i += 3;
             }
-            
             else
             {
                 // Digital
@@ -532,15 +504,13 @@ static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
                 }
             }
         }
-
         else
         {
             // Just ignore
         }
     }
-
     del_string(str);
-
+    
     return i;
 }
 
@@ -550,12 +520,12 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
     {
         return 0;
     }
-
+    
     if (len < 0)
     {
         len = strlen(data);
     }
-
+    
     int in_str = 0, str_start = 0, is_value = 0;
     size_t i, next_len;
     char *digit_next;
@@ -584,7 +554,7 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                     // Value
                     if (curr_item)
                     {
-                        set_item_string(curr_item, str->str, str->ori_len);
+                        set_item_string(curr_item, STR_STR(str), STR_LEN(str));
                         object_insert_item(obj, curr_item);
                         is_value = 0;
                         curr_item = NULL;
@@ -593,19 +563,17 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                 else
                 {
                     // Key
-                    curr_item = new_object_item(str->str, str->ori_len);
+                    curr_item = new_object_item(STR_STR(str), STR_LEN(str));
                     is_value = 1;
                 }
                 in_str = 0;
             }
-
             else
             {
                 in_str = 1;
                 str_start = i;
             }
         }
-        
         else if (!in_str && is_value)
         {
             if (data[i] == '{')
@@ -622,7 +590,6 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                     curr_item = NULL;
                 }
             }
-
             else if (data[i] == '[')
             {
                 // Next array
@@ -636,7 +603,6 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                     curr_item = NULL;
                 }
             }
-
             else if (len - i >= 4 && 0 == strncasecmp(data + i, "true", 4))
             {
                 // Boolean true
@@ -649,7 +615,6 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                 }
                 i += 3;
             }
-
             else if (len - i >= 5 && 0 == strncasecmp(data + i, "false", 5))
             {
                 // Boolean false
@@ -662,7 +627,6 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                 }
                 i += 4;
             }
-
             else if (len - i >= 4 && 0 == strncasecmp(data + i, "null", 4))
             {
                 // Null
@@ -675,7 +639,6 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                 }
                 i += 3;
             }
-            
             else
             {
                 // Digital
@@ -703,7 +666,6 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
                 }
             }
         }
-
         else
         {
             if (data[i] == '}')
@@ -713,7 +675,6 @@ static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
             }
         }
     }
-    
     del_string(str);
     
     return 0;
@@ -725,7 +686,7 @@ int json_nd_encode(BSP_OBJECT *obj, BSP_STRING *str)
     {
         return 0;
     }
-
+    
     _json_append_obj(str, obj);
 
     return 0;
@@ -737,12 +698,12 @@ int json_nd_decode(const char *data, ssize_t len, BSP_OBJECT *obj)
     {
         return 0;
     }
-
+    
     if (len < 0)
     {
         len = strlen(data);
     }
-
+    
     size_t i;
     for (i = 0; i < len; i ++)
     {

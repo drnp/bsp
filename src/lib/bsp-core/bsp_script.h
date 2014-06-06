@@ -66,18 +66,21 @@ typedef struct bsp_script_call_param_t
     void                *ptr;
 } BSP_SCRIPT_CALL_PARAM;
 
-struct bsp_script_stack_t
+typedef struct bsp_script_state_t
 {
-    lua_State           *stack;
     lua_State           *state;
+    size_t              load_times;
+} BSP_SCRIPT_STATE;
+
+typedef struct bsp_script_stack_t
+{
+    lua_State           *state;
+    lua_State           *stack;
     int                 stack_ref;
-};
+} BSP_SCRIPT_STACK;
 
 struct bsp_script_t
 {
-    lua_State           *main_state;
-    size_t              nsub_states;
-    lua_State           **sub_states;
     char                *identifier;
     char                *func_on_load;
     char                *func_on_reload;
@@ -85,13 +88,15 @@ struct bsp_script_t
     char                *func_on_sub_load;
     char                *func_on_sub_reload;
     char                *func_on_sub_exit;
-    size_t              load_times;
     void                (* code_reader) (const char *identifier, BSP_STRING *code);
+    void                (* allocator);
+    BSP_STRING          *code;
 };
 
 /* Functions */
+/*
 // Initialization
-int script_init(void (reader) (const char *identifier, BSP_STRING *code));
+int script_init();
 
 // Call a LUA function specialed by <func> in thread <thread>
 void script_caller_call_func(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[]);
@@ -104,18 +109,24 @@ void script_set_identifier(const char *identifier);
 
 // Set hooks
 void script_set_hook(int hook, const char *func);
-
-// Load / Reload LUA script
-int script_try_load();
-
+*/
+// Load script code block
+int script_load_string(lua_State *l, const char *code, ssize_t len);
+/*
 // Unload / close LUA script
 int script_close();
+*/
+// Call a script function with given parameters
+int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[]);
+
+// New state(runner), create a new LUA state
+int script_new_state(BSP_SCRIPT_STATE *ss);
 
 // New stack(caller), create a new LUA thread and bind to state
-struct bsp_script_stack_t * script_new_stack(lua_State *s);
+int script_new_stack(BSP_SCRIPT_STACK *ts);
 
 // Delete a thread stack
-void script_remove_stack(struct bsp_script_stack_t *ts);
+int script_remove_stack(BSP_SCRIPT_STACK *ts);
 
 // Load LUA modules to script
 int script_load_module(const char *module_name);

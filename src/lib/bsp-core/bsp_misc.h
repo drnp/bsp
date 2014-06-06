@@ -57,7 +57,7 @@ char * get_dir(void);
 void set_dir(const char *dir);
 
 // Save PID file (a text file whose content is process ID)
-void save_pid(const char *filename);
+void save_pid(void);
 
 // Trace information, if handle function registered in global setting, message will be proceed by them.
 size_t trace_msg(int level, const char *fmt, ...);
