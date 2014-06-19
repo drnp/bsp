@@ -1,0 +1,3 @@
+-- Bootstrap script
+bsp_load_script("main.lua");
+bsp_set_entry("server");

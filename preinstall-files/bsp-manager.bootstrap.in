@@ -1,0 +1,13 @@
+-- Bootstrap of BS.Play manager server
+-- DO NOT MODIFY THIS SCRIPT
+
+function manager_bootstrap()
+	bsp_new_server(
+		'TCP', 
+		'0.0.0.0', 
+		65530,
+		10, 
+		'm_on_connect', 
+		'm_on_close', 
+		'm_on_data'
+end

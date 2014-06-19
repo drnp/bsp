@@ -1,0 +1,42 @@
+{
+	"servers" : {
+		"main_server" : {
+			"inet" : "ipv4", 
+			"sock" : "tcp", 
+			"addr" : "0.0.0.0", 
+			"port" : 8254, 
+			"websocket" : false, 
+			"heatbeat_check" : 10, 
+			"data_type" : "packet", 
+			"max_client" : 4096, 
+			"debug_input" : true, 
+            "debug_output" : false
+		}, 
+        "test_server" : {
+			"inet" : "ipv6", 
+			"sock" : "tcp", 
+			"addr" : "::1", 
+			"port" : 8255, 
+			"websocket" : true, 
+			"data_type" : packet"
+		}
+	}, 
+
+	"global" : {
+        "script_dir" : "/opt/bsp/script/1234/", 
+        "instance_id" : 1234, 
+		"debug_output" : false, 
+		"enable_log" : false, 
+        "debug_ouput" : false
+	}, 
+
+    "modules" : [
+        "standard", 
+        "online", 
+        "json", 
+        "http", 
+        "word_filter", 
+        "mysql", 
+        "sqlite"
+    ]
+}
