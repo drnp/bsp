@@ -372,7 +372,7 @@ int string_compress_deflate(BSP_STRING *str)
             {
                 // Stream error
                 (void) deflateEnd(&strm);
-                STR_STR(Str) = dup;
+                STR_STR(str) = dup;
                 STR_LEN(str) = dup_len;
                 return BSP_RTN_ERROR_GENERAL;
             }
