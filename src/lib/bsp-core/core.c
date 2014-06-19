@@ -377,7 +377,7 @@ int core_init(BSP_SERVER_CALLBACK sc[])
 }
 
 // Start main loop
-int core_loop(void (* timer_event)(unsigned long long))
+int core_loop(void (* timer_event)(BSP_TIMER *))
 {
     BSP_THREAD *t = get_thread(MAIN_THREAD);
     if (!t)

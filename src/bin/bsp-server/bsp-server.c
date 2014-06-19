@@ -167,7 +167,7 @@ static void main_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssiz
 }
 
 // Main timer event
-static void _server_dida(unsigned long long timer)
+static void _server_dida(BSP_TIMER * tmr)
 {
     // Clean fds
     int fd;
@@ -177,7 +177,7 @@ static void _server_dida(unsigned long long timer)
     BSP_CLIENT *clt = NULL;
     BSP_SERVER *srv = NULL;
     // Kick corpses
-    for (fd = timer % HEARTBEAT_CHECK_RATE; fd <= get_max_fd(); fd += HEARTBEAT_CHECK_RATE)
+    for (fd = tmr->timer % HEARTBEAT_CHECK_RATE; fd <= get_max_fd(); fd += HEARTBEAT_CHECK_RATE)
     {
         fd_type = FD_TYPE_SOCKET_CLIENT;
         ptr = get_fd(fd, &fd_type);
@@ -201,14 +201,14 @@ static void _server_dida(unsigned long long timer)
     }
     
     BSP_CORE_SETTING *settings = get_core_setting();
-    if (0 == (timer + 1) % (SCRIPT_GC_RATE * 10))
+    if (0 == (tmr->timer + 1) % (SCRIPT_GC_RATE * 10))
     {
         trigger_gc(MAIN_THREAD);
     }
     
-    if (0 == (timer % SCRIPT_GC_RATE))
+    if (0 == (tmr->timer % SCRIPT_GC_RATE))
     {
-        trigger_gc((timer / SCRIPT_GC_RATE) % settings->static_workers);
+        trigger_gc((tmr->timer / SCRIPT_GC_RATE) % settings->static_workers);
     }
     
     return;

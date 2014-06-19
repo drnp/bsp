@@ -396,7 +396,7 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
         trace_msg(TRACE_LEVEL_ERROR, "Script : Not available state");
         return BSP_RTN_ERROR_SCRIPT;
     }
-
+    
     if (func)
     {
         lua_checkstack(caller, 1);
@@ -405,7 +405,6 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
     
     if (!lua_isfunction(caller, -1))
     {
-        debug_lua_stack(caller);
         trace_msg(TRACE_LEVEL_ERROR, "Script : No function specified");
     }
     else

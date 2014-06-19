@@ -94,6 +94,6 @@ char * get_core_version(void);
 int core_init(BSP_SERVER_CALLBACK sc[]);
 
 // Start main loop
-int core_loop(void (* timer_event)(unsigned long long));
+int core_loop(void (* timer_event)(BSP_TIMER *));
 
 #endif  /* _LIB_BSP_CORE_CORE_H */

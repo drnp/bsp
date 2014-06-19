@@ -109,10 +109,11 @@ int trigger_gc(int tid);
 // Stop all static worker
 void stop_workers(void);
 
-// Find worker
-BSP_THREAD * find_thread();
-
 // Get thread by givven index
 BSP_THREAD * get_thread(int i);
+
+// Current thread
+BSP_THREAD * curr_thread();
+int curr_thread_id();
 
 #endif  /* _LIB_BSP_CORE_THREAD_H */

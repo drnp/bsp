@@ -1,7 +1,8 @@
+<?php
 /*
- * module_http.h
+ * Json.php
  *
- * Copyright (C) 2012 - Dr.NP
+ * Copyright (C) 2014 - Dr.NP
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,28 +19,42 @@
  */
 
 /**
- * HTTP request producer
+ * BSP PHP Client
+ * Serializer::Json
  * 
- * @package modules::http
+ * @package bsp::client::php
  * @author Dr.NP <np@bsgroup.org>
- * @update 08/23/2012
+ * @update 06/16/2014
  * @changelog 
- *      [08/23/2012] - Creation
+ *      [06/16/2014] - Creation
  */
 
-#ifndef _MODULE_HTTP_H
-#define _MODULE_HTTP_H
-/* Headers */
-#include "bsp_http.h"
-#include "lua.h"
+namespace Bsp\Packet;
 
-/* Definations */
-
-/* Macros */
-
-/* Structs */
-
-/* Functions */
-int bsp_module_http(lua_State *s);
-
-#endif  /* _MODULE_HTTP_H */
+class Json implements \Bsp\IPacket
+{
+    public function __construct()
+    {
+        return;
+    }
+    
+    public function __destruct()
+    {
+        return;
+    }
+    
+    public function pack($obj)
+    {
+        if ($obj)
+        {
+            return \json_encode($obj);
+        }
+        
+        return '';
+    }
+    
+    public function unpack($data)
+    {
+        return \json_decode($data);
+    }
+}

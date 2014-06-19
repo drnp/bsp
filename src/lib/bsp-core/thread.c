@@ -393,7 +393,7 @@ void * thread_process(void *arg)
                         tmr->timer += timer;
                         if (tmr->on_timer)
                         {
-                            tmr->on_timer(tmr->timer);
+                            tmr->on_timer(tmr);
                         }
                         if (tmr->loop > 0)
                         {
@@ -402,9 +402,9 @@ void * thread_process(void *arg)
                                 // Need stop
                                 if (tmr->on_stop)
                                 {
-                                    tmr->on_stop(tmr->timer);
+                                    tmr->on_stop(tmr);
                                 }
-                                stop_timer(tmr);
+                                free_timer(tmr);
                             }
                         }
                         status_op_timer(STATUS_OP_TIMER_TRIGGER);
@@ -701,7 +701,7 @@ BSP_THREAD * get_thread(int tid)
 }
 
 // Find current thread
-BSP_THREAD * find_thread()
+BSP_THREAD * curr_thread()
 {
     int id = UNBOUNDED_THREAD;
     void *addr = pthread_getspecific(lid_key);
@@ -711,4 +711,16 @@ BSP_THREAD * find_thread()
     }
     
     return get_thread(id);
+}
+
+int curr_thread_id()
+{
+    int id = UNBOUNDED_THREAD;
+    void *addr = pthread_getspecific(lid_key);
+    if (addr)
+    {
+        memcpy(&id, addr, sizeof(int));
+    }
+
+    return id;
 }

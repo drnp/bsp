@@ -35,15 +35,17 @@
 #include "module_standard.h"
 
 // Timer callback
-void standard_script_timer_on_timer(void *arg)
+void _timer_on_timer(BSP_TIMER *tmr)
 {
-    //const char *func = (const char *) arg;
-    //script_call_func(func, NULL);
+    if (tmr && tmr->script_stack.stack)
+    {
+        script_call(tmr->script_stack.stack, NULL, NULL);
+    }
     
     return;
 }
 
-void standard_script_timer_on_stop(void *arg)
+void _timer_on_stop(BSP_TIMER *tmr)
 {
     return;
 }
@@ -78,7 +80,6 @@ static int standard_net_send(lua_State *s)
             clt = (BSP_CLIENT *) get_fd(client_fd, &fd_type);
             ret = output_client_cmd(clt, cmd, obj);
         }
-
         else
         {
             // OBJ
@@ -89,7 +90,6 @@ static int standard_net_send(lua_State *s)
 
         del_object(obj);
     }
-
     else if (lua_isstring(s, -1) && lua_isnumber(s, -2))
     {
         // RAW
@@ -98,7 +98,6 @@ static int standard_net_send(lua_State *s)
         clt = (BSP_CLIENT *) get_fd(client_fd, &fd_type);
         ret = output_client_raw(clt, data, len);
     }
-
     else
     {
         // Send nothing
@@ -156,7 +155,6 @@ static int standard_net_info(lua_State *s)
             lua_pushinteger(s, ntohs(clt_sin6->sin6_port));
             lua_settable(s, -3);
         }
-
         else
         {
             // IPv4
@@ -171,12 +169,11 @@ static int standard_net_info(lua_State *s)
             lua_settable(s, -3);
         }
     }
-
     else
     {
         lua_pushnil(s);
     }
-
+    
     return 1;
 }
 
@@ -187,13 +184,13 @@ static int standard_timer_create(lua_State *s)
     {
         return 0;
     }
-
-    const char *func = strdup(lua_tostring(s, -1));
+    
+    //const char *func = strdup(lua_tostring(s, -1));
     int loop = lua_tointeger(s, -2);
     int usec = lua_tointeger(s, -3);
     int sec = lua_tointeger(s, -4);
 
-    if (!func || !loop || (!usec && !sec))
+    if (!lua_isfunction(s, -1) || !loop || (!usec && !sec))
     {
         lua_settop(s, 0);
         return 0;
@@ -206,11 +203,16 @@ static int standard_timer_create(lua_State *s)
         return 0;
     }
     
-    //tmr->on_timer = standard_script_timer_on_timer;
-    //tmr->on_stop = standard_script_timer_on_stop;
-    //tmr->cb_arg = (void *) func;
+    tmr->on_timer = _timer_on_timer;
+    tmr->on_stop = _timer_on_stop;
+    dispatch_to_thread(tmr->fd, curr_thread_id());
+    // Push function into timer
+    int func_ref = luaL_ref(s, LUA_REGISTRYINDEX);
+    lua_pushinteger(tmr->script_stack.stack, func_ref);
+    lua_gettable(tmr->script_stack.stack, LUA_REGISTRYINDEX);
+    luaL_unref(s, LUA_REGISTRYINDEX, func_ref);
     start_timer(tmr);
-
+    
     lua_pushinteger(s, tmr->fd);
 
     return 1;
@@ -222,7 +224,7 @@ static int standard_timer_delete(lua_State *s)
     {
         return 0;
     }
-
+    
     int fd = lua_tointeger(s, -1);
     int fd_type = FD_TYPE_TIMER;
     BSP_TIMER *tmr = (BSP_TIMER *) get_fd(fd, &fd_type);
@@ -230,9 +232,9 @@ static int standard_timer_delete(lua_State *s)
     {
         return 0;
     }
-
+    
     free_timer(tmr);
-
+    
     return 0;
 }
 
