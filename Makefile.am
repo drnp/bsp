@@ -16,7 +16,6 @@ install: install-recursive
 	@mkdir -p $(prefix)/run --mode=0755
 	@cp --backup $(srcdir)/preinstall-files/runtime-setting.conf.in $(prefix)/etc/runtime-setting.conf
 	@cp --backup $(srcdir)/preinstall-files/bootstrap.lua.in $(prefix)/etc/bootstrap.lua
-	@cp --backup $(srcdir)/preinstall-files/main.lua.in $(prefix)/script/main.lua
 	@echo ""
 	@echo "************************************************************"
 	@echo "*             THANK YOU FOR CHOOSING BS.PLAY               *"

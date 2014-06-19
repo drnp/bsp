@@ -111,7 +111,7 @@ int _parse_runtime_setting(BSP_STRING *rs)
     BSP_SERVER_CALLBACK *sc;
     size_t i, varr_size;
     int fd_type, srv_ct, nfds, srv_fds[MAX_SERVER_PER_CREATION];
-    debug_object(runtime_setting);
+    //debug_object(runtime_setting);
     // Global settings
     object_item_value(runtime_setting, &val, "global", -1);
     vobj = val.v_obj;
