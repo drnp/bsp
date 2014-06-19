@@ -36,6 +36,7 @@
 #include "bsp-server.h"
 #include "sched.h"
 
+#ifdef ENABLE_STANDALONE
 // Signals
 static void _app_on_exit()
 {
@@ -69,6 +70,7 @@ static void _app_on_usr2()
     debug_status();
     return;
 }
+#endif
 
 static void _usage()
 {
