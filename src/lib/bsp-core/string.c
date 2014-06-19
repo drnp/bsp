@@ -129,9 +129,9 @@ void del_string(BSP_STRING *str)
     {
         return;
     }
-    if (str->str)
+    if (STR_STR(str))
     {
-        bsp_free(str->str);
+        bsp_free(STR_STR(str));
     }
     bsp_free(str);
     
@@ -143,14 +143,14 @@ void clean_string(BSP_STRING *str)
 {
     if (str)
     {
-        str->original_len = 0;
+        STR_LEN(str) = 0;
         str->compressed_len = 0;
         str->compress_type = COMPRESS_TYPE_NONE;
 
-        if (str->str)
+        if (STR_STR(str))
         {
-            bsp_free(str->str);
-            str->str = NULL;
+            bsp_free(STR_STR(str));
+            STR_STR(str) = NULL;
         }
     }
     
@@ -168,11 +168,11 @@ BSP_STRING * clone_string(BSP_STRING *str)
     BSP_STRING *new = new_string(NULL, 0);
     if (new)
     {
-        char *new_str = bsp_malloc(str->original_len);
+        char *new_str = bsp_malloc(STR_LEN(str));
         if (new_str)
         {
-            memcpy(new_str, str->str, str->original_len);
-            new->original_len = str->original_len;
+            memcpy(new_str, STR_STR(str), STR_LEN(str));
+            new->original_len = STR_LEN(str);
             new->compress_type = str->compress_type;
             new->compressed_len = str->compressed_len;
             new->str = new_str;
@@ -197,16 +197,16 @@ ssize_t string_append(BSP_STRING *str, const char *data, ssize_t len)
     }
 
     // Try to realloc
-    char *new_str = (char *) bsp_realloc(str->str, str->original_len + len);
+    char *new_str = (char *) bsp_realloc(STR_STR(str), STR_LEN(str) + len);
     if (!new_str)
     {
         // Alloc error
         return -1;
     }
 
-    memcpy(new_str + str->original_len, data, len);
-    str->str = new_str;
-    str->original_len += len;
+    memcpy(new_str + STR_LEN(str), data, len);
+    STR_STR(str) = new_str;
+    STR_LEN(str) += len;
 
     return len;
 }
@@ -221,16 +221,16 @@ ssize_t string_fill(BSP_STRING *str, int code, size_t len)
     }
 
     // Try to realloc
-    char *new_str = (char *) bsp_realloc(str->str, str->original_len + len);
+    char *new_str = (char *) bsp_realloc(STR_STR(str), STR_LEN(str) + len);
     if (!new_str)
     {
         // Alloc error
         return -1;
     }
 
-    memset(new_str + str->original_len, (char) code, len);
-    str->str = new_str;
-    str->original_len += len;
+    memset(new_str + STR_LEN(str), (char) code, len);
+    STR_STR(str) = new_str;
+    STR_LEN(str) += len;
 
     return len;
 }
@@ -261,7 +261,7 @@ ssize_t string_printf(BSP_STRING *str, const char *fmt, ...)
 // Replace needle
 void string_replace(BSP_STRING *str, const char *search, ssize_t search_len, const char *replace, ssize_t replace_len)
 {
-    if (!str || !str->str || COMPRESS_TYPE_NONE != str->compress_type)
+    if (!str || !STR_STR(str) || COMPRESS_TYPE_NONE != str->compress_type)
     {
         return;
     }
@@ -276,10 +276,10 @@ void string_replace(BSP_STRING *str, const char *search, ssize_t search_len, con
     }
 
     // Make a copy first
-    char *dup = str->str;
-    size_t dup_len = str->original_len;
-    str->original_len = 0;
-    str->str = NULL;
+    char *dup = STR_STR(str);
+    size_t dup_len = STR_LEN(str);
+    STR_LEN(str) = 0;
+    STR_STR(str) = NULL;
 
     size_t i, s = 0;
     for (i = 0; i < dup_len - search_len; i ++)
@@ -312,13 +312,13 @@ ssize_t string_strlen(BSP_STRING *str)
         return -1;
     }
 
-    if (!str->str || !str->original_len)
+    if (!STR_STR(str) || !STR_LEN(str))
     {
         return 0;
     }
     
     size_t i;
-    for (i = 0; i < str->original_len; i ++)
+    for (i = 0; i < STR_LEN(str); i ++)
     {
         if (0 == str->str[i])
         {
@@ -326,13 +326,13 @@ ssize_t string_strlen(BSP_STRING *str)
         }
     }
 
-    return str->original_len;
+    return STR_LEN(str);
 }
 
 // Compress / Decompress with zlib deflate (stream without header)
 int string_compress_deflate(BSP_STRING *str)
 {
-    if (!str || !str->str || COMPRESS_TYPE_NONE != str->compress_type)
+    if (!str || !STR_STR(str) || COMPRESS_TYPE_NONE != str->compress_type)
     {
         // You should not compress a string twice
         return BSP_RTN_FATAL;
@@ -352,50 +352,50 @@ int string_compress_deflate(BSP_STRING *str)
 #endif
     strm.opaque = Z_NULL;
     
-    char *dup = str->str;
-    size_t dup_len = str->original_len;
-    str->original_len = 0;
-    str->str = NULL;
-
+    char *dup = STR_STR(str);
+    size_t dup_len = STR_LEN(str);
+    STR_LEN(str) = 0;
+    STR_STR(str) = NULL;
+    
     if (Z_OK == deflateInit(&strm, Z_DEFAULT_COMPRESSION))
     {
         strm.avail_in = dup_len;
         strm.next_in = (z_const Bytef *) dup;
-
+        
         do
         {
             strm.avail_out = COMPRESS_ZLIB_CHUNK_SIZE;
             strm.next_out = chunk;
-
+            
             ret = deflate(&strm, Z_FINISH);
             if (Z_STREAM_ERROR == ret)
             {
                 // Stream error
                 (void) deflateEnd(&strm);
-                str->str = dup;
-                str->original_len = dup_len;
+                STR_STR(Str) = dup;
+                STR_LEN(str) = dup_len;
                 return BSP_RTN_ERROR_GENERAL;
             }
-
+            
             chunk_data_size = COMPRESS_ZLIB_CHUNK_SIZE - strm.avail_out;
             string_append(str, (const char *) chunk, chunk_data_size);
         } while (strm.avail_out == 0);
-
+        
         bsp_free(dup);
         str->compress_type = COMPRESS_TYPE_DEFLATE;
-        str->compressed_len = str->original_len;
-        str->original_len = dup_len;
+        str->compressed_len = STR_LEN(str);
+        STR_LEN(str) = dup_len;
         (void) deflateEnd(&strm);
         
         return BSP_RTN_SUCCESS;
     }
-
+    
     return BSP_RTN_ERROR_GENERAL;
 }
 
 int string_decompress_deflate(BSP_STRING *str)
 {
-    if (!str || !str->str || COMPRESS_TYPE_DEFLATE != str->compress_type)
+    if (!str || !STR_STR(str) || COMPRESS_TYPE_DEFLATE != str->compress_type)
     {
         return BSP_RTN_FATAL;
     }
@@ -413,22 +413,21 @@ int string_decompress_deflate(BSP_STRING *str)
 #endif
     strm.opaque = Z_NULL;
     
-    char *dup = str->str;
+    char *dup = STR_STR(str);
     size_t dup_len = str->compressed_len;
-    size_t old_ori = str->original_len;
-    str->original_len = 0;
-    str->str = NULL;
+    size_t old_ori = STR_LEN(str);
+    STR_LEN(str) = 0;
+    STR_STR(str) = NULL;
     
     if (Z_OK == inflateInit(&strm))
     {
         strm.avail_in = dup_len;
         strm.next_in = (z_const Bytef *) dup;
-
+        
         do
         {
             strm.avail_out = COMPRESS_ZLIB_CHUNK_SIZE;
             strm.next_out = chunk;
-
             ret = inflate(&strm, Z_NO_FLUSH);
             switch (ret)
             {
@@ -440,9 +439,9 @@ int string_decompress_deflate(BSP_STRING *str)
                     break;
                 case Z_MEM_ERROR : 
                     (void) inflateEnd(&strm);
-                    str->str = dup;
+                    STR_STR(str) = dup;
                     str->compressed_len = dup_len;
-                    str->original_len = old_ori;
+                    STR_LEN(str) = old_ori;
                     return BSP_RTN_ERROR_MEMORY;
                     break;
                 case Z_NEED_DICT : 
@@ -452,9 +451,9 @@ int string_decompress_deflate(BSP_STRING *str)
                 default : 
                     // Data error
                     (void) inflateEnd(&strm);
-                    str->str = dup;
+                    STR_STR(str) = dup;
                     str->compressed_len = dup_len;
-                    str->original_len = old_ori;
+                    STR_LEN(str) = old_ori;
                     return BSP_RTN_ERROR_GENERAL;
             }
         } while (strm.avail_out == 0);
@@ -474,20 +473,20 @@ int string_decompress_deflate(BSP_STRING *str)
 // Compress / Decompress with Google snappy
 int string_compress_snappy(BSP_STRING *str)
 {
-    if (!str || !str->str || COMPRESS_TYPE_NONE != str->compress_type)
+    if (!str || !STR_STR(str) || COMPRESS_TYPE_NONE != str->compress_type)
     {
         // You should not compress a string twice
         return BSP_RTN_FATAL;
     }
 
-    size_t compressed_size = snappy_max_compressed_length(str->original_len);
+    size_t compressed_size = snappy_max_compressed_length(STR_LEN(str));
     char *new_str = bsp_malloc(compressed_size);
     if (new_str)
     {
-        if (SNAPPY_OK == snappy_compress(str->str, str->original_len, new_str, &compressed_size))
+        if (SNAPPY_OK == snappy_compress(STR_STR(str), STR_LEN(str), new_str, &compressed_size))
         {
-            bsp_free(str->str);
-            str->str = new_str;
+            bsp_free(STR_STR(str));
+            STR_STR(str) = new_str;
             str->compress_type = COMPRESS_TYPE_SNAPPY;
             str->compressed_len = compressed_size;
 
@@ -505,24 +504,24 @@ int string_compress_snappy(BSP_STRING *str)
 
 int string_decompress_snappy(BSP_STRING *str)
 {
-    if (!str || !str->str || COMPRESS_TYPE_SNAPPY != str->compress_type)
+    if (!str || !STR_STR(str) || COMPRESS_TYPE_SNAPPY != str->compress_type)
     {
         return BSP_RTN_FATAL;
     }
 
     size_t uncompressed_size;
-    if (SNAPPY_OK == snappy_uncompressed_length(str->str, str->ori_len, &uncompressed_size))
+    if (SNAPPY_OK == snappy_uncompressed_length(STR_STR(str), STR_LEN(str), &uncompressed_size))
     {
         char *new_str = bsp_malloc(uncompressed_size);
         if (new_str)
         {
-            if (SNAPPY_OK == snappy_uncompress(str->str, str->compressed_len, new_str, &uncompressed_size))
+            if (SNAPPY_OK == snappy_uncompress(STR_STR(str), str->compressed_len, new_str, &uncompressed_size))
             {
-                bsp_free(str->str);
-                str->str = new_str;
+                bsp_free(STR_STR(str));
+                STR_STR(str) = new_str;
                 str->compress_type = COMPRESS_TYPE_NONE;
                 str->compressed_len = 0;
-                str->original_len = uncompressed_size;
+                STR_LEN(str) = uncompressed_size;
 
                 return BSP_RTN_SUCCESS;
             }
@@ -547,23 +546,23 @@ int string_decompress_snappy(BSP_STRING *str)
 // Compress / Decompress with LZ4
 int string_compress_lz4(BSP_STRING *str)
 {
-    if (!str || !str->str || COMPRESS_TYPE_NONE != str->compress_type)
+    if (!str || !STR_STR(str) || COMPRESS_TYPE_NONE != str->compress_type)
     {
         // You should not compress a string twice
         return BSP_RTN_FATAL;
     }
 
-    int compressed_size = LZ4_compressBound(str->original_len);
+    int compressed_size = LZ4_compressBound(STR_LEN(str));
     int state_size = LZ4_sizeofState();
     
     char *new_str = bsp_malloc(compressed_size);
     char *state = bsp_malloc(state_size);
     if (new_str && state)
     {
-        if ((compressed_size = LZ4_compress_withState((void *) state, str->str, new_str, str->original_len)) > 0)
+        if ((compressed_size = LZ4_compress_withState((void *) state, STR_STR(str), new_str, STR_LEN(str))) > 0)
         {
-            bsp_free(str->str);
-            str->str = new_str;
+            bsp_free(STR_STR(str));
+            STR_STR(str) = new_str;
             str->compress_type = COMPRESS_TYPE_LZ4;
             str->compressed_len = compressed_size;
             bsp_free(state);
@@ -594,19 +593,19 @@ int string_compress_lz4(BSP_STRING *str)
 
 int string_decompress_lz4(BSP_STRING *str)
 {
-    if (!str || !str->str || COMPRESS_TYPE_LZ4 != str->compress_type)
+    if (!str || !STR_STR(str) || COMPRESS_TYPE_LZ4 != str->compress_type)
     {
         return BSP_RTN_FATAL;
     }
 
-    char *new_str = bsp_malloc(str->original_len);
+    char *new_str = bsp_malloc(STR_LEN(str));
     if (new_str)
     {
-        if (LZ4_decompress_fast(str->str, new_str, str->original_len) == str->compressed_len)
+        if (LZ4_decompress_fast(STR_STR(str), new_str, STR_LEN(str)) == str->compressed_len)
         {
             // Decompress successfully
-            bsp_free(str->str);
-            str->str = new_str;
+            bsp_free(STR_STR(str));
+            STR_STR(str) = new_str;
             str->compress_type = COMPRESS_TYPE_NONE;
             str->compressed_len = 0;
 

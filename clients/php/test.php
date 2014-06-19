@@ -2,7 +2,7 @@
 /**
  * BSP PHP Client test
  */
-require("Bsp.php");
+require("src/Bsp.php");
 
 $config = array(
     'host'      => 'localhost', 
