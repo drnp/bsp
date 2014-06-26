@@ -444,6 +444,7 @@ src/modules/mysql/Makefile
 src/modules/sqlite/Makefile
 src/modules/word_filter/Makefile
 src/modules/online/Makefile
+src/modules/fcgi/Makefile
 src/bin/Makefile
 src/bin/bsp-server/Makefile
 src/bin/bsp-manager/Makefile

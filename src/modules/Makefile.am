@@ -7,4 +7,5 @@ SUBDIRS = \
     mysql \
     sqlite \
     word_filter \
-    online
+    online \
+    fcgi

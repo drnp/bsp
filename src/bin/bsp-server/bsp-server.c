@@ -290,6 +290,16 @@ int main(int argc, char **argv)
         {"main_server", NULL, main_server}, 
         {NULL, NULL, NULL}
     };
+    BSP_NV p[] = {
+        {"QUERY_STRING", "aaa"}, 
+        {"SCRIPT_FILENAME", "bbbb"}, 
+        {"REQUEST_METHOD", "GET"}, 
+        {NULL, NULL}
+    };
+    BSP_STRING *f = build_fcgi_request(p, "hellohello", -1);
+    debug_hex(STR_STR(f), STR_LEN(f));
+    del_string(f);
+    
     core_init(sc);
     core_loop(_server_dida);
     
