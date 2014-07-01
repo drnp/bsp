@@ -289,7 +289,7 @@ int main(int argc, char **argv)
     BSP_SERVER_CALLBACK sc[] = {
         {"main_server", NULL, main_server}, 
         {NULL, NULL, NULL}
-    }
+    };
     
     core_init(sc);
     core_loop(_server_dida);
