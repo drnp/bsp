@@ -288,6 +288,7 @@ int main(int argc, char **argv)
 #endif
     BSP_SERVER_CALLBACK sc[] = {
         {"main_server", NULL, main_server}, 
+        {"internal_server", NULL, main_server}, 
         {NULL, NULL, NULL}
     };
     
