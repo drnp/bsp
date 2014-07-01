@@ -27,9 +27,6 @@
  *      [08/29/2012] - Creation
  */
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
 #include "bsp.h"
 
 #include "module_json.h"
@@ -861,7 +858,7 @@ static int json_encode(lua_State *s)
 
 int bsp_module_json(lua_State *s)
 {
-    if (!lua_checkstack(s, 1))
+    if (!s || !lua_checkstack(s, 1))
     {
         return 0;
     }

@@ -850,7 +850,7 @@ static int standard_get_global(lua_State *s)
 /* Module */
 int bsp_module_standard(lua_State *s)
 {
-    if (!lua_checkstack(s, 1))
+    if (!s || !lua_checkstack(s, 1))
     {
         return 0;
     }

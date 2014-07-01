@@ -27,9 +27,6 @@
  *      [09/01/2012] - Creation
  */
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
 #include "bsp.h"
 
 #include "module_mysql.h"
@@ -212,7 +209,7 @@ static int mysql_mysql_num_rows(lua_State *s)
 
 int bsp_module_mysql(lua_State *s)
 {
-    if (!lua_checkstack(s, 1))
+    if (!s || !lua_checkstack(s, 1))
     {
         return 0;
     }

@@ -55,6 +55,11 @@
 #define FCGI_OVERLOADED                         0x2
 #define FCGI_UNKNOWN_ROLE                       0x3
 
+#define FCGI_PARAMS_DEFAULT_REQUEST_METHOD      "GET"
+#define FCGI_PARAMS_DEFAULT_SERVER_PROTOCOL     "HTTP/1.1"
+#define FCGI_PARAMS_DEFAULT_GATEWAY_INTERFACE   "CGI/1.1"
+#define FCGI_PARAMS_DEFAULT_SERVER_SOFTWARE     "BS.Play_FCGI_Client"
+
 /* Macros */
 
 /* Structs */
@@ -63,9 +68,29 @@ typedef struct bsp_nv_t
     const char          *name;
     const char          *value;
 } BSP_NV;
+typedef struct bsp_fcgi_params_t
+{
+    const char          *query_string;
+    const char          *request_method;
+    const char          *content_type;
+    const char          *content_length;
+    const char          *script_filename;
+    const char          *script_name;
+    const char          *request_uri;
+    const char          *document_uri;
+    const char          *document_root;
+    const char          *server_protocol;
+    const char          *gateway_interface;
+    const char          *server_software;
+    const char          *remote_addr;
+    const char          *remote_port;
+    const char          *server_addr;
+    const char          *server_port;
+    const char          *server_name;
+} BSP_FCGI_PARAMS;
 
 /* Functions */
 // Build FastCGI request
-BSP_STRING * build_fcgi_request(BSP_NV params[], const char *post_data, ssize_t post_len);
+BSP_STRING * build_fcgi_request(BSP_FCGI_PARAMS *params, const char *post_data, ssize_t post_len);
 
 #endif  /* _LIB_BSP_CORE_FCGI_H */

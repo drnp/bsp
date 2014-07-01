@@ -106,7 +106,7 @@ static void _build_nv_pair(BSP_STRING *str, const char *name, const char *value)
 }
 
 // Build FastCGI request
-BSP_STRING * build_fcgi_request(BSP_NV params[], const char *post_data, ssize_t post_len)
+BSP_STRING * build_fcgi_request(BSP_FCGI_PARAMS *params, const char *post_data, ssize_t post_len)
 {
     BSP_STRING *req = new_string(NULL, 0);
 
@@ -116,21 +116,26 @@ BSP_STRING * build_fcgi_request(BSP_NV params[], const char *post_data, ssize_t 
     
     // Create params
     BSP_STRING *p = new_string(NULL, 0);
-    BSP_NV *nv;
-    int n = 0;
-    while (params)
-    {
-        nv = &params[n];
-        if (!nv->name)
-        {
-            break;
-        }
-        else
-        {
-            _build_nv_pair(p, nv->name, nv->value);
-        }
-        n ++;
-    }
+    _build_nv_pair(p, "QUERY_STRING", params->query_string);
+    _build_nv_pair(p, "REQUEST_METHOD", (params->request_method) ? (params->request_method) : FCGI_PARAMS_DEFAULT_REQUEST_METHOD);
+    _build_nv_pair(p, "CONTENT_TYPE", params->content_type);
+    _build_nv_pair(p, "CONTENT_LENGTH", params->content_length);
+    _build_nv_pair(p, "SCRIPT_FILENAME", params->script_filename);
+    _build_nv_pair(p, "SCRIPT_NAME", params->script_name);
+    _build_nv_pair(p, "REQUEST_URI", params->request_uri);
+    _build_nv_pair(p, "DOCUMENT_URI", params->document_uri);
+    _build_nv_pair(p, "DOCUMENT_ROOT", params->document_root);
+    _build_nv_pair(p, "SERVER_PROTOCOL", (params->server_protocol) ? (params->server_protocol) : FCGI_PARAMS_DEFAULT_SERVER_PROTOCOL);
+    _build_nv_pair(p, "GATEWAY_INTERFACE", (params->gateway_interface) ? (params->gateway_interface) : FCGI_PARAMS_DEFAULT_GATEWAY_INTERFACE);
+    _build_nv_pair(p, "SERVER_SOFTWARE", (params->server_software) ? (params->server_software) : FCGI_PARAMS_DEFAULT_SERVER_SOFTWARE);
+    _build_nv_pair(p, "REMOTE_ADDR", params->remote_addr);
+    _build_nv_pair(p, "REMOTE_PORT", params->remote_port);
+    _build_nv_pair(p, "SERVER_ADDR", params->server_addr);
+    _build_nv_pair(p, "SERVER_PORT", params->server_port);
+    _build_nv_pair(p, "SERVER_NAME", params->server_name);
+    
+    // Additional HTTP params
+    
     size_t len = STR_LEN(p);
     size_t curr = 0;
     size_t size = 0;

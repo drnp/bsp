@@ -29,9 +29,6 @@
  *      [12/17/2013] - chunk lenght bug fixed
  */
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
 #include "bsp.h"
 
 #include "module_http.h"
@@ -420,7 +417,7 @@ static int http_urldecode(lua_State *s)
 
 int bsp_module_http(lua_State *s)
 {
-    if (!lua_checkstack(s, 1))
+    if (!s || !lua_checkstack(s, 1))
     {
         return 0;
     }

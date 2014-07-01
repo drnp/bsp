@@ -27,9 +27,6 @@
  *      [05/23/2013] - Creation
  */
 
-#include "lua.h"
-#include "lualib.h"
-#include "lauxlib.h"
 #include "bsp.h"
 
 #include "module_word_filter.h"
@@ -430,7 +427,7 @@ static int do_filter(lua_State *s)
 
 int bsp_module_word_filter(lua_State *s)
 {
-    if (!lua_checkstack(s, 1))
+    if (!s || !lua_checkstack(s, 1))
     {
         return 0;
     }

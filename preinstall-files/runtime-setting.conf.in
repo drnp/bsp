@@ -37,6 +37,7 @@
         "http", 
         "word_filter", 
         "mysql", 
-        "sqlite"
+        "sqlite", 
+        "fcgi"
     ]
 }

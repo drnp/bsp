@@ -30,7 +30,6 @@
 #ifndef _MODULE_HTTP_H
 #define _MODULE_HTTP_H
 /* Headers */
-#include "bsp_http.h"
 #include "lua.h"
 
 /* Definations */
