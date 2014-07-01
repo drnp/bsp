@@ -129,6 +129,6 @@ int script_new_stack(BSP_SCRIPT_STACK *ts);
 int script_remove_stack(BSP_SCRIPT_STACK *ts);
 
 // Load LUA modules to script
-int script_load_module(const char *module_name);
+int script_load_module(const char *module_name, int enable_main_thread);
 
 #endif  /* _LIB_BSP_CORE_SCRIPT_H */

@@ -441,13 +441,13 @@ int script_remove_stack(BSP_SCRIPT_STACK *ts)
 }
 
 // Load module (C library) into script
-int script_load_module(const char *module_name)
+int script_load_module(const char *module_name, int enable_main_thread)
 {
     lt_dlhandle dl;
     int (* loader)(lua_State *) = NULL;
     int i;
     BSP_THREAD *t;
-
+    
     if (!module_name)
     {
         return BSP_RTN_ERROR_GENERAL;
@@ -469,13 +469,17 @@ int script_load_module(const char *module_name)
         loader = (int (*)(lua_State *)) lt_dlsym(dl, (const char *) symbol);
         if (loader)
         {
-            // Main thread)
-            t = get_thread(MAIN_THREAD);
-            if (t)
+            // Main thread
+            if (enable_main_thread)
             {
-                loader(t->script_runner.state);
-                trace_msg(TRACE_LEVEL_VERBOSE, "Script : Symbol %s loaded into main thread", symbol);
+                t = get_thread(MAIN_THREAD);
+                if (t)
+                {
+                    loader(t->script_runner.state);
+                    trace_msg(TRACE_LEVEL_VERBOSE, "Script : Symbol %s loaded into main thread", symbol);
+                }
             }
+            
             for (i = 0; i < settings->static_workers; i ++)
             {
                 t = get_thread(i);

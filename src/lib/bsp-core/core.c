@@ -368,7 +368,7 @@ int core_init(BSP_SERVER_CALLBACK sc[])
     int i;
     for (i = 0; i < modules_total; i ++)
     {
-        script_load_module((const char *) modules[i]);
+        script_load_module((const char *) modules[i], 1);
     }
     
     load_bootstrap();
