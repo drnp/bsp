@@ -93,7 +93,7 @@ static int fcgi_send_request(lua_State *s)
     p.script_name = lua_tostring(s, -1);
     lua_pop(s, 1);
     
-    BSP_STRING *req = build_fcgi_request();
+    //BSP_STRING *req = build_fcgi_request();
     
     return 0;
 }
