@@ -5,8 +5,8 @@
 require("src/Bsp.php");
 
 $config = array(
-    'host'      => 'localhost', 
-    'port'      => 8254, 
+    'host'      => '192.168.100.251', 
+    'port'      => 9172, 
     'data'      => \Bsp\Client::DATA_TYPE_PACKET, 
     'driver'    => \Bsp\Client::SOCKET_DRIVER_WRAPPER, 
     'inet'      => \Bsp\Client::INET_TYPE_IPV4, 
@@ -17,6 +17,6 @@ $config = array(
 $bsp = new \Bsp\Client($config);
 $bsp->connect();
 \sleep(1);
-$bsp->send(1000, array('interval' => 3, 'host' => 'www.baidu.com', 'uri' => '/'));
+$bsp->send(9527, array('timeout' => 3, 'msg' => ''));
 $data = $bsp->recv();
 $bsp->disconnect();

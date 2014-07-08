@@ -4,27 +4,25 @@
 			"inet" : "ipv4", 
 			"sock" : "tcp", 
 			"addr" : "0.0.0.0", 
-			"port" : 8254, 
+			"port" : 9173, 
 			"websocket" : false, 
-			"heatbeat_check" : 10, 
 			"data_type" : "packet", 
-			"max_client" : 4096, 
-			"debug_input" : true, 
+			"debug_input" : false, 
             "debug_output" : false
-		}, 
-        "test_server" : {
-			"inet" : "ipv6", 
-			"sock" : "tcp", 
-			"addr" : "::1", 
-			"port" : 8255, 
-			"websocket" : true, 
-			"data_type" : packet"
-		}
-	}, 
+        }, 
+        "internal_server" : {
+            "inet" : "ipv4", 
+            "sock" : "tcp", 
+            "addr" : "0.0.0.0", 
+            "port" : 9172,
+            "websocket" : false;
+            "data_type" : "packet"
+        }
+    }, 
 
 	"global" : {
-        "script_dir" : "/opt/bsp/script/1234/", 
-        "instance_id" : 1234, 
+        "script_dir" : "/opt/bsp/script/9173/", 
+        "instance_id" : 9173, 
 		"debug_output" : false, 
 		"enable_log" : false, 
         "debug_ouput" : false

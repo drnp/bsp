@@ -1,3 +1,13 @@
 -- Bootstrap script
 bsp_load_script("main.lua");
 bsp_set_entry("server");
+
+bsp_online_init({
+    kid         = 'i', 
+    nickname    = 's64', 
+    horn        = 'i', 
+    horn_used   = 'i', 
+    union       = 'i', 
+    country     = 'i', 
+    pid         = 'i'
+});

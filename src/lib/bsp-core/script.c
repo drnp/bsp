@@ -329,11 +329,13 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
         {
             // Pcall
             ret = lua_pcall(caller, nargs, 0, 0);
+            trace_msg(TRACE_LEVEL_VERBOSE, "Script : Call a stack");
         }
         else if (LUA_YIELD == status)
         {
             // Resume
             ret = lua_resume(caller, NULL, nargs);
+            trace_msg(TRACE_LEVEL_VERBOSE, "Script : Resume a yielded stack");
         }
         else
         {
@@ -346,6 +348,10 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
         {
             status_op_script(STATUS_OP_SCRIPT_FAILURE, 0);
             trace_msg(TRACE_LEVEL_ERROR, "Script : Call lua function error : %s", lua_tostring(caller, -1));
+        }
+        else
+        {
+            trace_msg(TRACE_LEVEL_DEBUG, "Script : Stack call successfully with params %d", nargs);
         }
         status_op_script(STATUS_OP_SCRIPT_CALL, 0);
     }

@@ -51,33 +51,40 @@ static void _finish_http_resp(BSP_CONNECTOR *cnt)
     }
 
     lua_State *caller = cnt->script_stack.stack;
-    lua_newtable(caller);
-    
-    lua_pushstring(caller, "version");
-    lua_pushstring(caller, resp->version);
-    lua_settable(caller, -3);
-
-    lua_pushstring(caller, "status_code");
-    lua_pushinteger(caller, resp->status_code);
-    lua_settable(caller, -3);
-
-    lua_pushstring(caller, "content_type");
-    lua_pushstring(caller, resp->content_type);
-    lua_settable(caller, -3);
-
-    lua_pushstring(caller, "content_length");
-    lua_pushinteger(caller, resp->content_length);
-    lua_settable(caller, -3);
-
-    lua_pushstring(caller, "transfer_encoding");
-    lua_pushstring(caller, resp->transfer_encoding);
-    lua_settable(caller, -3);
-
-    lua_pushstring(caller, "content");
-    lua_pushlstring(caller, resp->content, resp->content_length);
-    lua_settable(caller, -3);
-
-    lua_pcall(caller, 1, 0, 0);
+    if (lua_isfunction(caller, -1))
+    {
+        lua_newtable(caller);
+        
+        lua_pushstring(caller, "version");
+        lua_pushstring(caller, resp->version);
+        lua_settable(caller, -3);
+        
+        lua_pushstring(caller, "status_code");
+        lua_pushinteger(caller, resp->status_code);
+        lua_settable(caller, -3);
+        
+        lua_pushstring(caller, "content_type");
+        lua_pushstring(caller, resp->content_type);
+        lua_settable(caller, -3);
+        
+        lua_pushstring(caller, "content_length");
+        lua_pushinteger(caller, resp->content_length);
+        lua_settable(caller, -3);
+        
+        lua_pushstring(caller, "transfer_encoding");
+        lua_pushstring(caller, resp->transfer_encoding);
+        lua_settable(caller, -3);
+        
+        lua_pushstring(caller, "content");
+        lua_pushlstring(caller, resp->content, resp->content_length);
+        lua_settable(caller, -3);
+        
+        lua_pcall(caller, 1, 0, 0);
+    }
+    else
+    {
+        lua_settop(caller, 0);
+    }
     
     return;
 }
@@ -235,8 +242,9 @@ static void _http_on_close(BSP_CONNECTOR *cnt)
 
 static int http_send_request(lua_State *s)
 {
-    if (!s || lua_gettop(s) < 2 || !lua_istable(s, -2) || !lua_isfunction(s, -1))
+    if (!s || lua_gettop(s) < 2 || !lua_istable(s, -2))
     {
+        fprintf(stderr, "Http error\n");
         return 0;
     }
     
@@ -300,6 +308,7 @@ static int http_send_request(lua_State *s)
         return 0;
     }
     
+    trace_msg(TRACE_LEVEL_DEBUG, "HTTP-M : Generate a HTTP request");
     // Send request
     if (req->host && req->request_uri)
     {
@@ -311,10 +320,23 @@ static int http_send_request(lua_State *s)
             cnt->additional = NULL;
             dispatch_to_thread(SFD(cnt), curr_thread_id());
 
-            int func_ref = luaL_ref(s, LUA_REGISTRYINDEX);
-            lua_pushinteger(cnt->script_stack.stack, func_ref);
-            lua_gettable(cnt->script_stack.stack, LUA_REGISTRYINDEX);
-            luaL_unref(s, LUA_REGISTRYINDEX, func_ref);
+            if (lua_isfunction(s, -1))
+            {
+                // Callback function
+                int func_ref = luaL_ref(s, LUA_REGISTRYINDEX);
+                lua_pushinteger(cnt->script_stack.stack, func_ref);
+                lua_gettable(cnt->script_stack.stack, LUA_REGISTRYINDEX);
+                luaL_unref(s, LUA_REGISTRYINDEX, func_ref);
+            }
+            else if (lua_isstring(s, -1))
+            {
+                // Global function
+                lua_getglobal(cnt->script_stack.stack, lua_tostring(s, -1));
+            }
+            else
+            {
+                lua_pushnil(s);
+            }
             append_data_socket(&SCK(cnt), (const char *) STR_STR(str), STR_LEN(str));
             flush_socket(&SCK(cnt));
         }

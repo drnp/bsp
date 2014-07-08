@@ -258,8 +258,9 @@ int _parse_runtime_setting(BSP_STRING *rs)
                         while (core_settings.server_callback)
                         {
                             sc = &core_settings.server_callback[i];
-                            if (sc && sc->server_name && srv.server_name && 0 == strcmp(sc->server_name, srv.server_name))
+                            if (sc && sc->server_name)
                             {
+                                if ((srv.server_name && 0 == strcmp(sc->server_name, srv.server_name)) || (!s->on_events && sc->server_name[0] == '*'))
                                 s->on_events = sc->on_events;
                                 if (sc->on_data)
                                 {
@@ -267,7 +268,7 @@ int _parse_runtime_setting(BSP_STRING *rs)
                                 }
                                 break;
                             }
-                            if (!sc || !sc->server_name)
+                            else
                             {
                                 break;
                             }
