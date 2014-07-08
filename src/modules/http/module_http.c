@@ -307,8 +307,9 @@ static int http_send_request(lua_State *s)
     {
         return 0;
     }
-    
-    trace_msg(TRACE_LEVEL_DEBUG, "HTTP-M : Generate a HTTP request");
+
+    debug_hex(STR_STR(str), STR_LEN(str));
+    trace_msg(TRACE_LEVEL_DEBUG, "HTTP-M : Generate a HTTP request to host : %s, request_uri : %s", req->host, req->request_uri);
     // Send request
     if (req->host && req->request_uri)
     {
