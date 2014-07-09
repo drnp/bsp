@@ -53,6 +53,7 @@ static void _finish_http_resp(BSP_CONNECTOR *cnt)
     lua_State *caller = cnt->script_stack.stack;
     if (lua_isfunction(caller, -1))
     {
+        lua_checkstack(caller, 3);
         lua_newtable(caller);
         
         lua_pushstring(caller, "version");
@@ -307,8 +308,7 @@ static int http_send_request(lua_State *s)
     {
         return 0;
     }
-
-    debug_hex(STR_STR(str), STR_LEN(str));
+    
     trace_msg(TRACE_LEVEL_DEBUG, "HTTP-M : Generate a HTTP request to host : %s, request_uri : %s", req->host, req->request_uri);
     // Send request
     if (req->host && req->request_uri)
@@ -320,7 +320,7 @@ static int http_send_request(lua_State *s)
             cnt->on_close = _http_on_close;
             cnt->additional = NULL;
             dispatch_to_thread(SFD(cnt), curr_thread_id());
-
+            
             if (lua_isfunction(s, -1))
             {
                 // Callback function
@@ -336,7 +336,8 @@ static int http_send_request(lua_State *s)
             }
             else
             {
-                lua_pushnil(s);
+                // Nothing to call
+                lua_pushnil(cnt->script_stack.stack);
             }
             append_data_socket(&SCK(cnt), (const char *) STR_STR(str), STR_LEN(str));
             flush_socket(&SCK(cnt));

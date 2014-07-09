@@ -37,6 +37,22 @@
 /* Macros */
 
 /* Structs */
+struct fcgi_upstream_entry_t
+{
+    char                *host;
+    int                 port;
+    int                 weight;
+    struct fcgi_upstream_entry_t
+                        *next;
+};
+
+struct fcgi_upstream_t
+{
+    int                 counter;
+    int                 total_weight;
+    struct fcgi_upstream_entry_t
+                        *entries;
+};
 
 /* Functions */
 int bsp_module_fcgi(lua_State *s);

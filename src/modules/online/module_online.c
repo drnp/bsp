@@ -263,7 +263,6 @@ static int shr_online_property(lua_State *s)
 
         trace_msg(TRACE_LEVEL_VERBOSE, "Online : Set online info of client %d", client_id);
     }
-
     else if (lua_isnil(s, -1))
     {
         // Remove from table
@@ -275,11 +274,10 @@ static int shr_online_property(lua_State *s)
 
         trace_msg(TRACE_LEVEL_VERBOSE, "Online : Remove online info of client %d", client_id);
     }
-
     else
     {
         // Unknown type
-        trace_msg(TRACE_LEVEL_ERROR, "Online : Unknow operation");
+        trace_msg(TRACE_LEVEL_ERROR, "Online : Unknown operation");
     }
     bsp_spin_unlock(&online_list[client_id].lock);
     

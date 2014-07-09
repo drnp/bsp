@@ -68,6 +68,7 @@ typedef struct bsp_nv_t
     const char          *name;
     const char          *value;
 } BSP_NV;
+
 typedef struct bsp_fcgi_params_t
 {
     const char          *query_string;
@@ -89,8 +90,21 @@ typedef struct bsp_fcgi_params_t
     const char          *server_name;
 } BSP_FCGI_PARAMS;
 
+typedef struct bsp_fcgi_response_t
+{
+    int                 request_id;                             
+    int                 app_status;
+    int                 protocol_status;
+    int                 is_ended;
+    BSP_STRING          *data_stdout;
+    BSP_STRING          *data_stderr;
+} BSP_FCGI_RESPONSE;
+
 /* Functions */
 // Build FastCGI request
 BSP_STRING * build_fcgi_request(BSP_FCGI_PARAMS *params, const char *post_data, ssize_t post_len);
+
+// Parse FCGI response
+size_t parse_fcgi_response(BSP_FCGI_RESPONSE *resp, const char *data, size_t len);
 
 #endif  /* _LIB_BSP_CORE_FCGI_H */

@@ -1,7 +1,4 @@
 -- Bootstrap script
-bsp_load_script("main.lua");
-bsp_set_entry("server");
-
 bsp_online_init({
     kid         = 'i', 
     nickname    = 's64', 
@@ -11,3 +8,10 @@ bsp_online_init({
     country     = 'i', 
     pid         = 'i'
 });
+
+bsp_fcgi_set_upstream('php', {
+    {host = 'localhost', port = 9000}
+});
+
+bsp_load_script("main.lua");
+bsp_set_entry("server");

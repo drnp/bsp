@@ -51,7 +51,7 @@ static void _build_header(BSP_STRING *req, int type, size_t length)
 
 static void _build_role(BSP_STRING *req, int role, int flag)
 {
-    static unsigned char r[8];
+    unsigned char r[8];
     if (req)
     {
         r[0] = (role >> 8) & 0XFF;
@@ -192,4 +192,74 @@ BSP_STRING * build_fcgi_request(BSP_FCGI_PARAMS *params, const char *post_data, 
     _build_header(req, FCGI_STDIN, 0);
     
     return req;
+}
+
+// Parse FCGI response
+size_t parse_fcgi_response(BSP_FCGI_RESPONSE *resp, const char *data, size_t len)
+{
+    if (!data || !resp)
+    {
+        return len;
+    }
+    size_t curr = 0;
+    unsigned char hdr[8];
+    unsigned char d[8];
+    int content_length;
+    int padding_length;
+    //debug_hex(data, len);
+    while ((len - curr) >= 8)
+    {
+        // First read header
+        memcpy(hdr, data + curr, 8);
+        content_length = (hdr[4] << 8) + hdr[5];
+        padding_length = hdr[6];
+        
+        if (FCGI_END_REQUEST == hdr[1] && (len - curr) >= 8)
+        {
+            // Response complete
+            // Read body
+            memcpy(d, data + curr + 8, 8);
+            resp->request_id = (hdr[2] << 8) + hdr[3];
+            resp->app_status = (d[0] << 24) + (d[1] << 16) + (d[2] << 8) + d[3];
+            resp->protocol_status = d[4];
+            resp->is_ended = 1;
+            curr += 16;
+            break;
+        }
+        else if (FCGI_STDOUT == hdr[1] && (len - curr) >=  (content_length + padding_length + 8))
+        {
+            // Read data
+            if (!resp->data_stdout)
+            {
+                resp->data_stdout = new_string(NULL, 0);
+            }
+            
+            if (content_length > 0)
+            {
+                string_append(resp->data_stdout, data + curr + 8, content_length);
+            }
+            curr += (content_length + padding_length + 8);
+        }
+        else if (FCGI_STDERR == hdr[1] && (len - curr) >= (content_length + padding_length + 8))
+        {
+            // Read data
+            if (!resp->data_stderr)
+            {
+                resp->data_stderr = new_string(NULL, 0);
+            }
+
+            if (content_length > 0)
+            {
+                string_append(resp->data_stderr, data + curr + 8, content_length);
+            }
+            curr += (content_length + padding_length + 8);
+        }
+        else
+        {
+            // Unsupported request type from FCGI server
+            break;
+        }
+    }
+    
+    return curr;
 }

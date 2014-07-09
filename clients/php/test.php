@@ -17,6 +17,6 @@ $config = array(
 $bsp = new \Bsp\Client($config);
 $bsp->connect();
 \sleep(1);
-$bsp->send(9527, array('timeout' => 3, 'msg' => ''));
+$bsp->send(9531, array());
 $data = $bsp->recv();
 $bsp->disconnect();
