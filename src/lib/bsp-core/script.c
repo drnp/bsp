@@ -63,134 +63,7 @@ static void * _default_allocator(void *ud, void *ptr, size_t osize, size_t nsize
         return bsp_realloc(ptr, nsize);
     }
 }
-/*
-// Default code reader -- Get string from file with identifier as filename
-static void _default_code_reader(const char *identifier, BSP_STRING *code)
-{
-    if (!identifier || !code)
-    {
-        return;
-    }
 
-    char buff[16384];
-    size_t nbytes;
-
-    trace_msg(TRACE_LEVEL_DEBUG, "Script : Try to read script file <%s>", identifier);
-    FILE *fp = fopen(identifier, "r");
-    if (!fp)
-    {
-        trace_msg(TRACE_LEVEL_ERROR, "Script : Cannot open script file <%s>", identifier);
-        return;
-    }
-
-    while (!feof(fp) && !ferror(fp))
-    {
-        nbytes = fread(buff, 1, 16384, fp);
-        if (nbytes > 0)
-        {
-            string_append(code, (const char *) buff, nbytes);
-        }
-
-        else
-        {
-            break;
-        }
-    }
-
-    return;
-}
-*/
-/*
-// Create a new script handler
-int script_init()
-{
-    //BSP_CORE_SETTING *settings = get_core_setting();
-    script = bsp_calloc(1, sizeof(struct bsp_script_t));
-    if (!script)
-    {
-        trigger_exit(BSP_RTN_ERROR_MEMORY, "Script : Script alloc error");
-    }
-    script->allocator = _default_allocator;
-    script->code = new_string(NULL, 0);
-    
-    BSP_THREAD *thread = NULL;
-    int i;
-
-    script = mempool_calloc(sizeof(struct bsp_script_t), 1);
-    if (!script)
-    {
-        trace_msg(TRACE_LEVEL_ERROR, "Script : Script alloc error");
-        return BSP_RTN_ERROR_MEMORY;
-    }
-
-    script->sub_states = mempool_calloc(sizeof(lua_State *) * settings->static_workers, 1);
-    if (!script->sub_states)
-    {
-        trace_msg(TRACE_LEVEL_ERROR, "Script : LUA state list initialize failed");
-        mempool_free(script);
-        script = NULL;
-        return BSP_RTN_ERROR_MEMORY;
-    }
-    
-    code = new_string(NULL, 0);
-    if (!code)
-    {
-        trace_msg(TRACE_LEVEL_ERROR, "Script : Script code buffer alloc error");
-        mempool_free(script->sub_states);
-        mempool_free(script);
-        script = NULL;
-        return BSP_RTN_ERROR_MEMORY;
-    }
-    
-    trace_msg(TRACE_LEVEL_VERBOSE, "Script : Try to create script");
-    script->main_state = lua_newstate(_allocator, NULL);
-    if (!script->main_state)
-    {
-        trace_msg(TRACE_LEVEL_ERROR, "Script : Script state initialize failed");
-        mempool_free(script->sub_states);
-        mempool_free(script);
-        script = NULL;
-        return BSP_RTN_ERROR_SCRIPT;
-    }
-    
-    // Main thread
-    thread = get_thread(0);
-    thread->runner = script->main_state;
-    status_op_script(STATUS_OP_SCRIPT_STATE_ADD, 0);
-    for (i = 1; i <= settings->static_workers; i ++)
-    {
-        // Add link
-        thread = get_thread(i);
-        if (thread)
-        {
-            thread->runner = lua_newstate(_allocator, NULL);
-            if (!thread->runner)
-            {
-                trace_msg(TRACE_LEVEL_ERROR, "Script : Script sub-state initialize failed");
-                thread->runner = NULL;
-                mempool_free(script->sub_states);
-                mempool_free(script);
-                script = NULL;
-                return BSP_RTN_ERROR_SCRIPT;
-            }
-            script->sub_states[i - 1] = thread->runner;
-            status_op_script(STATUS_OP_SCRIPT_STATE_ADD, 0);
-            luaL_openlibs(thread->runner);
-            lua_settop(thread->runner, 0);
-        }
-    }
-
-    script->nsub_states = settings->static_workers;
-    script->load_times = 0;
-    script->identifier = NULL;
-    luaL_openlibs(script->main_state);
-    lua_settop(script->main_state, 0);
-    script->code_reader = reader ? reader : _default_code_reader;
-    trace_msg(TRACE_LEVEL_DEBUG, "Script : Script initialized");
-    
-    return BSP_RTN_SUCCESS;
-}
-*/
 // Load script code block
 int script_load_string(lua_State *l, const char *code, ssize_t len)
 {
@@ -198,7 +71,7 @@ int script_load_string(lua_State *l, const char *code, ssize_t len)
     {
         return BSP_RTN_ERROR_SCRIPT;
     }
-    
+
     if (len < 0)
     {
         len = strlen(code);
@@ -223,7 +96,7 @@ int script_load_string(lua_State *l, const char *code, ssize_t len)
             trigger_exit(BSP_RTN_FATAL, "Script error");
             break;
     }
-    
+
     return BSP_RTN_ERROR_GENERAL;
 }
 
@@ -245,13 +118,13 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
         trace_msg(TRACE_LEVEL_ERROR, "Script : Not available state");
         return BSP_RTN_ERROR_SCRIPT;
     }
-    
+
     if (func)
     {
         lua_checkstack(caller, 1);
         lua_getglobal(caller, func);
     }
-    
+
     if (!lua_isfunction(caller, -1))
     {
         trace_msg(TRACE_LEVEL_ERROR, "Script : No function specified");
@@ -265,7 +138,7 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
             {
                 break;
             }
-            
+
             if (!lua_checkstack(caller, 1))
             {
                 // Stack full!
@@ -273,7 +146,7 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
                 lua_settop(caller, 0);
                 return BSP_RTN_ERROR_SCRIPT;
             }
-            
+
             switch (curr->type)
             {
                 case CALL_PTYPE_BOOLEAN : 
@@ -383,7 +256,7 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
         }
         nargs ++;
     }
-    
+
     return BSP_RTN_SUCCESS;
 }
 
@@ -394,7 +267,7 @@ int script_new_state(BSP_SCRIPT_STATE *ss)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-    
+
     lua_State *state = lua_newstate(_default_allocator, NULL);
     if (!state)
     {
@@ -416,16 +289,18 @@ int script_new_stack(BSP_SCRIPT_STACK *ts)
     {
         return -1;
     }
+
     lua_State *stack = lua_newthread(ts->state);
     if (!stack)
     {
         return -1;
     }
-    
+
     ts->stack = stack;
     int ref = ts->stack_ref = luaL_ref(ts->state, LUA_REGISTRYINDEX);
+    bsp_spin_init(&ts->lock);
     trace_msg(TRACE_LEVEL_NOTICE, "Script : Generate a new LUA thread registed at index %d", ref);
-    
+
     return ref;
 }
 
@@ -453,7 +328,7 @@ int script_load_module(const char *module_name, int enable_main_thread)
     int (* loader)(lua_State *) = NULL;
     int i;
     BSP_THREAD *t;
-    
+
     if (!module_name)
     {
         return BSP_RTN_ERROR_GENERAL;
@@ -462,7 +337,7 @@ int script_load_module(const char *module_name, int enable_main_thread)
     BSP_CORE_SETTING *settings = get_core_setting();
     char symbol[_SYMBOL_NAME_MAX];
     char filename[_POSIX_PATH_MAX];
-    
+
     lt_dlinit();
     snprintf(filename, _POSIX_PATH_MAX - 1, "%s/module-%s.so", settings->mod_dir, module_name);
     snprintf(symbol, _SYMBOL_NAME_MAX - 1, "bsp_module_%s", module_name);
@@ -485,7 +360,7 @@ int script_load_module(const char *module_name, int enable_main_thread)
                     trace_msg(TRACE_LEVEL_VERBOSE, "Script : Symbol %s loaded into main thread", symbol);
                 }
             }
-            
+
             for (i = 0; i < settings->static_workers; i ++)
             {
                 t = get_thread(i);
@@ -508,6 +383,6 @@ int script_load_module(const char *module_name, int enable_main_thread)
         trace_msg(TRACE_LEVEL_ERROR, "Script : Cannot open module file %s", filename);
         return BSP_RTN_ERROR_IO;
     }
-    
+
     return BSP_RTN_SUCCESS;
 }

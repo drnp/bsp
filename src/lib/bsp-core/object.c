@@ -1538,63 +1538,64 @@ void object_to_lua(BSP_OBJECT *obj, lua_State *s)
     BSP_OBJECT_ITEM *curr;
     
     lua_checkstack(s, 16);
+    lua_checkstack(s, 3);
     lua_newtable(s);
     reset_object(obj);
     while ((curr = curr_item(obj)))
     {
-        lua_checkstack(s, 1);
-        lua_pushlstring(s, curr->key, curr->key_len);
-        switch (curr->value.type)
+        if (curr->key && curr->key_len)
         {
-            case BSP_VAL_INT8 : 
-                lua_checkstack(s, 1);
-                lua_pushinteger(s, (lua_Integer) get_int8(curr->value.lval));
-                break;
-            case BSP_VAL_INT16 : 
-                lua_checkstack(s, 1);
-                lua_pushinteger(s, (lua_Integer) get_int16(curr->value.lval));
-                break;
-            case BSP_VAL_INT32 : 
-                lua_checkstack(s, 1);
-                lua_pushinteger(s, (lua_Integer) get_int32(curr->value.lval));
-                break;
-            case BSP_VAL_INT64 : 
-                lua_checkstack(s, 1);
-                lua_pushinteger(s, (lua_Integer) get_int64(curr->value.lval));
-                break;
-            case BSP_VAL_FLOAT : 
-                lua_checkstack(s, 1);
-                lua_pushnumber(s, (lua_Number) get_float(curr->value.lval));
-                break;
-            case BSP_VAL_DOUBLE : 
-                lua_checkstack(s, 1);
-                lua_pushnumber(s, (lua_Number) get_double(curr->value.lval));
-                break;
-            case BSP_VAL_STRING : 
-                lua_checkstack(s, 1);
-                lua_pushlstring(s, (const char *) curr->value.rval, curr->value.rval_len);
-                break;
-            case BSP_VAL_POINTER : 
-                lua_checkstack(s, 1);
-                lua_pushlightuserdata(s, (void *) curr->value.rval);
-                break;
-            case BSP_VAL_ARRAY : 
-                _array_to_lua(curr, s);
-                break;
-            case BSP_VAL_OBJECT : 
-                next_obj = (BSP_OBJECT *) curr->value.rval;
-                if (next_obj)
-                {
-                    object_to_lua(next_obj, s);
-                }
-                break;
-            case BSP_VAL_NULL : 
-            default : 
-                lua_checkstack(s, 1);
-                lua_pushnil(s);
-                break;
+            lua_pushlstring(s, curr->key, curr->key_len);
+            switch (curr->value.type)
+            {
+                case BSP_VAL_INT8 : 
+                    lua_pushinteger(s, (lua_Integer) get_int8(curr->value.lval));
+                    break;
+                case BSP_VAL_INT16 : 
+                    lua_pushinteger(s, (lua_Integer) get_int16(curr->value.lval));
+                    break;
+                case BSP_VAL_INT32 : 
+                    lua_pushinteger(s, (lua_Integer) get_int32(curr->value.lval));
+                    break;
+                case BSP_VAL_INT64 : 
+                    lua_pushinteger(s, (lua_Integer) get_int64(curr->value.lval));
+                    break;
+                case BSP_VAL_FLOAT : 
+                    lua_pushnumber(s, (lua_Number) get_float(curr->value.lval));
+                    break;
+                case BSP_VAL_DOUBLE : 
+                    lua_pushnumber(s, (lua_Number) get_double(curr->value.lval));
+                    break;
+                case BSP_VAL_STRING : 
+                    lua_pushlstring(s, (const char *) curr->value.rval, curr->value.rval_len);
+                    break;
+                case BSP_VAL_POINTER : 
+                    lua_pushlightuserdata(s, (void *) curr->value.rval);
+                    break;
+                case BSP_VAL_ARRAY : 
+                    _array_to_lua(curr, s);
+                    break;
+                case BSP_VAL_OBJECT : 
+                    next_obj = (BSP_OBJECT *) curr->value.rval;
+                    if (next_obj)
+                    {
+                        object_to_lua(next_obj, s);
+                    }
+                    break;
+                case BSP_VAL_NULL : 
+                default : 
+                    lua_pushnil(s);
+                    break;
+            }
         }
-        lua_settable(s, -3);
+        if (lua_istable(s, -3))
+        {
+            lua_settable(s, -3);
+        }
+        else
+        {
+            break;
+        }
         next_item(obj);
     }
     

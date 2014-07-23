@@ -97,6 +97,7 @@
 #define STATE_CONNECTING                        0b10
 #define STATE_READ                              0b100
 #define STATE_WRITE                             0b1000
+#define STATE_ERROR                             0b10000
 #define STATE_PRECLOSE                          0b1000000
 #define STATE_CLOSE                             0b10000000
 

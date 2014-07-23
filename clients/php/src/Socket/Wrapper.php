@@ -34,6 +34,7 @@ namespace Bsp\Socket;
 class Wrapper implements \Bsp\ISocket
 {
     const READ_ONCE                 = 4096;
+    const RETRIES                   = 6;
 
     private $protocol_prefix;
     private $sockfp;
@@ -58,10 +59,22 @@ class Wrapper implements \Bsp\ISocket
         $remote = $this->protocol_prefix . '://' . $host . ':' . $port;
         $errno = 0;
         $errstr = '';
-        $this->sockfp = \stream_socket_client($remote, $errno, $errstr);
+        for ($n = 0; $n < self::RETRIES; $n ++)
+        {
+            $this->sockfp = \stream_socket_client($remote, $errno, $errstr);
+            if ($this->sockfp && 0 == $errno)
+            {
+                break;
+            }
+        }
+        
         if ($this->sockfp)
         {
-            \stream_set_blocking($this->sockfp, 0);
+            //\stream_set_blocking($this->sockfp, 0);
+        }
+        else
+        {
+            \trigger_error($errstr);
         }
         
         return;
@@ -79,13 +92,28 @@ class Wrapper implements \Bsp\ISocket
     }
     
     public function send($data)
-    {
+    {   $sent = 0;
+        $size = \strlen($data);
         if ($this->sockfp)
         {
-            return \fwrite($this->sockfp, $data);
+            //\stream_set_blocking($this->sockfp, 0);
+            while (true)
+            {
+                $n = \fwrite($this->sockfp, \substr($data, $sent), $size - $sent);
+                if (!$n)
+                {
+                    break;
+                }
+                $sent += $n;
+                if ($sent >= $size)
+                {
+                    break;
+                }
+            }
+            //\stream_set_blocking($this->sockfp, 1);
         }
         
-        return 0;
+        return $sent;
     }
     
     public function recv()
@@ -93,20 +121,25 @@ class Wrapper implements \Bsp\ISocket
         $data = '';
         if ($this->sockfp)
         {
-            while (!\feof($this->sockfp))
+            while (true)
             {
                 $read = \fread($this->sockfp, self::READ_ONCE);
                 if (!$read)
                 {
                     break;
                 }
+                $data .= $read;
+                if (\strlen($read) < self::READ_ONCE)
+                {
+                    break;
+                }
                 else
                 {
-                    $data .= $read;
+                    \stream_set_blocking($this->sockfp, 0);
                 }
             }
         }
-        
+        \stream_set_blocking($this->sockfp, 1);
         return $data;
     }
 }

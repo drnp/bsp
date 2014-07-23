@@ -213,6 +213,62 @@ class Client
         return $ret;
     }
     
+    private function _parse_hdr($hdr)
+    {
+        $ret = array(
+            'length_type' => $this->length_type, 
+            'serialize_type' => $this->serialize_type, 
+            'compress_type' => $this->compress_type
+        );
+        
+        if ($hdr)
+        {
+            if (\is_string($hdr))
+            {
+                $code = \ord($hdr[0]);
+            }
+            else
+            {
+                $code = (\intval($hdr)) & 0xFF;
+            }
+            
+            $ret['type'] = ($code >> 5);
+            $ret['length_type'] = ($code >> 4) & 0b1;
+            $ret['serialize_type'] = ($code >> 2) & 0b11;
+            $ret['commpress_type'] = $code & 0b11;
+        }
+        
+        return $ret;
+    }
+    
+    private function _parse_len($stream)
+    {
+        $ret = 0;
+        if (\is_string($stream))
+        {
+            if (self::LENGTH_TYPE_64B == $this->length_type)
+            {
+                $ret = (\ord($stream[1]) << 56) + 
+                        (\ord($stream[2]) << 48) + 
+                        (\ord($stream[3]) << 40) + 
+                        (\ord($steram[4]) << 32) + 
+                        (\ord($stream[5]) << 24) + 
+                        (\ord($stream[6]) << 16) + 
+                        (\ord($stream[7]) << 8) + 
+                        (\ord($stream[8]));
+            }
+            else
+            {
+                $ret = (\ord($stream[1]) << 24) + 
+                        (\ord($stream[2]) << 16) + 
+                        (\ord($stream[3]) << 8) + 
+                        (\ord($stream[4]));
+            }
+        }
+        
+        return $ret;
+    }
+    
     private function _cmd($cmd)
     {
         $ret = \pack('N', $cmd);
@@ -313,7 +369,72 @@ class Client
         {
             return '';
         }
-        
-        return $this->net->recv();
+        $data = $this->net->recv();
+        if (self::DATA_TYPE_STREAM == $this->data_type)
+        {
+            return $data;
+        }
+        else
+        {
+            $offset = 0;
+            $llen = 4;
+            $ret = array();
+            while (true)
+            {
+                $stream = \substr($data, $offset);
+                $hdr = $this->_parse_hdr($stream);
+                $offset += 1;
+                if (self::PACKET_TYPE_RAW == $hdr['type'] || 
+                    self::PACKET_TYPE_OBJ == $hdr['type'] || 
+                    self::PACKET_TYPE_CMD == $hdr['type'])
+                {
+                    // Parse data
+                    $len = $this->_parse_len($stream);
+                    $llen = (self::LENGTH_TYPE_32B == $this->length_type) ? 4 : 8;
+                    if (\strlen($stream) >= 1 + $llen + $len)
+                    {
+                        $org_data = \substr($stream, 1 + $llen, $len);
+                        if (self::COMPRESS_TYPE_NONE != $this->compress_type)
+                        {
+                            $org_data = $this->compressor[$this->compress_type]->decompress($org_data);
+                        }
+                        // Packet
+                        switch ($hdr['type'])
+                        {
+                            case self::PACKET_TYPE_RAW : 
+                                $ret[] = array('type' => 'raw', 'raw' => $org_data);
+                                break;
+                            case self::PACKET_TYPE_OBJ : 
+                                $ret[] = array('type' => 'obj', 'obj' => $this->serializer[$this->serialize_type]->unpack($org_data));
+                                break;
+                            case self::PACKET_TYPE_CMD : 
+                                $cmd = (\ord($org_data[0]) << 24) + 
+                                        (\ord($org_data[1]) << 16) + 
+                                        (\ord($org_data[2]) << 8) + 
+                                        (\ord($org_data[3]));
+                                $params = $this->serializer[$this->serialize_type]->unpack(\substr($org_data, 4));
+                                $ret[] = array('type' => 'cmd', 'cmd' => $cmd, 'params' => $params);
+                                break;
+                            default : 
+                                // WTF
+                                break;
+                        }
+                    }
+                    
+                    $offset += $llen + $len;
+                }
+                else
+                {
+                    // Ignore
+                }
+                
+                if ($offset >= \strlen($data))
+                {
+                    break;
+                }
+            }
+            
+            return $ret;
+        }
     }
 }

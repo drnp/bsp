@@ -46,7 +46,7 @@ static void _app_on_exit()
     log_close();
     // Close status
     status_close();
-    
+
     return;
 }
 
@@ -81,7 +81,7 @@ static void _usage()
     fprintf(stderr, "\t-v : Verbose mode, (display or record more message for debug)\n");
 	fprintf(stderr, "\t-s : Silent mode. (display or record no debug message)\n");
     fprintf(stderr, "\t-h : Display this topic.\n\n");
-    
+
     return;
 }
 
@@ -99,7 +99,7 @@ static void main_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssiz
     {
         return;
     }
-    
+
     switch (callback)
     {
         case SERVER_CALLBACK_ON_CONNECT : 
@@ -118,6 +118,17 @@ static void main_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssiz
                 BSP_SCRIPT_CALL_PARAM p[] = {
                     {CALL_PTYPE_OSTRING, -1, srv->name}, 
                     {CALL_PTYPE_OSTRING, -1, "close"}, 
+                    {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
+                    {CALL_PTYPE_END, 0, NULL}
+                };
+                script_call(clt->script_stack.stack, settings->script_callback_entry, p);
+            }
+            break;
+        case SERVER_CALLBACK_ON_ERROR : 
+            {
+                BSP_SCRIPT_CALL_PARAM p[] = {
+                    {CALL_PTYPE_OSTRING, -1, srv->name}, 
+                    {CALL_PTYPE_OSTRING, -1, "error"}, 
                     {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
                     {CALL_PTYPE_END, 0, NULL}
                 };
@@ -164,7 +175,7 @@ static void main_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssiz
         default : 
             break;
     }
-    
+
     return;
 }
 
@@ -201,18 +212,18 @@ static void _server_dida(BSP_TIMER * tmr)
     {
         return;
     }
-    
+
     BSP_CORE_SETTING *settings = get_core_setting();
     if (0 == (tmr->timer + 1) % (SCRIPT_GC_RATE * 10))
     {
         trigger_gc(MAIN_THREAD);
     }
-    
+
     if (0 == (tmr->timer % SCRIPT_GC_RATE))
     {
         trigger_gc((tmr->timer / SCRIPT_GC_RATE) % settings->static_workers);
     }
-    
+
     return;
 }
 
@@ -225,7 +236,7 @@ int main(int argc, char **argv)
 	int is_silent = 0;
     int instance_id = INSTANCE_UNKNOWN;
     char *prefix = NULL;
-    
+
     while (-1 != (c = getopt(argc, argv, "hdvsi:")))
     {
         switch (c)
@@ -260,7 +271,7 @@ int main(int argc, char **argv)
     is_daemonize = 1;
 #endif
     debug_str("BS.Play generic server started");
-    
+
     // Current working directory
     set_dir((const char *) prefix);
     BSP_CORE_SETTING *settings = get_core_setting();
@@ -279,7 +290,7 @@ int main(int argc, char **argv)
     settings->on_proc_usr1 = _app_on_usr1;
     settings->on_proc_usr2 = _app_on_usr2;
 #endif
-    
+
     // Try Huge-TLB
     status_init();
     enable_large_pages();
@@ -290,9 +301,9 @@ int main(int argc, char **argv)
         {"*", NULL, main_server}, 
         {NULL, NULL, NULL}
     };
-    
+
     core_init(sc);
     core_loop(_server_dida);
-    
+
     return BSP_RTN_SUCCESS;
 }

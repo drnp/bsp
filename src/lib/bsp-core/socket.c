@@ -54,10 +54,10 @@ static void maximize_udpbuf(const int fd)
         trace_msg(TRACE_LEVEL_ERROR, "Socket : Getsockopt to FD %d error", fd);
         return;
     }
-    
+
     min = avg = old_size;
     max = MAX_SENDBUF_SIZE;
-    
+
     while (min <= max)
     {
         avg = ((unsigned int) (min + max)) / 2;
@@ -70,18 +70,17 @@ static void maximize_udpbuf(const int fd)
             max = avg - 1;
         }
     }
-    
+
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : Set FD %d send buffer to %d", fd, avg);
-    
     if (getsockopt(fd, SOL_SOCKET, SO_RCVBUF, &old_size, &intsize) != 0)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Socket : Getsockopt to FD %d error", fd);
         return;
     }
-    
+
     min = avg = old_size;
     max = MAX_SENDBUF_SIZE;
-    
+
     while (min <= max)
     {
         avg = ((unsigned int) (min + max)) / 2;
@@ -94,9 +93,9 @@ static void maximize_udpbuf(const int fd)
             max = avg - 1;
         }
     }
-    
+
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : Set FD %d recv buffer to %d", fd, avg);
-    
+
     return;
 }
 
@@ -106,7 +105,7 @@ static inline void _clear_socket(struct bsp_socket_t *sck)
     {
         return;
     }
-    
+
     sck->read_block = NULL;
     sck->read_buffer_data_size = 0;
     sck->read_buffer_offset = 0;
@@ -128,7 +127,7 @@ static inline void _clear_socket(struct bsp_socket_t *sck)
         }
     }
     sck->iov_list_curr = 0;
-    
+
     return;
 }
 
@@ -138,14 +137,14 @@ static inline void _close_socket(struct bsp_socket_t *sck)
     {
         return;
     }
-    
+
     remove_from_thread(sck->fd);
     trace_msg(TRACE_LEVEL_NOTICE, "Socket : Try to close socket %d", sck->fd);
     if (sck->read_buffer)
     {
         bsp_free(sck->read_buffer);
     }
-    
+
     _clear_socket(sck);
     if (sck->iov_list)
     {
@@ -154,7 +153,7 @@ static inline void _close_socket(struct bsp_socket_t *sck)
     sck->iov_list_size = 0;
     shutdown(sck->fd, SHUT_RDWR);
     unreg_fd(sck->fd);
-    
+
     return;
 }
 
@@ -164,7 +163,7 @@ static inline void _init_socket(struct bsp_socket_t *sck, int fd, struct sockadd
     {
         return;
     }
-    
+
     _clear_socket(sck);
     
     if (saddr && addr)
@@ -173,7 +172,7 @@ static inline void _init_socket(struct bsp_socket_t *sck, int fd, struct sockadd
         memcpy(&sck->addr, addr, sizeof(struct addrinfo));
         sck->addr.ai_addr = (struct sockaddr *) &sck->saddr;
     }
-    
+
     sck->addr.ai_next = NULL;
     sck->fd = fd;
     sck->ev.data.fd = fd;
@@ -196,7 +195,7 @@ static char * _append_read_buffer(struct bsp_socket_t *sck, const char *data, si
     {
         return NULL;
     }
-    
+
     char *ret = NULL;
     if (sck->read_buffer_data_size + len > sck->read_buffer_size)
     {
@@ -208,17 +207,17 @@ static char * _append_read_buffer(struct bsp_socket_t *sck, const char *data, si
             trace_msg(TRACE_LEVEL_ERROR, "Socket : Enlarge socket read buffer error");
             return NULL;
         }
-        
+
         trace_msg(TRACE_LEVEL_DEBUG, "Socket : Socket %d's read buffer enlarge to %d", sck->fd, (int) newsize);
         sck->read_buffer = newbuff;
         sck->read_buffer_size = newsize;
     }
-    
+
     ret = sck->read_buffer + sck->read_buffer_data_size;
     memcpy(ret, data, len);
     sck->read_buffer_data_size += len;
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : Appended %d bytes into socket %d's read buffer", (int) len, sck->fd);
-    
+
     return ret;
 }
 
@@ -228,7 +227,7 @@ static inline ssize_t _try_read_socket(struct bsp_socket_t *sck)
     {
         return 0;
     }
-    
+
     ssize_t len, tlen = 0;
     while (1)
     {
@@ -276,7 +275,7 @@ static inline ssize_t _try_read_socket(struct bsp_socket_t *sck)
             }
         }
     }
-    
+
     return tlen;
 }
 
@@ -286,9 +285,8 @@ static inline ssize_t _try_send_socket(struct bsp_socket_t *sck)
     {
         return 0;
     }
-    
+
     size_t n;
-    
     // Generate MsgHdr
     struct msghdr m;
     struct iovec *i = NULL;
@@ -296,7 +294,7 @@ static inline ssize_t _try_send_socket(struct bsp_socket_t *sck)
     bsp_spin_lock(&sck->send_lock);
     memset(&m, 0, sizeof(struct msghdr));
     m.msg_iov = sck->iov_list + sck->iov_list_sent;
-    
+
     for (n = sck->iov_list_sent; n < sck->iov_list_curr; n ++)
     {
         i = &sck->iov_list[n];
@@ -304,16 +302,16 @@ static inline ssize_t _try_send_socket(struct bsp_socket_t *sck)
         {
             break;
         }
-        
+
         if (m.msg_iovlen >= IOV_MAX - 1)
         {
             break;
         }
-        
+
         msg_size += i->iov_len;
         m.msg_iovlen ++;
     }
-    
+
     ssize_t len = sendmsg(sck->fd, &m, 0);
     if (len < 0)
     {
@@ -322,7 +320,7 @@ static inline ssize_t _try_send_socket(struct bsp_socket_t *sck)
         trace_msg(TRACE_LEVEL_DEBUG, "Socket : Send data from socket %d error", sck->fd);
         return len;
     }
-    
+
     // Count IOV
     ssize_t leftover = len;
     void *new;
@@ -369,7 +367,7 @@ static inline ssize_t _try_send_socket(struct bsp_socket_t *sck)
         sck->iov_list_sent = 0;
         sck->iov_list_curr = 0;
         trace_msg(TRACE_LEVEL_DEBUG, "Socket : All data in socket %d sent off", sck->fd);
-        
+
         // Update epoll event
         sck->state &= ~STATE_WRITE;
         
@@ -385,7 +383,7 @@ static inline ssize_t _try_send_socket(struct bsp_socket_t *sck)
     }
     bsp_spin_unlock(&sck->send_lock);
     modify_fd_events(sck->fd, &sck->ev);
-    
+
     return len;
 }
 
@@ -395,7 +393,7 @@ static inline struct iovec * _new_iovec(struct bsp_socket_t *sck)
     {
         return NULL;
     }
-    
+
     while (sck->iov_list_curr >= sck->iov_list_size)
     {
         // Enlarge list
@@ -406,15 +404,15 @@ static inline struct iovec * _new_iovec(struct bsp_socket_t *sck)
             trace_msg(TRACE_LEVEL_ERROR, "Socket : Enlarge iovec list error");
             return NULL;
         }
-        
+
         sck->iov_list = newlist;
         sck->iov_list_size = newlist_size;
         trace_msg(TRACE_LEVEL_DEBUG, "Socket : Enlarge socket %d's iov list to length %d", sck->fd, (int) sck->iov_list_size);
     }
-    
+
     struct iovec *i = &sck->iov_list[sck->iov_list_curr ++];
     memset(i, 0, sizeof(struct iovec));
-    
+
     return i;
 }
 
@@ -427,20 +425,20 @@ int drive_socket(struct bsp_socket_t *sck)
     {
         return 0;
     }
-    
+
     int fd_type = FD_TYPE_ANY;
     void *ptr = get_fd(sck->fd, &fd_type);
-    
+
     if (!ptr)
     {
         return 0;
     }
-    
+
     BSP_SERVER *srv = NULL;
     BSP_CLIENT *clt = NULL;
     BSP_CONNECTOR *cnt = NULL;
     BSP_CORE_SETTING *settings = get_core_setting();
-    
+
     if (FD_TYPE_SOCKET_CLIENT == fd_type)
     {
         clt = (BSP_CLIENT *) ptr;
@@ -455,8 +453,20 @@ int drive_socket(struct bsp_socket_t *sck)
         // Wrong fd type
         return 0;
     }
-    
+
     ssize_t len, cblen;
+    if (sck->state & STATE_ERROR)
+    {
+        if (srv)
+        {
+            trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Server %d ON_ERROR triggered", SFD(srv));
+            if (srv->on_events)
+            {
+                srv->on_events(clt, SERVER_CALLBACK_ON_ERROR, 0, NULL, 0);
+            }
+        }
+    }
+
     if (sck->state & STATE_CLOSE)
     {
         if (srv)
@@ -475,12 +485,12 @@ int drive_socket(struct bsp_socket_t *sck)
             trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Connector %d ON_CLOSE triggered", SFD(cnt));
             cnt->on_close(cnt);
         }
-        
+
         // Close socket immedialy
         trace_msg(TRACE_LEVEL_DEBUG, "Socket : Closing socket %d", sck->fd);
         _close_socket(sck);
         bsp_free(ptr);
-        
+
         return 0;
     }
 
@@ -556,7 +566,7 @@ int drive_socket(struct bsp_socket_t *sck)
         }
         sck->state &= ~STATE_READ;
     }
-    
+
     // Try send
     if (sck->state & STATE_WRITE)
     {
@@ -579,10 +589,10 @@ int drive_socket(struct bsp_socket_t *sck)
                 status_op_socket(0, STATUS_OP_SOCKET_CONNECTOR_SENT, len);
             }
         }
-        
+
         sck->state &= ~STATE_WRITE;
     }
-    
+
     // Deal with closing
     if (sck->state & STATE_PRECLOSE)
     {
@@ -597,7 +607,7 @@ int drive_socket(struct bsp_socket_t *sck)
         bsp_spin_unlock(&sck->send_lock);
         flush_socket(sck);
     }
-    
+
     return 0;
 }
 
@@ -608,12 +618,12 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
     {
         return 0;
     }
-    
+
     if (len < 0)
     {
         len = strlen(data);
     }
-    
+
     size_t leftover = len;
     size_t append;
     void *buf;
@@ -624,7 +634,7 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
         fprintf(stderr, "Appendding data to socket %d ...\n", sck->fd);
         debug_hex(data, len);
     }
-    
+
     bsp_spin_lock(&sck->send_lock);
     if (IS_UDP(sck))
     {
@@ -674,10 +684,10 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
         iov->iov_base = buf;
         iov->iov_len = len;
     }
-    
+
     bsp_spin_unlock(&sck->send_lock);
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : Append %d byte to socket %d", (int) len, sck->fd);
-    
+
     return len;
 }
 
@@ -689,7 +699,7 @@ int flush_socket(struct bsp_socket_t *sck)
     {
         return -1;
     }
-    
+
     // Update epoll event
     sck->ev.events |= EPOLLOUT;
     modify_fd_events(sck->fd, &sck->ev);
@@ -710,7 +720,7 @@ static BSP_SERVER * _new_unix_server(const char *path, int access_mask)
     {
         return NULL;
     }
-    
+
     BSP_CORE_SETTING *settings = get_core_setting();
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (-1 == fd || BSP_RTN_SUCCESS != set_fd_nonblock(fd))
@@ -718,7 +728,7 @@ static BSP_SERVER * _new_unix_server(const char *path, int access_mask)
         trace_msg(TRACE_LEVEL_ERROR, "Socket : Create UNIX local socket error");
         return NULL;
     }
-    
+
     // Clean up previous socket file
     if (0 == lstat(path, &tstat))
     {
@@ -727,7 +737,7 @@ static BSP_SERVER * _new_unix_server(const char *path, int access_mask)
             unlink(path);
         }
     }
-    
+
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &flags, sizeof(flags));
     setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &flags, sizeof(flags));
     setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling));
@@ -749,7 +759,7 @@ static BSP_SERVER * _new_unix_server(const char *path, int access_mask)
         close(fd);
         return NULL;
     }
-    
+
     srv = bsp_calloc(1, sizeof(BSP_SERVER));
     if (!srv)
     {
@@ -767,7 +777,7 @@ static BSP_SERVER * _new_unix_server(const char *path, int access_mask)
     reg_fd(fd, FD_TYPE_SOCKET_SERVER, (void *) srv);
     status_op_socket(0, STATUS_OP_SOCKET_SERVER_ADD, fd);
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : UNIX local server created on path %s", path);
-    
+
     return srv;
 }
 
@@ -792,12 +802,12 @@ int new_server(
     struct addrinfo *next;
     struct addrinfo hints;
     BSP_SERVER *srv = NULL;
-    
+
     if (*nfds < 1)
     {
         return 0;
     }
-    
+
     if (INET_TYPE_LOCAL == inet_type)
     {
         // UNIX local domain
@@ -808,16 +818,16 @@ int new_server(
             fds[0] = SFD(srv);
             total = 1;
         }
-        
+
         return total;
     }
-    
+
     BSP_CORE_SETTING *settings = get_core_setting();
     hints.ai_flags = AI_PASSIVE | AI_V4MAPPED;
     hints.ai_protocol = 0;
     hints.ai_addrlen = 0;
     hints.ai_addr = NULL;
-    
+
     switch (inet_type)
     {
         case INET_TYPE_IPV4 : 
@@ -832,7 +842,7 @@ int new_server(
             hints.ai_family = AF_UNSPEC;
             break;
     }
-    
+
     switch (sock_type)
     {
         case SOCK_TYPE_ANY : 
@@ -848,7 +858,7 @@ int new_server(
         default : 
             break;
     }
-    
+
     snprintf(port_str, 7, "%d", port);
     ret = getaddrinfo(addr, port_str, &hints, &ai);
     if (ret != 0)
@@ -866,7 +876,7 @@ int new_server(
         
         return total;
     }
-    
+
     for (next = ai; next; next = next->ai_next)
     {
         if (AF_LOCAL == next->ai_family)
@@ -874,14 +884,14 @@ int new_server(
             // We do not support AF_LOCAL at this time.
             continue;
         }
-        
+
         fd = socket(next->ai_family, next->ai_socktype, next->ai_protocol);
         if (-1 == fd || BSP_RTN_SUCCESS != set_fd_nonblock(fd))
         {
             trace_msg(TRACE_LEVEL_ERROR, "Socket : Create socket error");
             continue;
         }
-        
+
         if (AF_INET == next->ai_family || AF_INET6 == next->ai_family)
         {
             // Network socket
@@ -898,7 +908,7 @@ int new_server(
                 struct sockaddr_in6 *srv_sin6 = (struct sockaddr_in6 *) next->ai_addr;
                 inet_ntop(AF_INET6, &srv_sin6->sin6_addr.s6_addr, ipaddr, 63);
             }
-            
+
             if (SOCK_STREAM == next->ai_socktype)
             {
                 trace_msg(TRACE_LEVEL_NOTICE, "Socket : Try to create a TCP server on %s:%d", ipaddr, port);
@@ -926,7 +936,7 @@ int new_server(
                 close(fd);
                 continue;
             }
-            
+
             // Bind
             // Don't worry about the length of sockaddr, It's sockaddr_storage in fact.
             if (-1 == bind(fd, next->ai_addr, next->ai_addrlen))
@@ -935,7 +945,7 @@ int new_server(
                 close(fd);
                 continue;
             }
-            
+
             if (SOCK_STREAM == next->ai_socktype && -1 == listen(fd, settings->tcp_listen_backlog))
             {
                 // Listen for TCP server
@@ -943,7 +953,7 @@ int new_server(
                 close(fd);
                 continue;
             }
-            
+
             trace_msg(TRACE_LEVEL_DEBUG, "Socket : Network server created on port %d", port);
         }
         else
@@ -952,13 +962,13 @@ int new_server(
             close(fd);
             continue;
         }
-        
+
         srv = bsp_calloc(1, sizeof(BSP_SERVER));
         if (!srv)
         {
             trigger_exit(BSP_RTN_ERROR_MEMORY, "Socket : Server alloc failed");
         }
-        
+
         _init_socket(&srv->sck, fd, (struct sockaddr_storage *) next->ai_addr, next);
 
         srv->name = NULL;
@@ -969,20 +979,20 @@ int new_server(
         srv->def_data_type = 0;
         reg_fd(fd, FD_TYPE_SOCKET_SERVER, (void *) srv);
         status_op_socket(0, STATUS_OP_SOCKET_SERVER_ADD, fd);
-        
+
         total ++;
         if (total >= *nfds)
         {
             trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Too many servers one time");
             break;
         }
-        
+
         fds[total - 1] = fd;
     }
-    
+
     *nfds = total;
     freeaddrinfo(ai);
-    
+
     return total;
 }
 
@@ -993,18 +1003,18 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
     BSP_CLIENT *clt = NULL;
     char ipaddr[64];
     socklen_t addrlen;
-    
+
     clt = bsp_calloc(1, sizeof(BSP_CLIENT));
     if (!clt)
     {
         return NULL;
     }
-    
+
     if (clt_addr)
     {
         memcpy(&clt->sck.saddr, clt_addr, sizeof(struct sockaddr_storage));
     }
-    
+
     clt->srv_fd = -1;
     
     if (IS_UDP((&srv->sck)))
@@ -1050,7 +1060,7 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
                 getsockname(fd, (struct sockaddr *) &vaddr4, &addrlen);
                 trace_msg(TRACE_LEVEL_DEBUG, "Socket : UDP IPv4 virtual port bind to %d", ntohs(vaddr4.sin_port));
             }
-            
+
             // Connect
             if (0 != connect(fd, (struct sockaddr *) &clt->sck.saddr, sizeof(struct sockaddr_storage)))
             {
@@ -1059,7 +1069,7 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
                 bsp_free(clt);
                 return NULL;
             }
-            
+
             if (AF_INET6 == clt->sck.saddr.ss_family)
             {
                 // IPv6
@@ -1109,7 +1119,7 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
             }
         }
     }
-    
+
     if (fd > 0)
     {
         _init_socket(&SCK(clt), fd, NULL, NULL);
@@ -1121,11 +1131,11 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
         clt->client_type = 0;
         clt->data_type = 0;
         clt->additional = NULL;
-        
+
         reg_fd(fd, FD_TYPE_SOCKET_CLIENT, (void *) clt);
         status_op_socket(SFD(srv), STATUS_OP_SOCKET_SERVER_CONNECT, 0);
     }
-    
+
     return clt;
 }
 
@@ -1138,7 +1148,7 @@ BSP_SERVER * get_client_connected_server(BSP_CLIENT *clt)
     {
         return NULL;
     }
-    
+
     int fd_type = FD_TYPE_SOCKET_SERVER;
     void *ptr = get_fd(clt->srv_fd, &fd_type);
     srv = (BSP_SERVER *) ptr;
@@ -1153,10 +1163,10 @@ int free_client(BSP_CLIENT *clt)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-    
+
     SCK(clt).state |= STATE_PRECLOSE;
     trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Set client %d as closing", SFD(clt));
-    
+
     return BSP_RTN_SUCCESS;
 }
 
@@ -1167,32 +1177,32 @@ static BSP_CONNECTOR * _new_unix_connector(const char *path)
     int flags = 1;
     struct stat tstat;
     struct sockaddr_un addr;
-    
+
     int fd = socket(AF_UNIX, SOCK_STREAM, 0);
     if (-1 == fd || BSP_RTN_SUCCESS != set_fd_nonblock(fd))
     {
         trace_msg(TRACE_LEVEL_ERROR, "Socket : Create UNIX local socket error");
         return NULL;
     }
-    
+
     if (0 != lstat(path, &tstat) || !S_ISSOCK(tstat.st_mode))
     {
         // Not sock file
         return NULL;
     }
-    
+
     setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (void *) &flags, sizeof(flags));
     memset(&addr, 0, sizeof(addr));
     addr.sun_family = AF_UNIX;
     strncpy(addr.sun_path, path, sizeof(addr.sun_path) - 1);
-    
+
     if (0 != connect(fd, (struct sockaddr *) &addr, SUN_LEN(&addr)))
     {
         trace_msg(TRACE_LEVEL_ERROR, "Socket : UNIX local connector connect error : %s", strerror(errno));
         close(fd);
         return NULL;
     }
-    
+
     cnt = bsp_calloc(1, sizeof(BSP_CONNECTOR));
     if (!cnt)
     {
@@ -1200,10 +1210,10 @@ static BSP_CONNECTOR * _new_unix_connector(const char *path)
         _exit(BSP_RTN_ERROR_MEMORY);
     }
     _init_socket(&cnt->sck, fd, NULL, NULL);
-    
+
     reg_fd(fd, FD_TYPE_SOCKET_CONNECTOR, (void *) cnt);
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : UNIX connector %d connected to %s", fd, path);
-    
+
     return cnt;
 }
 
@@ -1218,18 +1228,18 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
     struct addrinfo *ai;
     struct addrinfo hints;
     BSP_CONNECTOR *cnt = NULL;
-    
+
     hints.ai_flags = AI_V4MAPPED;
     hints.ai_protocol = 0;
     hints.ai_addrlen = 0;
     hints.ai_addr = NULL;
-    
+
     if (INET_TYPE_LOCAL == inet_type)
     {
         cnt = _new_unix_connector(addr);
         return cnt;
     }
-    
+
     switch (inet_type)
     {
         case INET_TYPE_IPV6 : 
@@ -1240,7 +1250,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
             hints.ai_family = AF_INET;
             break;
     }
-    
+
     switch (sock_type)
     {
         case SOCK_TYPE_UDP : 
@@ -1252,7 +1262,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
             hints.ai_socktype = SOCK_STREAM;
             break;
     }
-    
+
     snprintf(port_str, 7, "%d", port);
     error = getaddrinfo(addr, port_str, &hints, &ai);
     if (error != 0)
@@ -1270,7 +1280,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
 
         return NULL;
     }
-    
+
     if (ai)
     {
         // I just give you ONE connector at one time
@@ -1281,7 +1291,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
             freeaddrinfo(ai);
             return NULL;
         }
-        
+
         if (AF_INET == ai->ai_family || AF_INET6 == ai->ai_family)
         {
             // Network socket
@@ -1300,7 +1310,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
                     freeaddrinfo(ai);
                     return NULL;
                 }
-                
+
                 // Connect
                 if (0 != connect(fd, ai->ai_addr, ai->ai_addrlen))
                 {
@@ -1331,7 +1341,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
             freeaddrinfo(ai);
             return NULL;
         }
-        
+
         cnt = bsp_calloc(1, sizeof(BSP_CONNECTOR));
         if (!cnt)
         {
@@ -1340,19 +1350,19 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
         }
         set_fd_nonblock(fd);
         _init_socket(&cnt->sck, fd, (struct sockaddr_storage *) ai->ai_addr, ai);
-        
+
         reg_fd(fd, FD_TYPE_SOCKET_CONNECTOR, (void *) cnt);
         status_op_socket(0, STATUS_OP_SOCKET_CONNECTOR_CONNECT, 0);
         trace_msg(TRACE_LEVEL_DEBUG, "Socket : Connector %d connected to %s:%d", fd, addr, port);
         freeaddrinfo(ai);
-        
+
         // We have no on_connect event here, just do it on your mind
     }
     else
     {
         trace_msg(TRACE_LEVEL_ERROR, "Socket : No address infomation available");
     }
-    
+
     return cnt;
 }
 
@@ -1363,9 +1373,9 @@ int free_connector(BSP_CONNECTOR *cnt)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-    
+
     SCK(cnt).state |= STATE_PRECLOSE;
     trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Set connector %d as closing", SFD(cnt));
-    
+
     return BSP_RTN_SUCCESS;
 }

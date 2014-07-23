@@ -34,6 +34,7 @@ namespace Bsp\Socket;
 class Native implements \Bsp\ISocket
 {
     const READ_ONCE                 = 4096;
+    const RETIRES                   = 6;
     
     private $sockfp;
     
@@ -54,8 +55,14 @@ class Native implements \Bsp\ISocket
     {
         if ($this->sockfp)
         {
-            \socket_connect($this->sockfp, $host, $port);
-            \socket_set_nonblock($this->sockfp);
+            for ($n = 0; $n < self::RETIRES; $n ++)
+            {
+                if (\socket_connect($this->sockfp, $host, $port))
+                {
+                    break;
+                }
+            }
+            //\socket_set_nonblock($this->sockfp);
         }
         
         return;
@@ -73,12 +80,26 @@ class Native implements \Bsp\ISocket
     
     public function send($data)
     {
+        $sent = 0;
+        $size = \strlen($data);
         if ($this->sockfp)
         {
-            return \socket_write($this->sockfp, $data, \strlen($data));
+            while (true)
+            {
+                $n = \socket_write($this->sockfp, \substr($data, $sent), $size - $sent);
+                if (!$n)
+                {
+                    break;
+                }
+                $sent += $n;
+                if ($sent >= $size)
+                {
+                    break;
+                }
+            }
         }
         
-        return 0;
+        return $sent;
     }
     
     public function recv()
@@ -93,13 +114,18 @@ class Native implements \Bsp\ISocket
                 {
                     break;
                 }
+                $data .= $read;
+                if (\strlen($read) < self::READ_ONCE)
+                {
+                    break;
+                }
                 else
                 {
-                    $data .= $read;
+                    \socket_set_nonblock($this->sockfp);
                 }
             }
         }
-        
+        \socket_set_block($this->sockfp);
         return $data;
     }
 }

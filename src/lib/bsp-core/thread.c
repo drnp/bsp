@@ -52,7 +52,7 @@ int thread_init()
     {
         return BSP_RTN_SUCCESS;
     }
-    
+
     pthread_mutex_init(&init_lock, NULL);
     pthread_cond_init(&init_cond, NULL);
     static_worker_total = settings->static_workers;
@@ -61,7 +61,7 @@ int thread_init()
     {
         trigger_exit(BSP_RTN_ERROR_MEMORY, "Thread : Thread list alloc failed");
     }
-    
+
     int i;
     BSP_THREAD *worker;
     pthread_key_create(&lid_key, NULL);
@@ -72,7 +72,7 @@ int thread_init()
         worker->id = i;
         create_worker(worker);
     }
-    
+
     // Waiting for all workers
     pthread_mutex_lock(&init_lock);
     while (init_count < static_worker_total)
@@ -86,7 +86,7 @@ int thread_init()
     main_thread.id = -1;
     create_worker(&main_thread);
     pthread_setspecific(lid_key, (void *) &main_thread.id);
-    
+
     return BSP_RTN_SUCCESS;
 }
 
@@ -97,7 +97,7 @@ int create_worker(BSP_THREAD *t)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-    
+
     // Create runner
     script_new_state(&t->script_runner);
     if (!t->script_runner.state)
@@ -133,18 +133,19 @@ int create_worker(BSP_THREAD *t)
     reg_fd(t->loop_fd, FD_TYPE_EPOLL, NULL);
     reg_fd(t->notify_fd, FD_TYPE_EVENT, NULL);
     reg_fd(t->exit_fd, FD_TYPE_EXIT, NULL);
-    
+
     // Add notify to epoll
     struct epoll_event ev_notify;
     ev_notify.data.fd = t->notify_fd;
     ev_notify.events = EPOLLIN;
     epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, t->notify_fd, &ev_notify);
 
+    // Add exit to epoll
     struct epoll_event ev_exit;
     ev_exit.data.fd = t->exit_fd;
     ev_exit.events = EPOLLIN;
     epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, t->exit_fd, &ev_exit);
-    
+
     t->nfds = 0;
     bsp_spin_init(&t->fd_lock);
 
@@ -297,7 +298,7 @@ void * thread_process(void *arg)
                                     // Error
                                 }
                             }
-                            
+
                             srv->nclients ++;
                         }
                         else if (what & EPOLLOUT)
@@ -341,7 +342,8 @@ void * thread_process(void *arg)
                         if (what & EPOLLERR)
                         {
                             trace_msg(TRACE_LEVEL_ERROR, "Thread : Connection error on socket %d", SFD(clt));
-                            clt->sck.state |= STATE_CLOSE;
+                            clt->sck.state |= STATE_PRECLOSE;
+                            clt->sck.state |= STATE_ERROR;
                         }
                         
                         drive_socket(&SCK(clt));
@@ -378,9 +380,10 @@ void * thread_process(void *arg)
                         if (what & EPOLLERR)
                         {
                             trace_msg(TRACE_LEVEL_ERROR, "Thread : Connection error on socket %d", SFD(cnt));
-                            cnt->sck.state |= STATE_CLOSE;
+                            cnt->sck.state |= STATE_PRECLOSE;
+                            cnt->sck.state |= STATE_ERROR;
                         }
-                        
+
                         drive_socket(&SCK(cnt));
                     }
                     break;
@@ -443,7 +446,7 @@ int dispatch_to_thread(const int fd, int tid)
         // First dispatch
         thread_init();
     }
-    
+
     BSP_THREAD *t;
     BSP_SERVER *srv;
     BSP_CLIENT *clt;
@@ -455,15 +458,19 @@ int dispatch_to_thread(const int fd, int tid)
         // Next static worker
         tid = _next_static_worker();
     }
-    
+
     t = get_thread(tid);
+    if (!t)
+    {
+        trigger_exit(BSP_RTN_ERROR_PTHREAD, "Unavailable thread selected");
+    }
     trace_msg(TRACE_LEVEL_VERBOSE, "Thread : Thread %d selected by dispatcher", tid);
-    
+
     // Add fd to epoll
     int fd_type = FD_TYPE_ANY;
     void *ptr = get_fd(fd, &fd_type);
     struct epoll_event *ev = NULL;
-    
+
     if (ptr)
     {
         switch (fd_type)
@@ -516,9 +523,8 @@ int dispatch_to_thread(const int fd, int tid)
         trace_msg(TRACE_LEVEL_ERROR, "Thread : Epoll operate failed");
         return BSP_RTN_ERROR_IO;
     }
-    
     bsp_spin_unlock(&t->fd_lock);
-    
+
     // Send a signal to it
     static char sig_buff[8] = {0, 0, 0, 0, 0, 0, 0, 1};
     if (t->pid)
@@ -526,7 +532,7 @@ int dispatch_to_thread(const int fd, int tid)
         trace_msg(TRACE_LEVEL_VERBOSE, "Thread : Poke thread %d", t->id);
         write(t->notify_fd, sig_buff, 8);
     }
-    
+
     return BSP_RTN_SUCCESS;
 }
 
@@ -551,10 +557,9 @@ int remove_from_thread(const int fd)
     else
     {
         trace_msg(TRACE_LEVEL_ERROR, "Thread : FD %d not in thread", fd);
-        
         return BSP_RTN_ERROR_GENERAL;
     }
-    
+
     int fd_type = FD_TYPE_ANY;
     void *ptr = get_fd(fd, &fd_type);
     if (ptr)
@@ -583,13 +588,13 @@ int remove_from_thread(const int fd)
                 break;
         }
     }
-    
+
     if (t && t->pid)
     {
         bsp_spin_lock(&t->fd_lock);
         if (0 == epoll_ctl(t->loop_fd, EPOLL_CTL_DEL, fd, NULL))
         {
-	        set_fd_thread(fd, UNBOUNDED_THREAD);
+            set_fd_thread(fd, UNBOUNDED_THREAD);
             t->nfds --;
             // Send a signal to thread to end epoll_wait
             write(t->notify_fd, buff, 8);
@@ -601,7 +606,7 @@ int remove_from_thread(const int fd)
             bsp_spin_unlock(&t->fd_lock);
             return BSP_RTN_ERROR_EPOLL;
         }
-        
+
         bsp_spin_unlock(&t->fd_lock);
     }
 

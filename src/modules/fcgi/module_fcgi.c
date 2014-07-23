@@ -63,29 +63,58 @@ static void _finish_fcgi_resp(BSP_CONNECTOR *cnt)
     {
         lua_checkstack(caller, 3);
         lua_newtable(caller);
-        
+
         lua_pushstring(caller, "app_status");
         lua_pushinteger(caller, resp->app_status);
         lua_settable(caller, -3);
-        
+
         lua_pushstring(caller, "protocol_status");
         lua_pushinteger(caller, resp->protocol_status);
         lua_settable(caller, -3);
-        
+
         if (resp->data_stdout)
         {
             lua_pushstring(caller, "stdout");
-            lua_pushlstring(caller, STR_STR(resp->data_stdout), STR_LEN(resp->data_stdout));
+            // Find {CRLF}{CRLF}
+            size_t i;
+            int has_header = 0;
+            for (i = 0; i < STR_LEN(resp->data_stdout) - 3; i ++)
+            {
+                unsigned char *t = (unsigned char *) STR_STR(resp->data_stdout) + i;
+                if (0xd == t[0] && 0xa == t[1] && 0xd == t[2] && 0xa == t[3])
+                {
+                    // Split into header & body
+                    has_header = 1;
+                    break;
+                }
+            }
+            if (has_header)
+            {
+                lua_newtable(caller);
+
+                lua_pushstring(caller, "header");
+                lua_pushlstring(caller, STR_STR(resp->data_stdout), i);
+                lua_settable(caller, -3);
+
+                lua_pushstring(caller, "body");
+                lua_pushlstring(caller, STR_STR(resp->data_stdout) + i + 4, STR_LEN(resp->data_stdout) - i - 4);
+                lua_settable(caller, -3);
+            }
+            else
+            {
+                lua_pushlstring(caller, STR_STR(resp->data_stdout), STR_LEN(resp->data_stdout));
+            }
+
             lua_settable(caller, -3);
         }
-        
+
         if (resp->data_stderr)
         {
             lua_pushstring(caller, "stderr");
             lua_pushlstring(caller, STR_STR(resp->data_stderr), STR_LEN(resp->data_stderr));
             lua_settable(caller, -3);
         }
-        
+
         lua_pcall(caller, 1, 0, 0);
     }
     else

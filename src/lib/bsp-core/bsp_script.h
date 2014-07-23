@@ -77,6 +77,7 @@ typedef struct bsp_script_stack_t
     lua_State           *state;
     lua_State           *stack;
     int                 stack_ref;
+    BSP_SPINLOCK        lock;
 } BSP_SCRIPT_STACK;
 
 struct bsp_script_t

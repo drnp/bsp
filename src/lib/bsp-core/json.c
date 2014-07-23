@@ -686,7 +686,7 @@ int json_nd_encode(BSP_OBJECT *obj, BSP_STRING *str)
     {
         return 0;
     }
-    
+
     _json_append_obj(str, obj);
 
     return 0;
@@ -698,12 +698,12 @@ int json_nd_decode(const char *data, ssize_t len, BSP_OBJECT *obj)
     {
         return 0;
     }
-    
+
     if (len < 0)
     {
         len = strlen(data);
     }
-    
+
     size_t i;
     for (i = 0; i < len; i ++)
     {
@@ -714,6 +714,6 @@ int json_nd_decode(const char *data, ssize_t len, BSP_OBJECT *obj)
             break;
         }
     }
-    
+
     return 0;
 }
