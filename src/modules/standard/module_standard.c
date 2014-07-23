@@ -207,10 +207,7 @@ static int standard_timer_create(lua_State *s)
     tmr->on_stop = _timer_on_stop;
     dispatch_to_thread(tmr->fd, curr_thread_id());
     // Push function into timer
-    int func_ref = luaL_ref(s, LUA_REGISTRYINDEX);
-    lua_pushinteger(tmr->script_stack.stack, func_ref);
-    lua_gettable(tmr->script_stack.stack, LUA_REGISTRYINDEX);
-    luaL_unref(s, LUA_REGISTRYINDEX, func_ref);
+    lua_xmove(s, tmr->script_stack.stack, 1);
     start_timer(tmr);
     
     lua_pushinteger(s, tmr->fd);

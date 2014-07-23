@@ -11,7 +11,7 @@ $config = array(
     'driver'    => \Bsp\Client::SOCKET_DRIVER_WRAPPER, 
     'inet'      => \Bsp\Client::INET_TYPE_IPV4, 
     'sock'      => \Bsp\Client::SOCK_TYPE_TCP, 
-    'serializer'=> \Bsp\Client::SERIALIZE_TYPE_NATIVE
+    'serializer'=> \Bsp\Client::SERIALIZE_TYPE_JSON
 );
 
 $bsp = new \Bsp\Client($config);

@@ -392,10 +392,7 @@ static int fcgi_send_request(lua_State *s)
             if (lua_isfunction(s, -1))
             {
                 // Callback function
-                int func_ref = luaL_ref(s, LUA_REGISTRYINDEX);
-                lua_pushinteger(cnt->script_stack.stack, func_ref);
-                lua_gettable(cnt->script_stack.stack, LUA_REGISTRYINDEX);
-                luaL_unref(s, LUA_REGISTRYINDEX, func_ref);
+                lua_xmove(s, cnt->script_stack.stack, 1);
             }
             else if (lua_isstring(s, -1))
             {

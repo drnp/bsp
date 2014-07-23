@@ -593,7 +593,7 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                             trace_msg(TRACE_LEVEL_DEBUG, "Server : Ignore a sick packet");
                         }
                     }
-
+                    del_string(str);
                     ret += 1 + (l_type = LENGTH_TYPE_32B ? 4 : 8) + plen;
                 }
                 else

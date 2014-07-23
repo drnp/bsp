@@ -1130,14 +1130,16 @@ int object_serialize(BSP_OBJECT *obj, BSP_STRING *output, int length_mark)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-    
+
     BSP_OBJECT_ITEM *curr = NULL;
+    bsp_spin_lock(&obj->obj_lock);
     reset_object(obj);
     while ((curr = curr_item(obj)))
     {
         _insert_item_to_string(curr, output, SERIALIZE_OBJECT, length_mark);
         next_item(obj);
     }
+    bsp_spin_unlock(&obj->obj_lock);
 
     return BSP_RTN_SUCCESS;
 }
@@ -1372,13 +1374,13 @@ size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int l
     {
         return 0;
     }
-    
+
     size_t remaining = len;
     size_t pn;
     char val_type;
     char *curr = (char *) input;
     size_t idx = 0;
-    
+
     BSP_OBJECT *next_obj = NULL;
     BSP_OBJECT_ITEM *item = NULL;
     while (1)
@@ -1430,7 +1432,7 @@ size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int l
             break;
         }
     }
-    
+
     return len - remaining;
 }
 
@@ -1440,9 +1442,10 @@ size_t object_unserialize(const char *input, size_t len, BSP_OBJECT *obj, int le
     {
         return 0;
     }
-    
+    bsp_spin_lock(&obj->obj_lock);
     size_t pn = _parse_object(input, len, obj, length_mark);
-    
+    bsp_spin_unlock(&obj->obj_lock);
+
     return pn;
 }
 
@@ -1453,7 +1456,7 @@ static void _array_to_lua(BSP_OBJECT_ITEM *array, lua_State *s)
     {
         return;
     }
-    
+
     BSP_OBJECT *next_obj;
     BSP_OBJECT_ITEM **list = (BSP_OBJECT_ITEM **) array->value.rval;
     BSP_OBJECT_ITEM *item = NULL;
@@ -1461,7 +1464,7 @@ static void _array_to_lua(BSP_OBJECT_ITEM *array, lua_State *s)
     {
         return;
     }
-    
+
     size_t idx;
     lua_checkstack(s, 16);
     lua_newtable(s);
@@ -1533,13 +1536,14 @@ void object_to_lua(BSP_OBJECT *obj, lua_State *s)
     {
         return;
     }
-    
+
     BSP_OBJECT *next_obj;
     BSP_OBJECT_ITEM *curr;
-    
+
     lua_checkstack(s, 16);
     lua_checkstack(s, 3);
     lua_newtable(s);
+    bsp_spin_lock(&obj->obj_lock);
     reset_object(obj);
     while ((curr = curr_item(obj)))
     {
@@ -1598,7 +1602,8 @@ void object_to_lua(BSP_OBJECT *obj, lua_State *s)
         }
         next_item(obj);
     }
-    
+    bsp_spin_unlock(&obj->obj_lock);
+
     return;
 }
 
