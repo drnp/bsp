@@ -46,6 +46,7 @@
 /* Macros */
 #define STR_LEN(s)                              s->original_len
 #define STR_STR(s)                              s->str
+#define STR_IS_EQUAL(s1, s2)                    (s1) && (s2) && (s1->original_len == s2->original_len) && (0 == memcmp(s1->str, s2->str, s1->original_len))
 
 /* Structs */
 typedef struct bsp_string_t

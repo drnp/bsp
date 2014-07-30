@@ -34,6 +34,127 @@
 #include "bsp.h"
 
 /* Set values */
+void set_item_int8(BSP_VALUE *val, const int8_t value)
+{
+    if (val)
+    {
+        set_int8(value, val->lval);
+        val->type = BSP_VAL_INT8;
+    }
+
+    return;
+}
+
+void set_item_int16(BSP_VALUE *val, const int16_t value)
+{
+    if (val)
+    {
+        set_int16(value, val->lval);
+        val->type = BSP_VAL_INT16;
+    }
+
+    return;
+}
+
+void set_item_int32(BSP_VALUE *val, const int32_t value)
+{
+    if (val)
+    {
+        set_int32(value, val->lval);
+        val->type = BSP_VAL_INT32;
+    }
+
+    return;
+}
+
+void set_item_int64(BSP_VALUE *val, const int64_t value)
+{
+    if (val)
+    {
+        set_int64(value, val->lval);
+        item->value.type = BSP_VAL_INT64;
+    }
+
+    return;
+}
+
+void set_item_boolean(BSP_VALUE *val, const int value)
+{
+    if (val)
+    {
+        set_int8((value == 0) ? BSP_BOOLEAN_FALSE : BSP_BOOLEAN_TRUE, val->lval);
+        val->type = BSP_VAL_BOOLEAN;
+    }
+
+    return;
+}
+
+void set_item_float(BSP_VALUE *val, const float value)
+{
+    if (val)
+    {
+        set_float(value, val->lval);
+        val->type = BSP_VAL_FLOAT;
+    }
+
+    return;
+}
+
+void set_item_double(BSP_VALUE *val, const double value)
+{
+    if (val)
+    {
+        set_double(value, val->lval);
+        val->type = BSP_VAL_DOUBLE;
+    }
+
+    return;
+}
+
+void set_item_pointer(BSP_OBJECT_ITEM *val, const void *p)
+{
+    if (val)
+    {
+        val->rval = (void *) p;
+        val->type = BSP_VAL_POINTER;
+    }
+
+    return;
+}
+
+void set_item_string(BSP_VALUE *val, BSP_STRING *str)
+{
+    if (val & str)
+    {
+        val->rval = (void *) str;
+        val->type = BSP_VAL_STRING;
+    }
+
+    return;
+}
+
+void set_item_object(BSP_VALUE *val, BSP_OBJECT *obj)
+{
+    if (val && obj)
+    {
+        val->rval = (void *) obj;
+        val->type = BSP_VAL_OBJECT;
+    }
+
+    return;
+}
+
+void set_item_null(BSP_OBJECT_ITEM *val)
+{
+    if (val)
+    {
+        val->type = BSP_VAL_NULL;
+    }
+
+    return;
+}
+
+/*
 void set_item_int8(BSP_OBJECT_ITEM *item, const int8_t value)
 {
     if (item)
@@ -161,7 +282,7 @@ void set_item_object(BSP_OBJECT_ITEM *item, BSP_OBJECT *obj)
     
     return;
 }
-
+废物
 void set_item_pointer(BSP_OBJECT_ITEM *item, const void *p)
 {
     if (item)
@@ -180,8 +301,202 @@ void set_item_null(BSP_OBJECT_ITEM *item)
     
     return;
 }
+*/
+
+/* Object & Value */
+BSP_OBJECT * new_object(char type)
+{
+    BSP_OBJECT *obj = bsp_calloc(1, sizeof(BSP_OBJECT));
+    if (obj)
+    {
+        obj->type = type;
+        bsp_spin_init(&obj->lock);
+    }
+
+    return obj;
+}
+
+void del_object(BSP_OBJECT *obj)
+{
+    if (!obj)
+    {
+        return;
+    }
+
+    bsp_spin_lock(&obj->lock);
+    bsp_spin_unlock(&obj->lock);
+
+    return;
+}
+
+BSP_VALUE * new_value()
+{
+    return (BSP_VALUE *) bsp_calloc(1, sizeof(BSP_VALUE));
+}
+
+void del_value(BSP_VALUE *val)
+{
+    if (val)
+    {
+        if (BSP_VAL_POINTER == val->type)
+        {
+            // Just ignore, we cannot determine what you are
+        }
+        else if (BSP_VAL_STRING == val->type)
+        {
+            del_string((BSP_STRING *) val->rval);
+        }
+        else if (BSP_VAL_OBJECT == val->type)
+        {
+            del_object((BSP_OBJECT *) val->rval);
+        }
+        else
+        {
+            // Local value, Just free
+        }
+    }
+
+    return bsp_free(val);
+}
 
 /* Item cursor operates */
+BSP_VALUE * curr_item(BSP_OBJECT *obj)
+{
+    if (!obj)
+    {
+        return NULL;
+    }
+
+    BSP_VALUE *curr;
+    switch (obj->type)
+    {
+        case OBJECT_TYPE_SINGLE : 
+            curr = (BSP_VALUE *) obj->node;
+            break;
+        case OBJECT_TYPE_ARRAY : 
+            struct bsp_array_t *array = (struct bsp_array_t *) obj->node;
+            if (array)
+            {
+                size_t bucket = (array->curr / ARRAY_BUCKET_SIZE);
+                if (array->curr < array->nitems && bucket < array->nbuckets && array->items[bucket])
+                {
+                    curr = array->items[bucket][curr % ARRAY_BUCKET_SIZE];
+                }
+            }
+            break;
+        case OBJECT_TYPE_HASH : 
+            struct bsp_hash_t *hash = (struct bsp_hash_t *) obj->node;
+            if (hash)
+            {
+                if (hash->curr)
+                {
+                    curr = hash->curr->value;
+                }
+            }
+            break;
+        default : 
+            curr = NULL;
+            break;
+    }
+
+    return curr;
+}
+
+void reset_obj(BSP_OBJECT *obj)
+{
+    if (!obj)
+    {
+        return;
+    }
+
+    switch (obj->type)
+    {
+        case OBJECT_TYPE_ARRAY : 
+            struct bsp_array_t *array = (struct bsp_array_t *) obj->node;
+            if (array)
+            {
+                array->curr = 0;
+            }
+            break;
+        case OBJECT_TYPE_HASH : 
+            struct bsp_hash_t *hash = (struct bsp_hash_t *) obj->node;
+            if (hash)
+            {
+                hash->curr = hash->head;
+            }
+            break;
+        case OBJECT_TYPE_SINGLE : 
+        default : 
+            // Nothing to do
+            break;
+    }
+
+    return;
+}
+
+void next_item(BSP_OBJECT *obj)
+{
+    if (!obj)
+    {
+        return;
+    }
+
+    switch (obj->type)
+    {
+        case OBJECT_TYPE_ARRAY : 
+            struct bsp_array_t *array = (struct bsp_array_t *) obj->node;
+            if (array && array->curr < array->nitems)
+            {
+                array->curr ++;
+            }
+            break;
+        case OBJECT_TYPE_HASH : 
+            struct bsp_hash_t *hash = (struct bsp_hash_t *) obj->node;
+            if (hash && hash->curr)
+            {
+                hash->curr = hash->curr->lnext;
+            }
+            break;
+        case OBJECT_TYPE_SINGLE : 
+        default : 
+            // Nothing to NEXT
+            break;
+    }
+
+    break;
+}
+
+void prev_item(BSP_OBJECT *obj)
+{
+    if (!obj)
+    {
+        return;
+    }
+
+    switch (obj->type)
+    {
+        case OBJECT_TYPE_ARRAY : 
+            struct bsp_array_t *array = (struct bsp_array_t *) obj->node;
+            if (array && array->curr > 0)
+            {
+                array->curr --;
+            }
+            break;
+        case OBJECT_TYPE_HASH : 
+            struct bsp_hash_t *hash = (struct bsp_hash_t *) obj->node;
+            if (hash && hash->curr)
+            {
+                hash->curr = hash->curr->lprev;
+            }
+            break;
+        case OBJECT_TYPE_SINGLE : 
+        default : 
+            // Nothing to NEXT
+            break;
+    }
+}
+
+/*
 BSP_OBJECT_ITEM * curr_item(BSP_OBJECT *obj)
 {
     if (obj && obj->curr)
@@ -407,8 +722,9 @@ void del_object(BSP_OBJECT *obj)
     
     return;
 }
-
+*/
 /* Sort */
+/*
 inline static int __sort_compare(const char *v1, 
                                 size_t v1_len, 
                                 long long int v1_int, 
@@ -660,7 +976,295 @@ int sort_object(BSP_OBJECT *obj)
 
     return BSP_RTN_SUCCESS;
 }
+*/
+// Find item from hash
+static struct bsp_hash_item_t * _find_hash(struct bsp_hash_t *hash, BSP_STRING *key)
+{
+    struct bsp_hash_item_t *ret = NULL;
+    if (hash && key && hash->hash_table)
+    {
+        uint32_t hash_key = hash(STR_STR(key), STR_LEN(key));
+        struct bsp_hash_item_t * curr = hash->hash_table[hash_key % hash->hash_size];
+        while (curr)
+        {
+            if (STR_IS_EQUAL(key, curr->key))
+            {
+                ret = curr;
+                break;
+            }
+            curr = curr->next;
+        }
+    }
 
+    return ret;
+}
+
+// Remove item from hash
+static int _remove_hash(struct bsp_hash_t *hash, BSP_STRING *key)
+{
+    int ret = 0;
+    struct bsp_hash_item_t *item = _find_hash(hash, key);
+    if (item)
+    {
+        if (hash->head == item)
+        {
+            hash->head = item->lnext;
+        }
+        if (hash->tail == item)
+        {
+            hash->tail = item->lprev;
+        }
+        if (hash->curr == item)
+        {
+            hash->curr = item->lnext;
+        }
+        if (item->lnext)
+        {
+            item->lnext->lprev = item->lprev;
+        }
+        if (item->next)
+        {
+            item->next->prev = item->prev;
+        }
+        if (item->lprev)
+        {
+            item->lprev->lnext = item->lnext;
+        }
+        if (item->prev)
+        {
+            item->prev->next = item->next;
+        }
+
+        ret = 1;
+    }
+
+    return ret;
+}
+
+// Insert an item into hash
+static int _insert_hash(struct bsp_hash_t *hash, BSP_STRING *key, BSP_VALUE *val)
+{
+    int ret = 0;
+    if (hash && hash->hash_table && key && val)
+    {
+        struct bsp_hash_item_t *item = _find_hash(hash, key);
+        if (item)
+        {
+            // Just overwrite value
+            if (item->value)
+            {
+                del_value(item->value);
+            }
+            item->value = val;
+        }
+        else
+        {
+            item = bsp_calloc(1, sizeof(struct bsp_hash_item_t));
+            item->key = key;
+            item->value = val;
+            // Insert into link
+            if (!hash->head)
+            {
+                hash->head = item;
+            }
+            if (hash->tail)
+            {
+                hash->tail->lnext = item;
+                item->lprev = hash->tail;
+            }
+            hash->tail = item;
+
+            // Insert into hash table
+            uint32_t hash_key = hash(STR_STR(key), STR_LEN(key));
+            struct bsp_hash_item_t *bucket = &hash->hash_table[hash_key % hash_size];
+            item->next = bucket->next;
+            item->prev = bucket;
+            bucket->next = item;
+
+            ret = 1;
+        }
+    }
+
+    return ret;
+}
+
+// Enlarge hash table, rebuild hash link
+static void _rebuild_hash(struct bsp_hash_t *hash, size_t new_hash_size)
+{
+    if (hash && new_hash_size)
+    {
+        if (new_hash_size == hash->hash_size)
+        {
+            return;
+        }
+
+        if (hash->hash_table)
+        {
+            bsp_free(hash_table);
+        }
+        hash->hash_table = bsp_calloc(new_hash_size, sizeof(struct bsp_hash_item_t));
+        hash->hash_size = new_hash_size;
+
+        // Insert every item from link
+        struct bsp_hash_item_t *curr = hash->head;
+        struct bsp_hash_item_t *bucket;
+        uint32_t hash_key;
+        while (curr)
+        {
+            hash_key = hash(STR_STR(key), STR_LEN(key));
+            bucket = &hash->hash_table[hash_key % hash->hash_size];
+            curr->next = bucket->next;
+            curr->prev = bucket;
+            bucket->next = curr;
+            curr = curr->lnext;
+        }
+    }
+
+    return;
+}
+
+// Evalute a single (Number / String / Boolean etc) to a object
+void object_set_single(BSP_OBJECT *obj, BSP_VALUE *val)
+{
+    if (obj && OBJECT_TYPE_SINGLE == obj->type)
+    {
+        obj->node = (BSP_VALUE *) val;
+    }
+
+    return;
+}
+
+// Add an item into array
+void object_set_array(BSP_OBJECT *obj, ssize_t idx, BSP_VALUE *val)
+{
+    if (obj && OBJECT_TYPE_ARRAY == obj->type)
+    {
+        struct bsp_array_t *array = (struct bsp_array_t *) obj->node;
+        if (!array)
+        {
+            // Make a new array
+            array = bsp_calloc(1, sizeof(struct bsp_array_t));
+            obj->node = (void *) array;
+        }
+
+        if (idx < 0)
+        {
+            idx = array->nitems;
+        }
+
+        size_t bucket = (idx / ARRAY_BUCKET_SIZE);
+        size_t seq = idx % ARRAY_BUCKET_SIZE;
+        size_t nbuckets = array->nbuckets;
+        if (bucket >= nbuckets)
+        {
+            // Enlarge buckets
+            nbuckets = 2 << (log2(bucket + 1));
+            array->items = bsp_realloc(array->item, nbuckets * sizeof(struct BSP_VAL **));
+            array->nbuckets = nbuckets;
+        }
+
+        if (!array->item[bucket])
+        {
+            // New bucket
+            array->item[bucket] = bsp_calloc(ARRAY_BUCKET_SIZE, sizeof(struct BSP_VAL *));
+        }
+
+        if (array->item[bucket][seq])
+        {
+            // Remove old value
+            del_value(array->item[bucket][seq]);
+        }
+        array->item[bucket][seq] = val;
+        if (idx >= array->nitems)
+        {
+            array->nitems = idx + 1;
+        }
+    }
+
+    return;
+}
+
+// Insert / Remove an item into / from a hash
+void object_set_hash(BSP_OBJECT_*obj, BSP_STRING *key, BSP_VALUE *val)
+{
+    if (obj && OBJECT_TYPE_HASH == obj->type && key)
+    {
+        struct bsp_hash_t *hash = (struct bsp_hash_t *) obj->node;
+        if (!hash)
+        {
+            // Make a new hash
+            hash = bsp_calloc(1, sizeof(struct bsp_hash_t));
+            hash->hash_size = HASH_SIZE_INITIAL;
+            hash->hash_table = bsp_calloc(HASH_SIZE_INITIAL, sizeof(struct bsp_hash_item_t));
+            obj->node = (void *) hash;
+        }
+
+        if (val)
+        {
+            // Insert
+            hash->nitems += _insert_hash(hash, key, val);
+        }
+        else
+        {
+            // Remove
+            hash->nitems -= _remove_hash(hash, key);
+        }
+    }
+
+    return;
+}
+
+// Get single value from object
+BSP_VALUE * object_get_single(BSP_OBJECT *obj)
+{
+    BSP_VALUE *ret = NULL;
+    if (obj && OBJECT_TYPE_SINGLE == obj->type)
+    {
+        ret = (BSP_VALUE *) obj->node;
+    }
+
+    return ret;
+}
+
+// Get value from array by given index
+BSP_VALUE * object_get_array(BSP_OBJECT *obj, size_t idx)
+{
+    BSP_VALUE *ret = NULL;
+    if (obj && OBJECT_TYPE_ARRAY == obj->type)
+    {
+        struct bsp_array_t *array = (struct bsp_array_t *) obj->node;
+        size_t bucket = idx / ARRAY_BUCKET_SIZE;
+        size_t seq = idx % ARRAY_BUCKET_SIZE;
+        if (array && idx < array->nitems && bucket < array->nbuckets && array->items[bucket])
+        {
+            ret = array->items[bucket][seq];
+        }
+    }
+
+    return ret;
+}
+
+// Get value from hash table
+BSP_VALUE * object_get_hash(BSP_OBJECT *obj, BSP_STRING *key)
+{
+    BSP_VALUE *ret = NULL;
+    if (obj && OBJECT_TYPE_HASH == obj->type)
+    {
+        struct bsp_hash_t *hash = (struct bsp_hash_t *) obj->node;
+        if (hash)
+        {
+            struct bsp_hash_item_t *item = _find_hash(hash, key);
+            if (item)
+            {
+                ret = item->value;
+            }
+        }
+    }
+
+    return ret;
+}
+
+/*
 // Rehash object
 static int rehash_object(BSP_OBJECT *obj, size_t new_hash_size)
 {
@@ -1003,7 +1607,9 @@ BSP_OBJECT_ITEM * array_get_item(BSP_OBJECT_ITEM *array, size_t idx)
     
     return (idx >= array->value.rval_len) ? NULL : list[idx];
 }
-
+*/
+/* Serializer & Unserializer */
+/*
 // Serialize an object into stream
 static void _insert_item_to_string(BSP_OBJECT_ITEM *item, BSP_STRING *str, int mode, int length_mark)
 {
@@ -1269,7 +1875,7 @@ size_t _parse_object(const char *input, size_t len, BSP_OBJECT *obj, int length_
     {
         return 0;
     }
-    
+
     size_t remaining = len;
     size_t pn;
     char val_type;
@@ -1372,7 +1978,7 @@ size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int l
     {
         return 0;
     }
-    
+
     size_t remaining = len;
     size_t pn;
     char val_type;
@@ -1526,7 +2132,10 @@ static void _array_to_lua(BSP_OBJECT_ITEM *array, lua_State *s)
     
     return;
 }
+*/
 
+/* Lua Operator */
+/*
 void object_to_lua(BSP_OBJECT *obj, lua_State *s)
 {
     if (!obj || !s)
@@ -1847,3 +2456,4 @@ void object_from_lua(BSP_OBJECT *obj, lua_State *s, int idx)
     
     return;
 }
+*/
