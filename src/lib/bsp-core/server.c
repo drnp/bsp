@@ -92,7 +92,7 @@ static size_t _real_output_client(BSP_CLIENT *clt, const char *data, ssize_t len
         BSP_STRING *ws_data = new_string(NULL, 0);
         if (ws_data)
         {
-            generate_websocket_data((const char *) data, (ssize_t) len, WS_OPCODE_BINARY, 0, ws_data);
+            ws_data = generate_websocket_data((const char *) data, (ssize_t) len, WS_OPCODE_BINARY, 0);
             slen = append_data_socket(&SCK(clt), (const char *) STR_STR(ws_data), STR_LEN(ws_data));
             del_string(ws_data);
         }
@@ -121,16 +121,15 @@ size_t output_client_raw(BSP_CLIENT *clt, const char *data, ssize_t len)
         len = strlen(data);
     }
 
-    BSP_STRING *stream = new_string(data, len);
+    char placeholder[1] = {((PACKET_TYPE_RAW & 0b111) << 5) | ((clt->packet_serialize_type & 0b111) << 2) | (clt->packet_compress_type & 0b11)};
+    char num_str[9];
+    int ret = BSP_RTN_SUCCESS;
+    size_t sent = 0;
+    BSP_STRING *stream = (COMPRESS_TYPE_NONE == clt->packet_compress_type) ? new_string_const(data, len) : new_string(data, len);
     if (!stream)
     {
         return 0;
     }
-
-    char placeholder[1] = {((PACKET_TYPE_RAW & 0b111) << 5) | ((clt->packet_length_type & 0b1) << 4) | ((clt->packet_serialize_type & 0b11) << 2) | (clt->packet_compress_type & 0b11)};
-    char num_str[8];
-    int ret = BSP_RTN_SUCCESS;
-    size_t sent = 0;
 
     // If compress
     switch (clt->packet_compress_type)
@@ -148,6 +147,7 @@ size_t output_client_raw(BSP_CLIENT *clt, const char *data, ssize_t len)
             ret = string_compress_snappy(stream);
             break;
 #endif
+        case COMPRESS_TYPE_NONE : 
         default : 
             break;
     }
@@ -158,25 +158,15 @@ size_t output_client_raw(BSP_CLIENT *clt, const char *data, ssize_t len)
         trace_msg(TRACE_LEVEL_ERROR, "Server : Data compress failed");
     }
 
-    BSP_STRING *str = new_string(NULL, 0);
+    BSP_STRING *str = new_string(placeholder, 1);
     if (!str)
     {
         del_string(stream);
         return 0;
     }
 
-    string_append(str, placeholder, 1);
-    if (LENGTH_TYPE_32B == clt->packet_length_type)
-    {
-        set_int32((int32_t) STR_LEN(stream), num_str);
-        string_append(str, (const char *) num_str, 4);
-    }
-    else
-    {
-        set_int64((int64_t) STR_LEN(stream), num_str);
-        string_append(str, (const char *) num_str, 8);
-    }
-
+    int num_len = set_vint((int64_t) STR_LEN(stream), num_str);
+    string_append(str, (const char *) num_str, (ssize_t) num_len);
     string_append(str, STR_STR(stream), STR_LEN(stream));
     sent = _real_output_client(clt, STR_STR(str), STR_LEN(str));
     del_string(stream);
@@ -193,31 +183,26 @@ size_t output_client_obj(BSP_CLIENT *clt, BSP_OBJECT *obj)
         return 0;
     }
 
-    BSP_STRING *stream = new_string(NULL, 0);
-    if (!stream)
-    {
-        return 0;
-    }
-
-    char placeholder[1] = {((PACKET_TYPE_OBJ & 0b111) << 5) | ((clt->packet_length_type & 0b1) << 4) | ((clt->packet_serialize_type & 0b11) << 2) | (clt->packet_compress_type & 0b11)};
-    char num_str[8];
+    char placeholder[1] = {((PACKET_TYPE_OBJ & 0b111) << 5) | ((clt->packet_serialize_type & 0b111) << 2) | (clt->packet_compress_type & 0b11)};
+    char num_str[9];
     int ret = BSP_RTN_SUCCESS;
     size_t sent = 0;
+    BSP_STRING *stream = NULL;
 
     // Pack data
     switch (clt->packet_serialize_type)
     {
         case SERIALIZE_TYPE_NATIVE : 
-            object_serialize(obj, stream, clt->packet_length_type);
+            stream = object_serialize(obj);
             break;
         case SERIALIZE_TYPE_JSON : 
-            json_nd_encode(obj, stream);
+            stream = json_nd_encode(obj);
             break;
         case SERIALIZE_TYPE_MSGPACK : 
-            //msgpack_nd_encode(obj, stream);
+            //stream = msgpack_nd_encode(obj);
             break;
         case SERIALIZE_TYPE_AMF : 
-            //amf_nd_encode(obj, stream);
+            //stream = amf_nd_encode(obj);
             break;
         default : 
             break;
@@ -251,25 +236,15 @@ size_t output_client_obj(BSP_CLIENT *clt, BSP_OBJECT *obj)
         trace_msg(TRACE_LEVEL_ERROR, "Server : Data compress failed");
     }
 
-    BSP_STRING *str = new_string(NULL, 0);
+    BSP_STRING *str = new_string(placeholder, 1);
     if (!str)
     {
         del_string(stream);
         return 0;
     }
 
-    string_append(str, placeholder, 1);
-    if (LENGTH_TYPE_32B == clt->packet_length_type)
-    {
-        set_int32((int32_t) STR_LEN(stream), num_str);
-        string_append(str, (const char *) num_str, 4);
-    }
-    else
-    {
-        set_int64((int64_t) STR_LEN(stream), num_str);
-        string_append(str, (const char *) num_str, 8);
-    }
-
+    int num_len = set_vint((int64_t) STR_LEN(stream), num_str);
+    string_append(str, (const char *) num_str, (ssize_t) num_len);
     string_append(str, STR_STR(stream), STR_LEN(stream));
     sent = _real_output_client(clt, STR_STR(str), STR_LEN(str));
     del_string(stream);
@@ -286,38 +261,42 @@ size_t output_client_cmd(BSP_CLIENT *clt, int cmd, BSP_OBJECT *obj)
         return 0;
     }
 
-    BSP_STRING *stream = new_string(NULL, 0);
+    char placeholder[1] = {((PACKET_TYPE_CMD & 0b111) << 5) | ((clt->packet_serialize_type & 0b111) << 2) | (clt->packet_compress_type & 0b11)};
+    char num_str[9];
+    set_int32((int32_t) cmd, num_str);
+    int ret = BSP_RTN_SUCCESS;
+    size_t sent = 0;
+    BSP_STRING *stream = new_string((const char *) num_str, 4);
     if (!stream)
     {
         return 0;
     }
 
-    char placeholder[1] = {((PACKET_TYPE_CMD & 0b111) << 5) | ((clt->packet_length_type & 0b1) << 4) | ((clt->packet_serialize_type & 0b11) << 2) | (clt->packet_compress_type & 0b11)};
-    char num_str[8];
-    set_int32((int32_t) cmd, num_str);
-    string_append(stream, (const char *) num_str, 4);
-    int ret = BSP_RTN_SUCCESS;
-    size_t sent = 0;
-
     // Pack data
+    BSP_STRING *data = NULL;
     switch (clt->packet_serialize_type)
     {
         case SERIALIZE_TYPE_NATIVE : 
-            object_serialize(obj, stream, clt->packet_length_type);
+            data = object_serialize(obj);
             break;
         case SERIALIZE_TYPE_JSON : 
-            json_nd_encode(obj, stream);
+            data = json_nd_encode(obj);
             break;
         case SERIALIZE_TYPE_MSGPACK : 
-            //msgpack_nd_encode(obj, stream);
+            //data = msgpack_nd_encode(obj);
             break;
         case SERIALIZE_TYPE_AMF : 
-            //amf_nd_encode(obj, stream);
+            //data = amf_nd_encode(obj);
             break;
         default : 
             break;
     }
 
+    if (data)
+    {
+        string_append(stream, STR_STR(data), STR_LEN(data));
+        del_string(data);
+    }
     // If compress
     switch (clt->packet_compress_type)
     {
@@ -346,25 +325,15 @@ size_t output_client_cmd(BSP_CLIENT *clt, int cmd, BSP_OBJECT *obj)
         trace_msg(TRACE_LEVEL_ERROR, "Server : Data compress failed");
     }
 
-    BSP_STRING *str = new_string(NULL, 0);
+    BSP_STRING *str = new_string(placeholder, 1);
     if (!str)
     {
         del_string(stream);
         return 0;
     }
 
-    string_append(str, placeholder, 1);
-    if (LENGTH_TYPE_32B == clt->packet_length_type)
-    {
-        set_int32((int32_t) STR_LEN(stream), num_str);
-        string_append(str, (const char *) num_str, 4);
-    }
-    else
-    {
-        set_int64((int64_t) STR_LEN(stream), num_str);
-        string_append(str, (const char *) num_str, 8);
-    }
-
+    int num_len = set_vint((int64_t) STR_LEN(stream), num_str);
+    string_append(str, (const char *) num_str, (ssize_t) num_len);
     string_append(str, STR_STR(stream), STR_LEN(stream));
     sent = _real_output_client(clt, STR_STR(str), STR_LEN(str));
     del_string(stream);
@@ -391,9 +360,8 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
     size_t plen;
     BSP_STRING *str = NULL;
     BSP_OBJECT *obj = NULL;
-    int cmd;
     char hdr;
-    int p_type, l_type, s_type, c_type;
+    int p_type, s_type, c_type;
 
     switch (clt->data_type)
     {
@@ -412,14 +380,12 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                 remaining -= 1;
                 hdr = stream[0];
                 // One-byte header : 
-                // | * * * | * | * * | * * |
+                // | * * * | * * * | * * |
                 // First 3 bits         : packet type (RAW / OBJ / CMD)
-                // Next 1 bits          : length type (32/64)
-                // Following 2 bits     : Object serializa type (Native - BSP.Packet / Json / MsgPack / AMF)
+                // Following 3 bits     : Object serializa type (Native - BSP.Packet / Json / MsgPack / AMF / ...)
                 // last 2 bits          : Compression type (None / Zlib deflate / miniLZO / Google snappy)
                 p_type = (hdr >> 5) & 0b111;
-                l_type = (hdr >> 4) & 0b1;
-                s_type = (hdr >> 2) & 0b11;
+                s_type = (hdr >> 2) & 0b111;
                 c_type = (hdr) & 0b11;
 
                 if (PACKET_TYPE_RAW == p_type || 
@@ -427,30 +393,15 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                     PACKET_TYPE_CMD == p_type)
                 {
                     // Data packet
-                    if (LENGTH_TYPE_32B == l_type)
+                    int safe = (int) remaining;
+                    plen = get_vint(stream + 1, &safe);
+                    if (safe < 0)
                     {
-                        if (remaining < 4)
-                        {
-                            // Imperfect packet
-                            break;
-                        }
-
-                        plen = (size_t) get_int32(stream + 1);
-                        remaining -= 4;
-                        stream += 5;
+                        // Imperfect packet
+                        break;
                     }
-                    else
-                    {
-                        if (remaining < 8)
-                        {
-                            // Imperfect packet
-                            break;
-                        }
-
-                        plen = (size_t) get_int64(stream + 1);
-                        remaining -= 8;
-                        stream += 9;
-                    }
+                    remaining -= safe;
+                    stream += safe + 1;
 
                     if (srv->max_packet_length > 0 && srv->max_packet_length < plen)
                     {
@@ -465,12 +416,11 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                         break;
                     }
 
-                    str = new_string(NULL, 0);
+                    str = (COMPRESS_TYPE_NONE == c_type) ? new_string_const(stream, plen) : new_string(stream, plen);
                     if (!str)
                     {
                         break;
                     }
-                    string_append(str, stream, plen);
                     str->compress_type = c_type;
 
                     switch (c_type)
@@ -506,87 +456,76 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                     else if (PACKET_TYPE_OBJ == p_type)
                     {
                         // Single object
-                        obj = new_object();
-                        if (obj)
+                        switch (s_type)
                         {
-                            switch (s_type)
-                            {
-                                case SERIALIZE_TYPE_NATIVE : 
-                                    // BSP.Packet
-                                    object_unserialize(STR_STR(str), STR_LEN(str), obj, l_type);
-                                    break;
-                                case SERIALIZE_TYPE_JSON : 
-                                    // JSON
-                                    json_nd_decode(STR_STR(str), STR_LEN(str), obj);
-                                    break;
-                                case SERIALIZE_TYPE_MSGPACK : 
-                                    // MsgPack
-                                    //msgpack_nd_decode(str->str, str->ori_len, obj);
-                                    break;
-                                case SERIALIZE_TYPE_AMF : 
-                                    // Adobe AMF
-                                    //amf_nd_decode(str->str, str->ori_len, obj);
-                                    break;
-                                default : 
-                                    // Do nothing
-                                    break;
-                            }
+                            case SERIALIZE_TYPE_NATIVE : 
+                                // BSP.Packet
+                                obj = object_unserialize(str);
+                                break;
+                            case SERIALIZE_TYPE_JSON : 
+                                // JSON
+                                obj = json_nd_decode(str);
+                                break;
+                            case SERIALIZE_TYPE_MSGPACK : 
+                                // MsgPack
+                                //obj = msgpack_nd_decode(str);
+                                break;
+                            case SERIALIZE_TYPE_AMF : 
+                                // Adobe AMF
+                                //obj = amf_nd_decode(str);
+                                break;
+                            default : 
+                                // Do nothing
+                                break;
+                        }
 
-                            if (srv->on_events)
-                            {
-                                srv->on_events(clt, SERVER_CALLBACK_ON_DATA_OBJ, 0, obj, 0);
-                            }
-                            
-                            del_object(obj);
-                        }
-                        else
+                        if (srv->on_events)
                         {
-                            trace_msg(TRACE_LEVEL_ERROR, "Server : Alloc output object error");
+                            srv->on_events(clt, SERVER_CALLBACK_ON_DATA_OBJ, 0, obj, 0);
                         }
+
+                        del_object(obj);
                     }
                     else
                     {
                         // Command (CmdID + params)
                         if (STR_LEN(str) >= 4)
                         {
-                            cmd = (int) get_int32(STR_STR(str));
-                            obj = new_object();
-                            if (obj)
+                            int cmd = (int) get_int32(STR_STR(str));
+                            BSP_STRING *body = new_string_const(STR_STR(str) + 4, STR_LEN(str) - 4);
+                            if (body)
                             {
                                 switch (s_type)
                                 {
                                     case SERIALIZE_TYPE_NATIVE : 
                                         // BSP.Packet
-                                        object_unserialize(STR_STR(str) + 4, STR_LEN(str) - 4, obj, l_type);
+                                        obj = object_unserialize(body);
                                         break;
                                     case SERIALIZE_TYPE_JSON : 
                                         // JSON
-                                        json_nd_decode(STR_STR(str) + 4, STR_LEN(str) - 4, obj);
+                                        obj = json_nd_decode(body);
                                         break;
                                     case SERIALIZE_TYPE_MSGPACK : 
                                         // MsgPack
-                                        //msgpack_nd_decode(str->str + 4, str->ori_len - 4, obj);
+                                        //obj = msgpack_nd_decode(body);
                                         break;
                                     case SERIALIZE_TYPE_AMF : 
                                         // Adobe AMF
-                                        //amf_nd_decode(str->str + 4, str->ori_len - 4, obj);
+                                        //obj = amf_nd_decode(body);
                                         break;
                                     default : 
                                         // Do nothing
                                         break;
                                 }
-
-                                if (srv->on_events)
-                                {
-                                    srv->on_events(clt, SERVER_CALLBACK_ON_DATA_CMD, cmd, obj, 0);
-                                }
-
-                                del_object(obj);
+                                del_string(body);
                             }
-                            else
+
+                            if (srv->on_events)
                             {
-                                trace_msg(TRACE_LEVEL_ERROR, "Server : Alloc output object error");
+                                srv->on_events(clt, SERVER_CALLBACK_ON_DATA_CMD, cmd, obj, 0);
                             }
+
+                            del_object(obj);
                         }
                         else
                         {
@@ -594,17 +533,17 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                         }
                     }
                     del_string(str);
-                    ret += 1 + (l_type = LENGTH_TYPE_32B ? 4 : 8) + plen;
+                    ret += 1 + safe + plen;
                 }
                 else
                 {
                     // Special
                     if (PACKET_TYPE_REP == p_type)
                     {
-                        // Report compression and length mark type
-                        clt->packet_length_type = l_type;
+                        // Report serialize and compression
                         clt->packet_serialize_type = s_type;
                         clt->packet_compress_type = c_type;
+                        trace_msg(TRACE_LEVEL_VERBOSE, "Server : Client %d report as serialize type : %d, compress type : %d", SFD(clt), s_type, c_type);
                         // Send back a response
                         _real_output_client(clt, stream, 1);
                         ret ++;
@@ -613,6 +552,7 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                     {
                         // Heartbeat
                         // Send back a response
+                        trace_msg(TRACE_LEVEL_VERBOSE, "Server : Client %d send a heartbeat request", SFD(clt));
                         _real_output_client(clt, stream, 1);
                         ret ++;
                     }
@@ -671,25 +611,23 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
                 ret = websocket_handshake(req, resp);
                 if (BSP_RTN_SUCCESS == ret)
                 {
-                    trace_msg(TRACE_LEVEL_NOTICE, "A websocket client %d handshaked", SFD(clt));
+                    trace_msg(TRACE_LEVEL_NOTICE, "Server : A websocket client %d handshaked", SFD(clt));
                     // Send handshake back
-                    resp_str = new_string(NULL, 0);
-                    ret = generate_http_response(resp, resp_str);
-                    if (BSP_RTN_SUCCESS == ret)
+                    resp_str = generate_http_response(resp);
+                    if (resp_str)
                     {
                         // Change client type
                         clt->client_type = CLIENT_TYPE_WEBSOCKET_DATA;
                         append_data_socket(&SCK(clt), STR_STR(resp_str), STR_LEN(resp_str));
                         flush_socket(&SCK(clt));
-                        trace_msg(TRACE_LEVEL_NOTICE, "Websocket handshake from client %d responsed", SFD(clt));
+                        trace_msg(TRACE_LEVEL_NOTICE, "Server : Websocket handshake from client %d responsed", SFD(clt));
+                        del_string(resp_str);
                     }
                     else
                     {
                         // Rolling all data
                         header_len = len;
                     }
-
-                    del_string(resp_str);
                 }
                 else
                 {
@@ -718,15 +656,10 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
                         break;
                     case WS_OPCODE_PING : 
                         // Send a PONG back
-                        resp_str = new_string(NULL, 0);
-                        if (resp_str)
-                        {
-                            generate_websocket_data((const char *) STR_STR(data_str), STR_LEN(data_str), WS_OPCODE_PONG, 0, resp_str);
-                            append_data_socket(&SCK(clt), (const char *) STR_STR(resp_str), STR_LEN(resp_str));
-                            del_string(resp_str);
-                            flush_socket(&SCK(clt));
-                        }
-
+                        resp_str = generate_websocket_data((const char *) STR_STR(data_str), STR_LEN(data_str), WS_OPCODE_PONG, 0);
+                        append_data_socket(&SCK(clt), (const char *) STR_STR(resp_str), STR_LEN(resp_str));
+                        del_string(resp_str);
+                        flush_socket(&SCK(clt));
                         // Refresh heartbeat
                         trace_msg(TRACE_LEVEL_VERBOSE, "Server : Websocket client send ping");
                         clt->last_hb_time = time(NULL);
@@ -736,15 +669,10 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
                         break;
                     case WS_OPCODE_CLOSE : 
                         // Send a CLOSE back
-                        resp_str = new_string(NULL, 0);
-                        if (resp_str)
-                        {
-                            generate_websocket_data((const char *) STR_STR(data_str), STR_LEN(data_str), WS_OPCODE_CLOSE, 0, resp_str);
-                            append_data_socket(&SCK(clt), (const char *) STR_STR(resp_str), STR_LEN(resp_str));
-                            del_string(resp_str);
-                            flush_socket(&SCK(clt));
-                        }
-
+                        resp_str = generate_websocket_data((const char *) STR_STR(data_str), STR_LEN(data_str), WS_OPCODE_CLOSE, 0);
+                        append_data_socket(&SCK(clt), (const char *) STR_STR(resp_str), STR_LEN(resp_str));
+                        del_string(resp_str);
+                        flush_socket(&SCK(clt));
                         // Close connection
                         trace_msg(TRACE_LEVEL_VERBOSE, "Server : Websocket client send close request");
                         free_client(clt);
@@ -765,3 +693,4 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
     }
     return 0;
 }
+

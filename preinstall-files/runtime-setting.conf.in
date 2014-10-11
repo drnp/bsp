@@ -1,41 +1,52 @@
 {
-	"servers" : {
-		"main_server" : {
-			"inet" : "ipv4", 
-			"sock" : "tcp", 
-			"addr" : "0.0.0.0", 
-			"port" : 9173, 
-			"websocket" : false, 
-			"data_type" : "packet", 
-			"debug_input" : false, 
-            "debug_output" : false
-        }, 
-        "internal_server" : {
-            "inet" : "ipv4", 
-            "sock" : "tcp", 
-            "addr" : "0.0.0.0", 
-            "port" : 9172,
-            "websocket" : false;
-            "data_type" : "packet"
-        }
+    "global" : {
+        "script_dir"        : "/opt/bsp/script/9173/", 
+        "instance_id"       : 9173, 
+        "debug_output"      : true, 
+        "enable_log"        : false
     }, 
-
-	"global" : {
-        "script_dir" : "/opt/bsp/script/9173/", 
-        "instance_id" : 9173, 
-		"debug_output" : false, 
-		"enable_log" : false, 
-        "debug_ouput" : false
-	}, 
 
     "modules" : [
         "standard", 
         "online", 
-        "json", 
         "http", 
         "word_filter", 
         "mysql", 
         "sqlite", 
         "fcgi"
+    ], 
+
+    "servers" : [
+        {
+            "name"          : "main_server", 
+            "inet"          : "ipv4", 
+            "sock"          : "tcp", 
+            "addr"          : "0.0.0.0", 
+            "port"          : 9173, 
+            "websocket"     : false, 
+            "data_type"     : "packet", 
+            "debug_input"   : false, 
+            "debug_output"  : false
+        }, 
+        {
+            "name"          : "websocket_server", 
+            "inet"          : "ipv4", 
+            "sock"          : "tcp", 
+            "addr"          : "0.0.0.0", 
+            "port"          : 9174, 
+            "websocket"     : true, 
+            "data_type"     : "packet", 
+            "debug_input"   : true, 
+            "debug_output"  : true
+        }, 
+        {
+            "name"          : "internal_server", 
+            "inet"          : "ipv4", 
+            "sock"          : "tcp", 
+            "addr"          : "0.0.0.0", 
+            "port"          : 9172, 
+            "websocket"     : false, 
+            "data_type"     : "packet"
+        }
     ]
 }

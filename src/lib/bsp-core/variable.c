@@ -94,6 +94,146 @@ inline void set_int64(int64_t data, char *addr)
     return;
 }
 
+inline int set_vint29(int data, char *addr)
+{
+    int len = 0;
+    if (addr)
+    {
+        if (0 == data >> 7)
+        {
+            // 1 byte
+            addr[0] = data & 0x7F;
+            len = 1;
+        }
+        else if (0 == data >> 14)
+        {
+            // 2 bytes
+            addr[0] = ((data >> 7) & 0x7F) | 0x80;
+            addr[1] = data & 0x7F;
+            len = 2;
+        }
+        else if (0 == data >> 21)
+        {
+            // 3 bytes
+            addr[0] = ((data >> 14) & 0x7F) | 0x80;
+            addr[1] = ((data >> 7) & 0x7F) | 0x80;
+            addr[2] = data & 0x7F;
+            len = 3;
+        }
+        else
+        {
+            // 4 bytes
+            addr[0] = ((data >> 22) & 0x7F) | 0x80;
+            addr[1] = ((data >> 15) & 0x7F) | 0x80;
+            addr[2] = ((data >> 8) & 0x7F) | 0x80;
+            addr[3] = data & 0xFF;
+            len = 4;
+        }
+    }
+
+    return len;
+}
+
+inline int set_vint(int64_t data, char *addr)
+{
+    int len = 0;
+    if (addr)
+    {
+        if (0 == data >> 7)
+        {
+            // 1 byte
+            addr[0] = data & 0x7F;
+            len = 1;
+        }
+        else if (0 == data >> 14)
+        {
+            // 2 bytes
+            addr[0] = ((data >>  7) & 0x7F) | 0x80;
+            addr[1] = data & 0x7F;
+            len = 2;
+        }
+        else if (0 == data >> 21)
+        {
+            // 3 bytes
+            addr[0] = ((data >> 14) & 0x7F) | 0x80;
+            addr[1] = ((data >>  7) & 0x7F) | 0x80;
+            addr[2] = data & 0x7F;
+            len = 3;
+        }
+        else if (0 == data >> 28)
+        {
+            // 4 bytes
+            addr[0] = ((data >> 21) & 0x7F) | 0x80;
+            addr[1] = ((data >> 14) & 0x7F) | 0x80;
+            addr[2] = ((data >>  7) & 0x7F) | 0x80;
+            addr[3] = data & 0x7F;
+            len = 4;
+        }
+        else if (0 == data >> 35)
+        {
+            // 5 bytes
+            addr[0] = ((data >> 28) & 0x7F) | 0x80;
+            addr[1] = ((data >> 21) & 0x7F) | 0x80;
+            addr[2] = ((data >> 14) & 0x7F) | 0x80;
+            addr[3] = ((data >>  7) & 0x7F) | 0x80;
+            addr[4] = data & 0x7F;
+            len = 5;
+        }
+        else if (0 == data >> 42)
+        {
+            // 6 bytes
+            addr[0] = ((data >> 35) & 0x7F) | 0x80;
+            addr[1] = ((data >> 28) & 0x7F) | 0x80;
+            addr[2] = ((data >> 21) & 0x7F) | 0x80;
+            addr[3] = ((data >> 14) & 0x7F) | 0x80;
+            addr[4] = ((data >>  7) & 0x7F) | 0x80;
+            addr[5] = data & 0x7F;
+            len = 6;
+        }
+        else if (0 == data >> 49)
+        {
+            // 7 bytes
+            addr[0] = ((data >> 42) & 0x7F) | 0x80;
+            addr[1] = ((data >> 35) & 0x7F) | 0x80;
+            addr[2] = ((data >> 28) & 0x7F) | 0x80;
+            addr[3] = ((data >> 21) & 0x7F) | 0x80;
+            addr[4] = ((data >> 14) & 0x7F) | 0x80;
+            addr[5] = ((data >>  7) & 0x7F) | 0x80;
+            addr[6] = data & 0x7F;
+            len = 7;
+        }
+        else if (0 == data >> 56)
+        {
+            // 8 bytes
+            addr[0] = ((data >> 49) & 0x7F) | 0x80;
+            addr[1] = ((data >> 42) & 0x7F) | 0x80;
+            addr[2] = ((data >> 35) & 0x7F) | 0x80;
+            addr[3] = ((data >> 28) & 0x7F) | 0x80;
+            addr[4] = ((data >> 21) & 0x7F) | 0x80;
+            addr[5] = ((data >> 14) & 0x7F) | 0x80;
+            addr[6] = ((data >>  7) & 0x7F) | 0x80;
+            addr[7] = data & 0x7F;
+            len = 8;
+        }
+        else
+        {
+            // 9 bytes (Full length int64)
+            addr[0] = ((data >> 57) & 0x7F) | 0x80;
+            addr[1] = ((data >> 50) & 0x7F) | 0x80;
+            addr[2] = ((data >> 43) & 0x7F) | 0x80;
+            addr[3] = ((data >> 36) & 0x7F) | 0x80;
+            addr[4] = ((data >> 29) & 0x7F) | 0x80;
+            addr[5] = ((data >> 22) & 0x7F) | 0x80;
+            addr[6] = ((data >> 15) & 0x7F) | 0x80;
+            addr[7] = ((data >>  8) & 0x7F) | 0x80;
+            addr[8] = data & 0xFF;
+            len = 9;
+        }
+    }
+
+    return len;
+}
+
 inline void set_float(float data, char *addr)
 {
     if (addr)
@@ -170,6 +310,175 @@ inline int64_t get_int64(const char *addr)
         : 0;
 }
 
+inline int get_vint29(const char *addr, int *len)
+{
+    int ret = 0;
+    int vlen = -1;
+    int safe = (len && *len > 0) ? *len : 4;
+
+    while (addr && safe > 0)
+    {
+        vlen = 0;
+
+        // c[0]
+        ret = addr[0] & 0x7F;
+        vlen ++;
+        if (0 == (addr[0] & 0x80))
+            break;
+
+        // c[1]
+        if (safe < 2)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[1] & 0x7F);
+        vlen ++;
+        if (0 == (addr[1] & 0x80))
+            break;
+
+        // c[2]
+        if (safe < 3)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[2] & 0x7F);
+        vlen ++;
+        if (0 == (addr[2] & 0x80))
+            break;
+
+        // c[3]
+        if (safe < 4)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 8) | (addr[3] & 0xFF);
+        vlen ++;
+        break;
+    }
+
+    if (len)
+    {
+        *len = vlen;
+    }
+
+    return ret;
+}
+
+inline int64_t get_vint(const char *addr, int *len)
+{
+    int64_t ret = 0;
+    int vlen = -1;
+    int safe = (len && *len > 0) ? *len : 9;
+
+    while (addr && safe > 0)
+    {
+        vlen = 0;
+
+        // c[0]
+        ret = addr[0] & 0x7F;
+        vlen ++;
+        if (0 == (addr[0] & 0x80))
+            break;
+
+        // c[1]
+        if (safe < 2)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[1] & 0x7F);
+        vlen ++;
+        if (0 == (addr[1] & 0x80))
+            break;
+
+        // c[2]
+        if (safe < 3)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[2] & 0x7F);
+        vlen ++;
+        if (0 == (addr[2] & 0x80))
+            break;
+
+        // c[3]
+        if (safe < 4)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[3] & 0x7F);
+        vlen ++;
+        if (0 == (addr[3] & 0x80))
+            break;
+
+        // c[4]
+        if (safe < 5)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[4] & 0x7F);
+        vlen ++;
+        if (0 == (addr[4] & 0x80))
+            break;
+
+        // c[5]
+        if (safe < 6)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[5] & 0x7F);
+        vlen ++;
+        if (0 == (addr[5] & 0x80))
+            break;
+
+        // c[6]
+        if (safe < 7)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[6] & 0x7F);
+        vlen ++;
+        if (0 == (addr[6] & 0x80))
+            break;
+
+        // c[7]
+        if (safe < 8)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 7) | (addr[7] & 0x7F);
+        vlen ++;
+        if (0 == (addr[7] & 0x80))
+            break;
+
+        // c[8]
+        if (safe < 9)
+        {
+            vlen = -1;
+            break;
+        }
+        ret = (ret << 8) | (addr[8] & 0xFF);
+        vlen ++;
+        break;
+    }
+
+    if (len)
+    {
+        *len = vlen;
+    }
+
+    return ret;
+}
+
 inline float get_float(const char *addr)
 {
     float ret = 0.0f;
@@ -206,6 +515,46 @@ inline void * get_pointer(const char *addr)
     {
         memcpy(&ptr, addr, sizeof(intptr_t));
         ret = (void *) ptr;
+    }
+
+    return ret;
+}
+
+inline size_t vintlen(const char *addr, ssize_t safe)
+{
+    size_t ret = 0;
+    if (addr)
+    {
+        int i;
+        int n = (safe < 0 || safe > 9) ? 9 : safe;
+        for (i = 0; i < n; i ++)
+        {
+            ret ++;
+            if (0 == (addr[i] & 0x80))
+            {
+                break;
+            }
+        }
+    }
+
+    return ret;
+}
+
+inline size_t vint29len(const char *addr, ssize_t safe)
+{
+    size_t ret = 0;
+    if (addr)
+    {
+        int i;
+        int n = (safe < 0 || safe > 4) ? 4 : safe;
+        for (i = 0; i < n; i ++)
+        {
+            ret ++;
+            if (0 == (addr[i] & 0x80))
+            {
+                break;
+            }
+        }
     }
 
     return ret;

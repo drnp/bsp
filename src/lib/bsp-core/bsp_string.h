@@ -46,6 +46,13 @@
 /* Macros */
 #define STR_LEN(s)                              s->original_len
 #define STR_STR(s)                              s->str
+#define STR_CHAR(s)                             (unsigned char) s->str[s->cursor]
+#define STR_CURR(s)                             (s->str + s->cursor)
+#define STR_RESET(s)                            s->cursor = 0
+#define STR_NOW(s)                              s->cursor
+#define STR_NEXT(s)                             s->cursor ++
+#define STR_PREV(s)                             s->cursor --
+#define STR_REMAIN(s)                           ((ssize_t) (s->original_len - s->cursor))
 #define STR_IS_EQUAL(s1, s2)                    (s1) && (s2) && (s1->original_len == s2->original_len) && (0 == memcmp(s1->str, s2->str, s1->original_len))
 
 /* Structs */
@@ -54,7 +61,10 @@ typedef struct bsp_string_t
     char                *str;
     size_t              original_len;
     size_t              compressed_len;
+    size_t              cursor;
     char                compress_type;
+    char                is_const;
+    BSP_SPINLOCK        lock;
 } BSP_STRING;
 
 /* Functions */
@@ -62,6 +72,7 @@ typedef struct bsp_string_t
 
 // If data is NULL or len is zero, a empty string will be created
 BSP_STRING * new_string(const char *data, ssize_t len);
+BSP_STRING * new_string_const(const char *data, ssize_t len);
 
 // Create string from an ordinary file
 BSP_STRING * new_string_from_file(const char *path);
@@ -105,9 +116,9 @@ int string_decompress_snappy(BSP_STRING *str);
 int string_decompress_lz4(BSP_STRING *str);
 
 // Base64 encode
-int string_base64_encode(BSP_STRING *str, const char *data, ssize_t len);
+BSP_STRING * string_base64_encode(const char *data, ssize_t len);
 
 // Base64_decode
-int string_base64_decode(BSP_STRING *str, const char *data, ssize_t len);
+BSP_STRING * string_base64_decode(const char *data, ssize_t len);
 
 #endif  /* _LIB_BSP_CORE_STRING_H */

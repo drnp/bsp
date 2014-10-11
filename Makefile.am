@@ -1,12 +1,15 @@
 ## Process this file with automake to produce Makefile.in
 ## Created by Anjuta
 
-SUBDIRS = src
+SUBDIRS = \
+	deps \
+	src
+
 ACLOCAL_AMFLAGS = -I m4
 
 # Remove doc directory on uninstall
 uninstall-local:
-	-rm -r $(sickycatdocdir)
+	rm -r $(sickycatdocdir)
 
 install: install-recursive
 	@echo "Installing support-files"

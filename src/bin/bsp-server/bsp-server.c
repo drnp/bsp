@@ -86,6 +86,41 @@ static void _usage()
 }
 
 /* Server callback */
+/*
+static void fcgi_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len)
+{
+    if (!clt)
+    {
+        return;
+    }
+
+    BSP_SERVER *srv = get_client_connected_server(clt);
+    if (!srv)
+    {
+        return;
+    }
+
+    switch (callback)
+    {
+        case SERVER_CALLBACK_ON_CONNECT : 
+            break;
+        case SERVER_CALLBACK_ON_CLOSE : 
+            break;
+        case SERVER_CALLBACK_ON_ERROR : 
+            break;
+        case SERVER_CALLBACK_ON_DATA_RAW : 
+            break;
+        case SERVER_CALLBACK_ON_DATA_OBJ : 
+            break;
+        case SERVER_CALLBACK_ON_DATA_CMD : 
+            break;
+        default : 
+            break;
+    }
+
+    return;
+}
+*/
 static void main_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len)
 {
     if (!clt)
@@ -180,7 +215,7 @@ static void main_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssiz
 }
 
 // Main timer event
-static void _server_dida(BSP_TIMER * tmr)
+static void _dida(BSP_TIMER * tmr)
 {
     // Clean fds
     int fd;
@@ -302,8 +337,8 @@ int main(int argc, char **argv)
         {NULL, NULL, NULL}
     };
 
-    core_init(sc);
-    core_loop(_server_dida);
+    core_init();
+    core_loop(sc, _dida);
 
     return BSP_RTN_SUCCESS;
 }

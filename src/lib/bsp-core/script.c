@@ -65,19 +65,14 @@ static void * _default_allocator(void *ud, void *ptr, size_t osize, size_t nsize
 }
 
 // Load script code block
-int script_load_string(lua_State *l, const char *code, ssize_t len)
+int script_load_string(lua_State *l, BSP_STRING *code)
 {
     if (!l || !code)
     {
         return BSP_RTN_ERROR_SCRIPT;
     }
 
-    if (len < 0)
-    {
-        len = strlen(code);
-    }
-
-    int ret = luaL_loadbufferx(l, code, len, NULL, NULL);
+    int ret = luaL_loadbufferx(l, STR_STR(code), STR_LEN(code), NULL, NULL);
     switch (ret)
     {
         case LUA_OK : 
@@ -189,7 +184,7 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
                 case CALL_PTYPE_OBJECT : 
                 case CALL_PTYPE_OBJECT_F : 
                     // BSP Object
-                    object_to_lua((BSP_OBJECT *) curr->ptr, caller);
+                    object_to_lua_stack(caller, (BSP_OBJECT *) curr->ptr);
                     break;
                 default : 
                     // Unknown
@@ -229,7 +224,7 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
         status_op_script(STATUS_OP_SCRIPT_CALL, 0);
     }
     lua_settop(caller, 0);
-    
+
     // Recycle
     while (p)
     {
@@ -322,27 +317,33 @@ int script_remove_stack(BSP_SCRIPT_STACK *ts)
 }
 
 // Load module (C library) into script
-int script_load_module(const char *module_name, int enable_main_thread)
+int script_load_module(BSP_STRING *module, int enable_main_thread)
 {
     lt_dlhandle dl;
     int (* loader)(lua_State *) = NULL;
     int i;
     BSP_THREAD *t;
 
-    if (!module_name)
+    if (!module)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
 
+    char *module_name = bsp_strndup(STR_STR(module), STR_LEN(module));
+    if (!module_name)
+    {
+        return BSP_RTN_ERROR_MEMORY;
+    }
     BSP_CORE_SETTING *settings = get_core_setting();
     char symbol[_SYMBOL_NAME_MAX];
-    char filename[_POSIX_PATH_MAX];
+    char file_name[_POSIX_PATH_MAX];
 
     lt_dlinit();
-    snprintf(filename, _POSIX_PATH_MAX - 1, "%s/module-%s.so", settings->mod_dir, module_name);
+    snprintf(file_name, _POSIX_PATH_MAX - 1, "%s/module-%s.so", settings->mod_dir, module_name);
     snprintf(symbol, _SYMBOL_NAME_MAX - 1, "bsp_module_%s", module_name);
-    trace_msg(TRACE_LEVEL_DEBUG, "Script : Try to load module %s from %s", symbol, filename);
-    dl = lt_dlopen(filename);
+    trace_msg(TRACE_LEVEL_DEBUG, "Script : Try to load module %s from %s", symbol, file_name);
+    dl = lt_dlopen(file_name);
+    bsp_free(module_name);
 
     // Try load
     if (dl)
@@ -380,7 +381,7 @@ int script_load_module(const char *module_name, int enable_main_thread)
     }
     else
     {
-        trace_msg(TRACE_LEVEL_ERROR, "Script : Cannot open module file %s", filename);
+        trace_msg(TRACE_LEVEL_ERROR, "Script : Cannot open module file %s", file_name);
         return BSP_RTN_ERROR_IO;
     }
 

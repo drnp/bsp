@@ -33,13 +33,20 @@
 /* Headers */
 
 /* Definations */
+#define JSON_DECODE_STATUS_STR                  0b00000001
+#define JSON_DECODE_STATUS_STRIP                0b00000010
+#define JSON_DECODE_STATUS_UTF                  0b00000100
+#define JSON_DECODE_STATUS_DIGIT                0b00001000
+#define JSON_DECODE_STATUS_BOOLEAN              0b00010000
 
 /* Macros */
 
 /* Structs */
 
 /* Functions */
-int json_nd_encode(BSP_OBJECT *obj, BSP_STRING *str);
-int json_nd_decode(const char *data, ssize_t len, BSP_OBJECT *obj);
+//int json_nd_encode(BSP_OBJECT *obj, BSP_STRING *str);
+//int json_nd_decode(const char *data, ssize_t len, BSP_OBJECT *obj);
+BSP_STRING * json_nd_encode(BSP_OBJECT *obj);
+BSP_OBJECT * json_nd_decode(BSP_STRING *str);
 
 #endif  /* _LIB_BSP_CORE_JSON_H */

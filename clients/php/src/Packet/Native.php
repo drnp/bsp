@@ -34,7 +34,6 @@ namespace Bsp\Packet;
 class Native implements \Bsp\IPacket
 {
     private $endian;
-    private $length_type;
     private $str;
     private $obj;
     private $offset;
@@ -55,7 +54,7 @@ class Native implements \Bsp\IPacket
     const BSP_ENDIAN_LITTLE         = 0x0;
     const BSP_ENDIAN_BIG            = 0x1;
     
-    public function __construct($length_type)
+    public function __construct()
     {
         $tmp = \pack('l', 1);
         if (1 != \ord($tmp[3]))
@@ -66,8 +65,6 @@ class Native implements \Bsp\IPacket
         {
             $this->endian = self::BSP_ENDIAN_BIG;
         }
-        
-        $this->length_type = $length_type;
         
         return;
     }

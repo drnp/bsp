@@ -216,7 +216,7 @@ static char * _append_read_buffer(struct bsp_socket_t *sck, const char *data, si
     ret = sck->read_buffer + sck->read_buffer_data_size;
     memcpy(ret, data, len);
     sck->read_buffer_data_size += len;
-    trace_msg(TRACE_LEVEL_DEBUG, "Socket : Appended %d bytes into socket %d's read buffer", (int) len, sck->fd);
+    trace_msg(TRACE_LEVEL_DEBUG, "Socket : Appended %d bytes to socket %d's read buffer", (int) len, sck->fd);
 
     return ret;
 }
@@ -686,7 +686,7 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
     }
 
     bsp_spin_unlock(&sck->send_lock);
-    trace_msg(TRACE_LEVEL_DEBUG, "Socket : Append %d byte to socket %d", (int) len, sck->fd);
+    trace_msg(TRACE_LEVEL_DEBUG, "Socket : Append %d byte to socket %d's send buffer", (int) len, sck->fd);
 
     return len;
 }
@@ -911,7 +911,7 @@ int new_server(
 
             if (SOCK_STREAM == next->ai_socktype)
             {
-                trace_msg(TRACE_LEVEL_NOTICE, "Socket : Try to create a TCP server on %s:%d", ipaddr, port);
+                trace_msg(TRACE_LEVEL_DEBUG, "Socket : Try to create a TCP server on %s:%d", ipaddr, port);
                 // TCP
                 if (0 != setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, (void *) &flag, sizeof(flag)) || 
                     0 != setsockopt(fd, SOL_SOCKET, SO_LINGER, (void *) &ling, sizeof(ling)) || 
@@ -927,7 +927,7 @@ int new_server(
             else if (SOCK_DGRAM == next->ai_socktype)
             {
                 // UDP
-                trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Try to create an UDP server on %s:%d", ipaddr, port);
+                trace_msg(TRACE_LEVEL_DEBUG, "Socket : Try to create an UDP server on %s:%d", ipaddr, port);
                 maximize_udpbuf(fd);
             }
             else
@@ -954,7 +954,7 @@ int new_server(
                 continue;
             }
 
-            trace_msg(TRACE_LEVEL_DEBUG, "Socket : Network server created on port %d", port);
+            trace_msg(TRACE_LEVEL_CORE, "Socket : Network server created on %d@%d", port, sock_type);
         }
         else
         {

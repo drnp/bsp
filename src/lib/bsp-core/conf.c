@@ -483,7 +483,7 @@ int conf_init(const char *conf_file)
 void conf_set(const char *key, const char *value, int level)
 {
     char modified = 0x0;
-    int hash_key = (int) hash(key, strlen(key)) % CONF_HASH_SIZE;
+    int hash_key = (int) bsp_hash(key, strlen(key)) % CONF_HASH_SIZE;
     struct bsp_conf_param_t *last = &conf_list[hash_key];
     struct bsp_conf_param_t *head = last->next, **tmp;
     
@@ -567,7 +567,7 @@ char * conf_get(const char *key)
     
     if (key && conf_index)
     {
-        hash_key = (int) hash(key, strlen(key)) % CONF_HASH_SIZE;
+        hash_key = (int) bsp_hash(key, strlen(key)) % CONF_HASH_SIZE;
         curr = conf_list[hash_key].next;
         
         while (curr)

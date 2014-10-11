@@ -62,7 +62,7 @@ static void _shr_hash_insert(struct _online_info_map_t *entry)
     int hkey;
     if (entry && entry->key)
     {
-        hkey = hash(entry->key, -1) % ONLINE_INFO_HASH_SIZE;
+        hkey = bsp_hash(entry->key, -1) % ONLINE_INFO_HASH_SIZE;
         entry->next = online_info_map[hkey];
         online_info_map[hkey] = entry;
     }
@@ -77,7 +77,7 @@ static struct _online_info_map_t * _shr_hash_find(const char *key)
         return NULL;
     }
 
-    int hkey = hash(key, -1) % ONLINE_INFO_HASH_SIZE;
+    int hkey = bsp_hash(key, -1) % ONLINE_INFO_HASH_SIZE;
     struct _online_info_map_t *ret = online_info_map[hkey];
     while (ret)
     {
@@ -112,7 +112,7 @@ static int shr_online_map(lua_State *s)
     bsp_spin_lock(&online_list_lock);
     lua_checkstack(s, 1);
     lua_pushnil(s);
-    while (lua_next(s, -2))
+    while (0 != lua_next(s, -2))
     {
         lua_checkstack(s, 1);
         lua_pushvalue(s, -2);
@@ -141,8 +141,8 @@ static int shr_online_map(lua_State *s)
             if (0 == strncasecmp(value, "i", 1))
             {
                 // Integer
-                item->type = BSP_VAL_INT32;
-                item->length = 4;
+                item->type = BSP_VAL_INT;
+                item->length = 9;
                 // Check index
                 if (0 == strncasecmp(value, "ii", 2))
                 {
@@ -232,7 +232,7 @@ static int shr_online_property(lua_State *s)
 
         // Input data
         lua_pushnil(s);
-        while (lua_next(s, -2))
+        while (0 != lua_next(s, -2))
         {
             lua_checkstack(s, 1);
             lua_pushvalue(s, -2);
@@ -243,10 +243,10 @@ static int shr_online_property(lua_State *s)
             {
                 switch (map->type)
                 {
-                    case BSP_VAL_INT32 : 
+                    case BSP_VAL_INT : 
                         // Integer
                         v_int = lua_tointeger(s, -1);
-                        set_int32(v_int, online_list[client_id].info + map->offset);
+                        set_vint(v_int, online_list[client_id].info + map->offset);
                         break;
                     case BSP_VAL_STRING : 
                         v_str = lua_tolstring(s, -1, &v_str_len);
@@ -313,7 +313,7 @@ static int shr_online_list(lua_State *s)
         if (0 == strcmp(op_tmp, "="))
         {
             // Equal
-            cond_operator = BSP_OP_EQUAL;
+            cond_operator = BSP_OP_EQ;
         }
 
         else if (0 == strcmp(op_tmp, ">"))
@@ -359,7 +359,7 @@ static int shr_online_list(lua_State *s)
             lua_rawget(s, -2);
             switch (map->type)
             {
-                case BSP_VAL_INT32 : 
+                case BSP_VAL_INT : 
                     cond_val_int = lua_tointeger(s, -1);
                     break;
                 case BSP_VAL_STRING : 
@@ -390,11 +390,11 @@ static int shr_online_list(lua_State *s)
                 inst = 0;
                 switch (map->type)
                 {
-                    case BSP_VAL_INT32 : 
-                        ori_val_int = get_int32(online_list[i].info + map->offset);
+                    case BSP_VAL_INT : 
+                        ori_val_int = get_vint(online_list[i].info + map->offset, NULL);
                         switch (cond_operator)
                         {
-                            case BSP_OP_EQUAL : 
+                            case BSP_OP_EQ : 
                                 inst = (ori_val_int == cond_val_int) ? 1 : 0;
                                 break;
                             case BSP_OP_NE : 
@@ -420,7 +420,7 @@ static int shr_online_list(lua_State *s)
                         ori_val_str = get_string(online_list[i].info + map->offset);
                         switch (cond_operator)
                         {
-                            case BSP_OP_EQUAL : 
+                            case BSP_OP_EQ : 
                                 inst = (0 == strcmp(cond_val_str, ori_val_str)) ? 1 : 0;
                                 break;
                             default : 
@@ -497,7 +497,7 @@ static int shr_online_info(lua_State *s)
             lua_pushstring(s, map->key);
             switch (map->type)
             {
-                case BSP_VAL_INT32 : 
+                case BSP_VAL_INT : 
                     lua_pushinteger(s, get_int32(online_list[client_id].info + map->offset));
                     break;
                 case BSP_VAL_STRING : 

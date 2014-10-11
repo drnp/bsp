@@ -205,20 +205,20 @@ BSP_OBJECT * db_sqlite_fetch_row(BSP_DB_SQLITE_RES *r)
     }
 
     BSP_OBJECT *ret = NULL;
-    BSP_OBJECT_ITEM *item;
+    BSP_VALUE *item = NULL;
     int col, cols, bytes;
     int qr = sqlite3_step(r->stmt);
     if (SQLITE_ROW == qr)
     {
-        ret = new_object();
+        ret = new_object(OBJECT_TYPE_HASH);
         cols = sqlite3_column_count(r->stmt);
 
         for (col = 0; col < cols; col ++)
         {
-            item = new_object_item(sqlite3_column_name(r->stmt, col), -1);
+            item = new_value();
             bytes = sqlite3_column_bytes(r->stmt, col);
-            set_item_string(item, (const char *) sqlite3_column_text(r->stmt, col), (ssize_t) bytes);
-            object_insert_item(ret, item);
+            value_set_string(item, new_string((const char *) sqlite3_column_text(r->stmt, col), (ssize_t) bytes));
+            object_set_hash(ret, new_string((const char *) sqlite3_column_name(r->stmt, col), -1), item);
         }
     }
     

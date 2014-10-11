@@ -168,7 +168,7 @@ static int mysql_mysql_fetch_row(lua_State *s)
 
     if (row)
     {
-        object_to_lua(row, s);
+        object_to_lua_stack(s, row);
         del_object(row);
     }
 

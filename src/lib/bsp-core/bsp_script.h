@@ -112,7 +112,7 @@ void script_set_identifier(const char *identifier);
 void script_set_hook(int hook, const char *func);
 */
 // Load script code block
-int script_load_string(lua_State *l, const char *code, ssize_t len);
+int script_load_string(lua_State *l, BSP_STRING *code);
 /*
 // Unload / close LUA script
 int script_close();
@@ -130,6 +130,6 @@ int script_new_stack(BSP_SCRIPT_STACK *ts);
 int script_remove_stack(BSP_SCRIPT_STACK *ts);
 
 // Load LUA modules to script
-int script_load_module(const char *module_name, int enable_main_thread);
+int script_load_module(BSP_STRING *module, int enable_main_thread);
 
 #endif  /* _LIB_BSP_CORE_SCRIPT_H */

@@ -34,6 +34,8 @@
 
 /* Definations */
 #define MAX_MODULES                             1024
+#define BASE_CLOCK_SEC                          1
+#define BASE_CLOCK_USEC                         0
 
 /* Macros */
 
@@ -63,9 +65,6 @@ typedef struct bsp_core_setting_t
     void                (* on_proc_usr1) (int signo);
     void                (* on_proc_usr2) (int signo);
 
-    // Server callback
-    BSP_SERVER_CALLBACK *server_callback;
-
     // Main base (1Hz) timer callback
     BSP_TIMER           *main_timer;
 
@@ -91,9 +90,9 @@ BSP_CORE_SETTING * get_core_setting();
 char * get_core_version(void);
 
 // Init
-int core_init(BSP_SERVER_CALLBACK sc[]);
+int core_init();
 
 // Start main loop
-int core_loop(void (* timer_event)(BSP_TIMER *));
+int core_loop(BSP_SERVER_CALLBACK sc_list[], void (* timer_event)(BSP_TIMER *));
 
 #endif  /* _LIB_BSP_CORE_CORE_H */

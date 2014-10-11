@@ -42,7 +42,7 @@ BSP_DB_MYSQL * db_mysql_connect(
     const char *conn_user = user ? user : "";
     const char *conn_pass = pass ? pass : NULL;
     const char *conn_db = db ? db : NULL;
-    
+
     FILE *tfp = fopen(host, "r");
     if (tfp)
     {
@@ -55,27 +55,27 @@ BSP_DB_MYSQL * db_mysql_connect(
         conn_host = host;
         trace_msg(TRACE_LEVEL_NOTICE, "MySQL  : Try to connect to MySQL server <%s>", host);
     }
-    
+
     MYSQL *conn = mysql_init(NULL);
     if (!conn)
     {
         return NULL;
     }
-    
+
     if (!mysql_real_connect(conn, conn_host, conn_user, conn_pass, conn_db, 0, conn_sock, 0))
     {
         trace_msg(TRACE_LEVEL_ERROR, "MySQL  : MySQL connection failed");
         mysql_close(conn);
         return NULL;
     }
-    
+
     BSP_DB_MYSQL *m = bsp_malloc(sizeof(BSP_DB_MYSQL));
     if (!m)
     {
         mysql_close(conn);
         return NULL;
     }
-    
+
     m->conn = conn;
     m->queries = 0;
     m->query_errno = 0;
@@ -85,7 +85,7 @@ BSP_DB_MYSQL * db_mysql_connect(
     my_bool my_true = 0x1;
     mysql_options(conn, MYSQL_OPT_RECONNECT, &my_true);
     trace_msg(TRACE_LEVEL_VERBOSE, "MySQL  : Set MySQL connection auto-reconnect");
-    
+
     // Default charset
     mysql_query(conn, "SET NAMES 'utf8'");
     trace_msg(TRACE_LEVEL_VERBOSE, "MySQL  : Set MySQL default charset as UTF-8");
@@ -93,9 +93,9 @@ BSP_DB_MYSQL * db_mysql_connect(
     {
         mysql_select_db(conn, conn_db);
     }
-    
+
     status_op_db_mysql(STATUS_OP_DB_MYSQL_CONNECT);
-    
+
     return m;
 }
 
@@ -106,7 +106,7 @@ void db_mysql_close(BSP_DB_MYSQL *m)
     {
         return;
     }
-    
+
     // Clear results
     bsp_spin_lock(&m->query_lock);
     BSP_DB_MYSQL_RES *curr = m->result_list, *next = NULL;
@@ -118,11 +118,11 @@ void db_mysql_close(BSP_DB_MYSQL *m)
             mysql_free_result(curr->res);
             status_op_db_mysql(STATUS_OP_DB_MYSQL_FREE);
         }
-        
+
         bsp_free(curr);
         curr = next;
     }
-    
+
     trace_msg(TRACE_LEVEL_NOTICE, "MySQL  : Try to close MySQL connection");
     unreg_fd(m->conn->net.fd);
     mysql_close(m->conn);
@@ -141,7 +141,7 @@ void db_mysql_free_result(BSP_DB_MYSQL_RES *r)
     {
         return;
     }
-    
+
     if (r->res)
     {
         mysql_free_result(r->res);
@@ -152,7 +152,7 @@ void db_mysql_free_result(BSP_DB_MYSQL_RES *r)
     {
         r->next->prev = r->prev;
     }
-    
+
     if (r->prev)
     {
         r->prev->next = r->next;
@@ -164,7 +164,7 @@ void db_mysql_free_result(BSP_DB_MYSQL_RES *r)
     }
     bsp_free(r);
     r = NULL;
-    
+
     return;
 }
 
@@ -175,12 +175,12 @@ BSP_DB_MYSQL_RES * db_mysql_query(BSP_DB_MYSQL *m, const char *query, ssize_t le
     {
         return 0;
     }
-    
+
     if (len < 0)
     {
         len = strlen(query);
     }
-    
+
     MYSQL_RES *res = NULL;
     BSP_DB_MYSQL_RES *res_node = NULL;
     
@@ -188,7 +188,7 @@ BSP_DB_MYSQL_RES * db_mysql_query(BSP_DB_MYSQL *m, const char *query, ssize_t le
     trace_msg(TRACE_LEVEL_VERBOSE, "MySQL  : MySQL query : %s", query);
     int qr = mysql_real_query(m->conn, query, len);
     status_op_db_mysql(STATUS_OP_DB_MYSQL_QUERY);
-    
+
     if (0 == qr)
     {
         m->queries ++;
@@ -223,7 +223,7 @@ BSP_DB_MYSQL_RES * db_mysql_query(BSP_DB_MYSQL *m, const char *query, ssize_t le
     
     bsp_spin_unlock(&m->query_lock);
     m->query_errno = mysql_errno(m->conn);
-    
+
     return res_node;
 }
 
@@ -240,7 +240,7 @@ BSP_OBJECT * db_mysql_fetch_row(BSP_DB_MYSQL_RES *r)
     {
         return NULL;
     }
-    
+
     MYSQL_ROW row;
     MYSQL_FIELD *fields;
     unsigned long *lengths;
@@ -252,21 +252,22 @@ BSP_OBJECT * db_mysql_fetch_row(BSP_DB_MYSQL_RES *r)
         // Maybe empty
         return NULL;
     }
-    
+
     fields = mysql_fetch_fields(r->res);
     lengths = mysql_fetch_lengths(r->res);
     num_fields = mysql_num_fields(r->res);
     
-    BSP_OBJECT *ret = new_object();
-    BSP_OBJECT_ITEM *item;
+    BSP_OBJECT *ret = NULL;
+    BSP_VALUE *item = NULL;
 
     if (fields && lengths)
     {
+        ret = new_object(OBJECT_TYPE_HASH);
         for (i = 0; i < num_fields; i ++)
         {
-            item = new_object_item((const char *) fields[i].name, -1);
-            set_item_string(item, (const char *) row[i], lengths[i]);
-            object_insert_item(ret, item);
+            item = new_value();
+            value_set_string(item, new_string((const char *) row[i], lengths[i]));
+            object_set_hash(ret, new_string((const char *) fields[i].name, -1), item);
         }
     }
 
