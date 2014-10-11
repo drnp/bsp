@@ -225,7 +225,7 @@ void http_response_set_sec_websocket_protocol(BSP_HTTP_RESPONSE *resp, const cha
 void http_response_set_sec_websocket_origin(BSP_HTTP_RESPONSE *resp, const char *origin, ssize_t len);
 
 // Generate a response stream
-int generate_http_response(BSP_HTTP_RESPONSE *resp, BSP_STRING *resp_str);
+BSP_STRING * generate_http_response(BSP_HTTP_RESPONSE *resp);
 
 // Parse a response to object
 size_t parse_http_response(const char *data, ssize_t len, BSP_HTTP_RESPONSE *resp);
@@ -237,6 +237,6 @@ int websocket_handshake(BSP_HTTP_REQUEST *req, BSP_HTTP_RESPONSE *resp);
 size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRING *data_str);
 
 // Generate WebSocket data
-int generate_websocket_data(const char *data, ssize_t len, int opcode, int mask, BSP_STRING *data_str);
+BSP_STRING * generate_websocket_data(const char *data, ssize_t len, int opcode, int mask);
 
 #endif  /* _LIB_BSP_CORE_HTTP_H */

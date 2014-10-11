@@ -63,7 +63,7 @@
 }
 
 /* Functions */
-uint32_t hash(const char *key, ssize_t len);
+uint32_t bsp_hash(const char *key, ssize_t len);
 uint32_t ipv4_hash(uint32_t ip, int bsize);
 uint32_t ipv6_hash(uint8_t *ip, int bsize);
 

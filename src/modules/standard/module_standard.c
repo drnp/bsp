@@ -70,8 +70,7 @@ static int standard_net_send(lua_State *s)
 
     if (lua_istable(s, -1) && lua_isnumber(s, -2))
     {
-        obj = new_object();
-        object_from_lua(obj, s, -1);
+        obj = lua_stack_to_object(s);
         if (lua_isnumber(s, -3))
         {
             // CMD
@@ -290,7 +289,7 @@ static int standard_var_dump(lua_State *s)
             layer ++;
             lua_checkstack(s, 1);
             lua_pushnil(s);
-            while (lua_next(s, -2))
+            while (0 != lua_next(s, -2))
             {
                 lua_checkstack(s, 1);
                 lua_pushvalue(s, -2);
@@ -354,7 +353,7 @@ static int standard_deep_copy(lua_State *s)
     // Loop each item
     lua_checkstack(s, 1);
     lua_pushnil(s);
-    while (lua_next(s, -3))
+    while (0 != lua_next(s, -3))
     {
         // New table?
         if (lua_type(s, -1) == LUA_TTABLE)
@@ -398,11 +397,10 @@ static int standard_base64_encode(lua_State *s)
 
     size_t len;
     const char *input = lua_tolstring(s, -1, &len);
-    BSP_STRING *str = new_string(NULL, 0);
-    string_base64_encode(str, input, len);
-    lua_pushstring(s, str->str);
+    BSP_STRING *str = string_base64_encode(input, len);
+    lua_pushlstring(s, STR_STR(str), STR_LEN(str));
     del_string(str);
-    
+
     return 1;
 }
 
@@ -420,11 +418,51 @@ static int standard_base64_decode(lua_State *s)
 
     size_t len;
     const char *input = lua_tolstring(s, -1, &len);
-    BSP_STRING *str = new_string(NULL, 0);
-    string_base64_decode(str, input, len);
+    BSP_STRING *str = string_base64_decode(input, len);
     lua_pushlstring(s, STR_STR(str), STR_LEN(str));
     del_string(str);
-    
+
+    return 1;
+}
+
+/** JSON **/
+static int standard_json_encode(lua_State *s)
+{
+    if (!s || lua_gettop(s) < 1)
+    {
+        return 0;
+    }
+
+    BSP_OBJECT *obj = lua_stack_to_object(s);
+    debug_object(obj);
+    BSP_STRING *json = json_nd_encode(obj);
+    lua_pushlstring(s, STR_STR(json), STR_LEN(json));
+    del_object(obj);
+    del_string(json);
+
+    return 1;
+}
+
+static int standard_json_decode(lua_State *s)
+{
+    if (!s || lua_gettop(s) < 1)
+    {
+        return 0;
+    }
+
+    if (!lua_isstring(s, -1))
+    {
+        return 0;
+    }
+
+    size_t len;
+    const char *str = lua_tolstring(s, -1, &len);
+    BSP_STRING *json = new_string_const(str, len);
+    BSP_OBJECT *obj = json_nd_decode(json);
+    object_to_lua_stack(s, obj);
+    del_string(json);
+    del_object(obj);
+
     return 1;
 }
 
@@ -535,6 +573,21 @@ static int standard_sha1(lua_State *s)
     return 1;
 }
 
+static int standard_hash(lua_State *s)
+{
+    if (!s || lua_gettop(s) < 1)
+    {
+        return 0;
+    }
+
+    size_t len;
+    const char *input = lua_tolstring(s, -1, &len);
+    uint32_t hash_value = bsp_hash(input, len);
+    lua_pushinteger(s, (lua_Integer) hash_value);
+
+    return 1;
+}
+
 /** Randomize **/
 static int standard_random_seed(lua_State *s)
 {
@@ -640,7 +693,7 @@ static struct _global_entry_t * _global_new(const char *key)
         return NULL;
     }
     // Generate a new hash entry
-    uint32_t hash_value = hash(key, -1);
+    uint32_t hash_value = bsp_hash(key, -1);
     int slot = hash_value % GLOBAL_HASH_SIZE;
     struct _global_entry_t *g = bsp_calloc(1, sizeof(struct _global_entry_t));
     if (!g)
@@ -662,7 +715,7 @@ static struct _global_entry_t * _global_find(const char *key)
         return NULL;
     }
     // Search hash
-    uint32_t hash_value = hash(key, -1);
+    uint32_t hash_value = bsp_hash(key, -1);
     int slot = hash_value % GLOBAL_HASH_SIZE;
     bsp_spin_lock(&global_lock);
     struct _global_entry_t *g = global_hash_table[slot];
@@ -769,8 +822,7 @@ static int standard_set_global(lua_State *s)
             break;
         case LUA_TTABLE : 
             g->type = LUA_TTABLE;
-            vt = new_object();
-            object_from_lua(vt, s, -1);
+            vt = lua_stack_to_object(s);
             memcpy(g->value, &vt, sizeof(BSP_OBJECT *));
             break;
         case LUA_TFUNCTION : 
@@ -834,7 +886,7 @@ static int standard_get_global(lua_State *s)
             break;
         case LUA_TTABLE : 
             memcpy(&vt, g->value, sizeof(BSP_OBJECT *));
-            object_to_lua(vt, s);
+            object_to_lua_stack(s, vt);
             break;
         default : 
             lua_pushnil(s);
@@ -881,11 +933,20 @@ int bsp_module_standard(lua_State *s)
     lua_pushcfunction(s, standard_base64_decode);
     lua_setglobal(s, "bsp_base64_decode");
 
+    lua_pushcfunction(s, standard_json_encode);
+    lua_setglobal(s, "bsp_json_encode");
+
+    lua_pushcfunction(s, standard_json_decode);
+    lua_setglobal(s, "bsp_json_decode");
+
     lua_pushcfunction(s, standard_md5);
     lua_setglobal(s, "bsp_md5");
 
     lua_pushcfunction(s, standard_sha1);
     lua_setglobal(s, "bsp_sha1");
+
+    lua_pushcfunction(s, standard_hash);
+    lua_setglobal(s, "bsp_hash");
 
     lua_pushcfunction(s, standard_random_seed);
     lua_setglobal(s, "bsp_random_seed");

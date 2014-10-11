@@ -1,36 +1,41 @@
 -- BSP Test logical script
-function BSP_on_load()
-	print("BS.Play -- sickycat demo script loaded");
-    bsp_online_init({
-        uid = 'ii', 
-        name = 's32', 
-        sets = 's100'
-    });
+local main_connect, main_close, main_obj, main_cmd;
+local internal_obj, internal_cmd;
+function server(server_name, event, cid, ...)
+    print("Server : " .. server_name);
+    print("Event  : " .. event);
+    print("Client : " .. cid);
+
+    local args = {...};
+    local main_server_events = {connect = main_connect, close = main_close, error = nil, raw = nil, obj = nil, cmd = main_cmd};
+    local internal_server_events = {connect = internal_connect, close = internal_close, error = internal_error, raw = nil, obj = nil, cmd = internal_cmd};
+    if server_name == 'main_server' and main_server_events[event] ~= nil then
+        main_server_events[event](cid, unpack(args));
+    elseif server_name == 'internal_server' and internal_server_events[event] ~= nil then
+        internal_server_events[event](cid, unpack(args));
+    end
 end
 
-function BSP_on_reload()
-    print("BS.Play -- sickycat demo script reloaded");
+main_connect = function(cid)
+    -- Do sth
 end
 
-function BSP_on_exit()
-    print("BS.Play -- sickycat demo say <goodbye> to you");
+main_close = function(cid)
+    -- Do sth
 end
 
-function BSP_on_accept(clt_id)
-	print("Client " .. clt_id .. " connected.");
-    bsp_set_online(clt_id, {uid = 1000, name = 'Hacker.NP', sets = 'I am your friend'});
-    bsp_var_dump(bsp_online_list());
+main_obj = function(cid, obj)
+    -- Do sth
 end
 
-function BSP_on_close(clt_id)
-	print("Client " .. clt_id .. " disconnected.");
-    bsp_var_dump(bsp_online_info(clt_id));
-    bsp_var_dump(bsp_online_list());
-    bsp_set_online(clt_id, nil);
+main_cmd = function(cid, cmd, params)
+    -- Do sth
 end
 
-function BSP_on_data(clt_id, cmd, params)
-	print("Command " .. cmd .. " from " .. clt_id);
-    bsp_var_dump(params);
-    bsp_net_send(clt_id, cmd + 1, params);
+internal_obj = function(cid, obj)
+    -- Do sth
+end
+
+internal_cmd = function(cid, cmd, params)
+    -- Do sth
 end

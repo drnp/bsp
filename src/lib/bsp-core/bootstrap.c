@@ -35,21 +35,21 @@ static int bootstrap_load_script(lua_State *s)
     {
         return 0;
     }
-    
+
     const char *script_name = lua_tostring(s, -1);
     if (!script_name)
     {
         trace_msg(TRACE_LEVEL_ERROR, "BStrap : No script name specified");
         return 0;
     }
-    
+
     BSP_THREAD *t;
     BSP_CORE_SETTING *settings = get_core_setting();
     int i;
     for (i = 0; i < settings->static_workers; i ++)
     {
         t = get_thread(i);
-        if (t)
+        if (t && t->script_runner.state)
         {
             if (LUA_OK == luaL_dofile(t->script_runner.state, script_name))
             {
@@ -62,7 +62,7 @@ static int bootstrap_load_script(lua_State *s)
             }
         }
     }
-    
+
     return 0;
 }
 
@@ -93,12 +93,12 @@ int start_bootstrap(BSP_STRING *bs)
     {
         return BSP_RTN_ERROR_GENERAL;
     }
-    
+
     // Get main state
     BSP_THREAD *t = get_thread(MAIN_THREAD);
-    if (!t)
+    if (!t || !t->script_runner.state)
     {
-        trigger_exit(BSP_RTN_FATAL, "Cannot get main thread");
+        trigger_exit(BSP_RTN_FATAL, "Cannot get main thread state");
     }
 
     // Regist original load function
@@ -113,8 +113,8 @@ int start_bootstrap(BSP_STRING *bs)
     {
         trace_msg(TRACE_LEVEL_ERROR, "BStrap : Cannot change current working directory to %s", settings->script_dir);
     }
-    
-    if (BSP_RTN_SUCCESS == script_load_string(t->script_runner.state, STR_STR(bs), STR_LEN(bs)))
+
+    if (BSP_RTN_SUCCESS == script_load_string(t->script_runner.state, bs))
     {
         // Run code
         script_call(t->script_runner.state, NULL, NULL);
@@ -126,6 +126,6 @@ int start_bootstrap(BSP_STRING *bs)
     }
 
     lua_settop(t->script_runner.state, 0);
-    
+
     return BSP_RTN_SUCCESS;
 }

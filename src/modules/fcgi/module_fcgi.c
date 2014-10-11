@@ -37,7 +37,7 @@ BSP_SPINLOCK fcgi_upstreams_lock = BSP_SPINLOCK_INITIALIZER;
 // Initialization
 static void _fcgi_init()
 {
-    fcgi_upstreams = new_object();
+    fcgi_upstreams = new_object(OBJECT_TYPE_HASH);
     if (!fcgi_upstreams)
     {
         trigger_exit(BSP_RTN_ERROR_MEMORY, "FCGI memory error");
@@ -190,9 +190,9 @@ static int fcgi_set_upstream(lua_State *s)
         return 0;
     }
 
-    BSP_OBJECT_ITEM *item;
-    struct fcgi_upstream_entry_t *entry;
-    struct fcgi_upstream_t *upstream;
+    BSP_VALUE *item;
+    struct fcgi_upstream_entry_t *entry = NULL;
+    struct fcgi_upstream_t *upstream = NULL;
     const char *name = lua_tostring(s, -2);
     const char *host;
     int port, weight;
@@ -235,40 +235,36 @@ static int fcgi_set_upstream(lua_State *s)
         }
         lua_pop(s, 1);
     }
-    item = object_get_item(fcgi_upstreams, name, -1);
+    item = object_get_hash_str(fcgi_upstreams, name);
     if (item)
     {
         // Overwrite
-        if (BSP_VAL_POINTER == item->value.type)
+        struct fcgi_upstream_t *old_upstream = (struct fcgi_upstream_t *) value_get_pointer(item);
+        if (old_upstream)
         {
             // Clear old upstream
-            struct fcgi_upstream_t *old_upstream = (struct fcgi_upstream_t *) item->value.rval;
-            struct fcgi_upstream_entry_t *old_entry;
-            if (old_upstream)
+            struct fcgi_upstream_entry_t *old_entry = old_upstream->entries;
+            while (entry)
             {
-                entry = old_upstream->entries;
-                while (entry)
+                if (entry->host)
                 {
-                    if (entry->host)
-                    {
-                        bsp_free(entry->host);
-                    }
-                    old_entry = entry;
-                    entry = entry->next;
-                    bsp_free(old_entry);
+                    bsp_free(entry->host);
                 }
+                old_entry = entry;
+                entry = entry->next;
+                bsp_free(old_entry);
             }
         }
-        object_remove_item(fcgi_upstreams, item);
-        del_object_item(item);
+        object_set_hash_str(fcgi_upstreams, name, NULL);
+        del_value(item);
     }
-    
+
     if (upstream->entries)
     {
         // Set new upstream
-        item = new_object_item(name, -1);
-        set_item_pointer(item, (const void *) upstream);
-        object_insert_item(fcgi_upstreams, item);
+        item = new_value();
+        value_set_pointer(item, (const void *) upstream);
+        object_set_hash_str(fcgi_upstreams, name, item);
     }
     else
     {
@@ -284,24 +280,23 @@ static int fcgi_set_upstream(lua_State *s)
 // Generate and do a FastCGI request
 static int fcgi_send_request(lua_State *s)
 {
-    if (!s || !lua_isstring(s, -3) || !lua_istable(s, -2) || !fcgi_upstreams)
+    if (!s || !lua_isstring(s, -3) || !lua_istable(s, -2) || !fcgi_upstreams || OBJECT_TYPE_HASH != fcgi_upstreams->type)
     {
         return 0;
     }
 
     const char *name = lua_tostring(s, -3);
-    BSP_OBJECT_ITEM *item = object_get_item(fcgi_upstreams, name, -1);
-    if (!item || item->value.type != BSP_VAL_POINTER || !item->value.rval)
+    BSP_VALUE *item = object_get_hash_str(fcgi_upstreams, name);
+    struct fcgi_upstream_t *upstream = (struct fcgi_upstream_t *) value_get_pointer(item);
+    struct fcgi_upstream_entry_t *entry = NULL;
+    if (!upstream)
     {
-        lua_settop(s, 0);
         return 0;
     }
-    struct fcgi_upstream_t *upstream = (struct fcgi_upstream_t *) item->value.rval;
-    struct fcgi_upstream_entry_t *entry = NULL;
     BSP_FCGI_PARAMS p;
     memset(&p, 0, sizeof(BSP_FCGI_PARAMS));
     int n = 0;
-    
+
     lua_getfield(s, -2, "QUERY_STRING");
     p.query_string = lua_tostring(s, -1);
     lua_pop(s, 1);

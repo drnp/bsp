@@ -4,5 +4,5 @@ pkglib_LTLIBRARIES = module-http.la
 
 module_http_la_LDFLAGS = -module -avoid-version
 module_http_la_SOURCES = \
-    module_http.c \
-    module_http.h
+	module_http.c \
+	module_http.h

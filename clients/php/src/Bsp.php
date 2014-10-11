@@ -55,8 +55,6 @@ class Client
     const SOCK_TYPE_UDP             = 2;
     const DATA_TYPE_STREAM          = 0;
     const DATA_TYPE_PACKET          = 1;
-    const LENGTH_TYPE_32B           = 0;
-    const LENGTH_TYPE_64B           = 1;
     const SERIALIZE_TYPE_NATIVE     = 0;
     const SERIALIZE_TYPE_JSON       = 1;
     const SERIALIZE_TYPE_MSGPACK    = 2;
@@ -78,7 +76,6 @@ class Client
     private $inet;
     private $sock;
     private $data_type;
-    private $length_type;
     private $serialize_type;
     private $compress_type;
     
@@ -94,7 +91,6 @@ class Client
         $this->inet = self::INET_TYPE_ANY;
         $this->sock = self::SOCK_TYPE_ANY;
         $this->data_type = self::DATA_TYPE_STREAM;
-        $this->length_type = self::LENGTH_TYPE_32B;
         $this->serialize_type = self::SERIALIZE_TYPE_JSON;
         $this->compress_type = self::COMPRESS_TYPE_NONE;
         
@@ -126,10 +122,6 @@ class Client
         if (isset($params['data']) && $params['data'] == self::DATA_TYPE_PACKET)
         {
             $this->data_type = self::DATA_TYPE_PACKET;
-        }
-        if (isset($params['length']) && $params['length'] == self::LENGTH_TYPE_64B && 8 == \PHP_INT_SIZE)
-        {
-            $this->length_type = self::LENGTH_TYPE_64B;
         }
         if (isset($params['serializer']))
         {
@@ -169,7 +161,7 @@ class Client
         $this->serializer[self::SERIALIZE_TYPE_AMF] = new \Bsp\Packet\Amf();
         $this->serializer[self::SERIALIZE_TYPE_JSON] = new \Bsp\Packet\Json();
         $this->serializer[self::SERIALIZE_TYPE_MSGPACK] = new \Bsp\Packet\Msgpack();
-        $this->serializer[self::SERIALIZE_TYPE_NATIVE] = new \Bsp\Packet\Native($this->length_type);
+        $this->serializer[self::SERIALIZE_TYPE_NATIVE] = new \Bsp\Packet\Native();
         $this->compressor[self::COMPRESS_TYPE_DEFLATE] = new \Bsp\Compressor\Deflate();
         $this->compressor[self::COMPRESS_TYPE_LZ4] = new \Bsp\Compressor\Lz4();
         $this->compressor[self::COMPRESS_TYPE_SNAPPY] = new \Bsp\Compressor\Snappy();
@@ -189,8 +181,7 @@ class Client
     private function _hdr($type)
     {
         $hdr = (($type & 0b111) << 5) | 
-               (($this->length_type & 0b1)) << 4 | 
-               (($this->serialize_type & 0b11) << 2) | 
+               (($this->serialize_type & 0b111) << 2) | 
                (($this->compress_type & 0b11));
         
         return chr($hdr);
@@ -198,16 +189,88 @@ class Client
     
     private function _len($len)
     {
-        $ret = null;
-        if (self::LENGTH_TYPE_64B == $this->length_type)
+        $ret = '';
+        // Vint
+        if (0 == $len >> 7)
         {
-            // 8-byte length
-            $ret = \pack('NN', $len >> 32, $len % 0x100000000);
+            // 1 bytes
+            $ret = \chr($len & 0x7F);
+        }
+        elseif (0 == $len >> 14)
+        {
+            // 2 bytes
+            $ret = \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
+        }
+        elseif (0 == $len >> 21)
+        {
+            // 3 bytes
+            $ret = \chr((($len >> 14) & 0x7F) | 0x80) . 
+                   \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
+        }
+        elseif (0 == $len >> 28)
+        {
+            // 4 bytes
+            $ret = \chr((($len >> 21) & 0x7F) | 0x80) . 
+                   \chr((($len >> 14) & 0x7F) | 0x80) . 
+                   \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
+        }
+        elseif (0 == $len >> 35)
+        {
+            // 5 bytes
+            $ret = \chr((($len >> 28) & 0x7F) | 0x80) . 
+                   \chr((($len >> 21) & 0x7F) | 0x80) . 
+                   \chr((($len >> 14) & 0x7F) | 0x80) . 
+                   \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
+        }
+        elseif (0 == $len >> 42)
+        {
+            // 6 bytes
+            $ret = \chr((($len >> 35) & 0x7F) | 0x80) . 
+                   \chr((($len >> 28) & 0x7F) | 0x80) . 
+                   \chr((($len >> 21) & 0x7F) | 0x80) . 
+                   \chr((($len >> 14) & 0x7F) | 0x80) . 
+                   \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
+        }
+        elseif (0 == $len >> 49)
+        {
+            // 7 bytes
+            $ret = \chr((($len >> 42) & 0x7F) | 0x80) . 
+                   \chr((($len >> 35) & 0x7F) | 0x80) . 
+                   \chr((($len >> 28) & 0x7F) | 0x80) . 
+                   \chr((($len >> 21) & 0x7F) | 0x80) . 
+                   \chr((($len >> 14) & 0x7F) | 0x80) . 
+                   \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
+        }
+        elseif (0 == $len >> 56)
+        {
+            // 8 bytes
+            $ret = \chr((($len >> 49) & 0x7F) | 0x80) . 
+                   \chr((($len >> 42) & 0x7F) | 0x80) . 
+                   \chr((($len >> 35) & 0x7F) | 0x80) . 
+                   \chr((($len >> 28) & 0x7F) | 0x80) . 
+                   \chr((($len >> 21) & 0x7F) | 0x80) . 
+                   \chr((($len >> 14) & 0x7F) | 0x80) . 
+                   \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
         }
         else
         {
-            // 4-byte length
-            $ret = \pack('N', $len);
+            // 9 bytes
+            $ret = \chr((($len >> 56) & 0x7F) | 0x80) . 
+                   \chr((($len >> 49) & 0x7F) | 0x80) . 
+                   \chr((($len >> 42) & 0x7F) | 0x80) . 
+                   \chr((($len >> 35) & 0x7F) | 0x80) . 
+                   \chr((($len >> 28) & 0x7F) | 0x80) . 
+                   \chr((($len >> 21) & 0x7F) | 0x80) . 
+                   \chr((($len >> 14) & 0x7F) | 0x80) . 
+                   \chr((($len >> 7) & 0x7F) | 0x80) . 
+                   \chr($len & 0x7F);
         }
         
         return $ret;
@@ -216,12 +279,12 @@ class Client
     private function _parse_hdr($hdr)
     {
         $ret = array(
-            'length_type' => $this->length_type, 
+            'type' => self::PACKET_TYPE_REP, 
             'serialize_type' => $this->serialize_type, 
             'compress_type' => $this->compress_type
         );
         
-        if ($hdr)
+        if ($hdr !== false)
         {
             if (\is_string($hdr))
             {
@@ -233,8 +296,7 @@ class Client
             }
             
             $ret['type'] = ($code >> 5);
-            $ret['length_type'] = ($code >> 4) & 0b1;
-            $ret['serialize_type'] = ($code >> 2) & 0b11;
+            $ret['serialize_type'] = ($code >> 2) & 0b111;
             $ret['commpress_type'] = $code & 0b11;
         }
         
@@ -246,24 +308,47 @@ class Client
         $ret = 0;
         if (\is_string($stream))
         {
-            if (self::LENGTH_TYPE_64B == $this->length_type)
+            $ret = \ord($stream[0]) & 0x7F;
+            if (0 == \ord($stream[0]) | 0x80)
             {
-                $ret = (\ord($stream[1]) << 56) + 
-                        (\ord($stream[2]) << 48) + 
-                        (\ord($stream[3]) << 40) + 
-                        (\ord($steram[4]) << 32) + 
-                        (\ord($stream[5]) << 24) + 
-                        (\ord($stream[6]) << 16) + 
-                        (\ord($stream[7]) << 8) + 
-                        (\ord($stream[8]));
+                return $ret;
             }
-            else
+            $ret = $ret << 7 | (\ord($stream[1]) & 0x7F);
+            if (0 == \ord($stream[1]) & 0x80)
             {
-                $ret = (\ord($stream[1]) << 24) + 
-                        (\ord($stream[2]) << 16) + 
-                        (\ord($stream[3]) << 8) + 
-                        (\ord($stream[4]));
+                return $ret;
             }
+            $ret = $ret << 7 | (\ord($stream[2]) & 0x7F);
+            if (0 == \ord($stream[2]) & 0x80)
+            {
+                return $ret;
+            }
+            $ret = $ret << 7 | (\ord($stream[3]) & 0x7F);
+            if (0 == \ord($stream[3]) & 0x80)
+            {
+                return $ret;
+            }
+            $ret = $ret << 7 | (\ord($stream[4]) & 0x7F);
+            if (0 == \ord($stream[4]) & 0x80)
+            {
+                return $ret;
+            }
+            $ret = $ret << 7 | (\ord($stream[5]) & 0x7F);
+            if (0 == \ord($stream[5]) & 0x80)
+            {
+                return $ret;
+            }
+            $ret = $ret << 7 | (\ord($stream[6]) & 0x7F);
+            if (0 == \ord($stream[6]) & 0x80)
+            {
+                return $ret;
+            }
+            $ret = $ret << 7 | (\ord($stream[7]) & 0x7F);
+            if (0 == \ord($stream[7]) & 0x80)
+            {
+                return $ret;
+            }
+            $ret = $ret << 8 | (\ord($stream[8]) & 0xFF);
         }
         
         return $ret;

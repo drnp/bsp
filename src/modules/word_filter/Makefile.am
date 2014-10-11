@@ -4,5 +4,5 @@ pkglib_LTLIBRARIES = module-word_filter.la
 
 module_word_filter_la_LDFLAGS = -module -avoid-version
 module_word_filter_la_SOURCES = \
-    module_word_filter.c \
-    module_word_filter.h
+	module_word_filter.c \
+	module_word_filter.h

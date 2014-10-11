@@ -74,12 +74,16 @@ AC_CHECK_HEADERS([ \
 ], [], [AC_MSG_ERROR([OpenSSL header files missed])])
 
 AC_CHECK_HEADERS([ \
-    zlib.h \
+    zlib.h
 ], [], [AC_MSG_ERROR([Zlib header file missed])])
 
 AC_CHECK_HEADERS([ \
-    ltdl.h \
+    ltdl.h
 ], [], [AC_MSG_ERROR([Libtool ltdl header file missed])])
+
+AC_CHECK_HEADERS([ \
+    sqlite3.h
+], [], [AC_MSG_ERROR([SQLite3 header file missed])])
 
 AC_FUNC_FORK
 AC_FUNC_MALLOC
@@ -433,12 +437,13 @@ AC_CHECK_SIZEOF(int, 4)
 
 AC_OUTPUT([
 Makefile
+deps/Makefile
+deps/lua/Makefile
 src/Makefile
 src/lib/Makefile
 src/lib/bsp-core/Makefile
 src/modules/Makefile
 src/modules/standard/Makefile
-src/modules/json/Makefile
 src/modules/http/Makefile
 src/modules/mysql/Makefile
 src/modules/sqlite/Makefile

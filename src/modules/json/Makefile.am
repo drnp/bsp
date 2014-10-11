@@ -4,5 +4,5 @@ pkglib_LTLIBRARIES = module-json.la
 
 module_json_la_LDFLAGS = -module -avoid-version
 module_json_la_SOURCES = \
-    module_json.c \
-    module_json.h
+	module_json.c \
+	module_json.h

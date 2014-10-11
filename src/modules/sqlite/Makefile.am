@@ -4,5 +4,5 @@ pkglib_LTLIBRARIES = module-sqlite.la
 
 module_sqlite_la_LDFLAGS = -module -avoid-version
 module_sqlite_la_SOURCES = \
-    module_sqlite.c \
-    module_sqlite.h
+	module_sqlite.c \
+	module_sqlite.h

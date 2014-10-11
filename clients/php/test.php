@@ -6,7 +6,7 @@ require("src/Bsp.php");
 
 $config = array(
     'host'      => '192.168.100.251', 
-    'port'      => 9172, 
+    'port'      => 9173, 
     'data'      => \Bsp\Client::DATA_TYPE_PACKET, 
     'driver'    => \Bsp\Client::SOCKET_DRIVER_WRAPPER, 
     'inet'      => \Bsp\Client::INET_TYPE_IPV4, 

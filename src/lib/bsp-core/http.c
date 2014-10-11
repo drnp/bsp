@@ -820,54 +820,55 @@ size_t parse_http_request(const char *data, ssize_t len, BSP_HTTP_REQUEST *req)
 }
 
 /* HTTP response generator */
-int generate_http_response(BSP_HTTP_RESPONSE *resp, BSP_STRING *resp_str)
+BSP_STRING * generate_http_response(BSP_HTTP_RESPONSE *resp)
 {
-    if (!resp || !resp_str)
+    if (!resp)
     {
-        return BSP_RTN_ERROR_GENERAL;
+        return NULL;
     }
-    
+
     if (resp->version && resp->status_code)
     {
-        string_printf(resp_str, "%s %d %s\r\n", resp->version, resp->status_code, resp->status_description ? resp->status_description : "OK");
+        BSP_STRING *ret = new_string(NULL, 0);
+        string_printf(ret, "%s %d %s\r\n", resp->version, resp->status_code, resp->status_description ? resp->status_description : "OK");
 
         if (resp->server)
         {
-            string_printf(resp_str, "Server: %s\r\n", resp->server);
+            string_printf(ret, "Server: %s\r\n", resp->server);
         }
 
         if (resp->connection)
         {
-            string_printf(resp_str, "Connection: %s\r\n", resp->connection);
+            string_printf(ret, "Connection: %s\r\n", resp->connection);
         }
 
         if (resp->upgrade)
         {
-            string_printf(resp_str, "Upgrade: %s\r\n", resp->upgrade);
+            string_printf(ret, "Upgrade: %s\r\n", resp->upgrade);
         }
 
         if (resp->sec_websocket_accept)
         {
-            string_printf(resp_str, "Sec-WebSocket-Accept: %s\r\n", resp->sec_websocket_accept);
+            string_printf(ret, "Sec-WebSocket-Accept: %s\r\n", resp->sec_websocket_accept);
         }
 
         if (resp->sec_websocket_protocol)
         {
-            string_printf(resp_str, "Sec-WebSocket-Protocol: %s\r\n", resp->sec_websocket_protocol);
+            string_printf(ret, "Sec-WebSocket-Protocol: %s\r\n", resp->sec_websocket_protocol);
         }
 
         if (resp->sec_websocket_origin)
         {
-            string_printf(resp_str, "Sec-WebSocket-Origin: %s\r\n", resp->sec_websocket_origin);
+            string_printf(ret, "Sec-WebSocket-Origin: %s\r\n", resp->sec_websocket_origin);
         }
 
-        string_append(resp_str, "\r\n", -1);
+        string_append(ret, "\r\n", -1);
         status_op_http(STATUS_OP_HTTP_RESPONSE);
 
-        return BSP_RTN_SUCCESS;
+        return ret;
     }
 
-    return BSP_RTN_ERROR_GENERAL;
+    return NULL;
 }
 
 /* HTTP response parser */
@@ -918,7 +919,7 @@ size_t parse_http_response(const char *data, ssize_t len, BSP_HTTP_RESPONSE *res
     {
         return 0;
     }
-    
+
     http_response_set_version(resp, curr, (brk - curr));
 
     // Find status code
@@ -966,7 +967,7 @@ size_t parse_http_response(const char *data, ssize_t len, BSP_HTTP_RESPONSE *res
                 resp_value_len = (data + i) - resp_value;
             }
         }
-        
+
         if (data[i] == 0x0a)
         {
             new_line = 1;
@@ -994,7 +995,7 @@ size_t parse_http_response(const char *data, ssize_t len, BSP_HTTP_RESPONSE *res
             {
                 http_response_set_connection(resp, resp_value, resp_value_len);
             }
-            
+
             resp_key = NULL;
             resp_value = NULL;
             resp_value_len = 0;
@@ -1049,8 +1050,7 @@ int websocket_handshake(BSP_HTTP_REQUEST *req, BSP_HTTP_RESPONSE *resp)
                 SHA1_Final(sha_hash, &sha);
 
                 // Base64_encode
-                key_accept = new_string(NULL, 0);
-                string_base64_encode(key_accept, (const char *) sha_hash, SHA_DIGEST_LENGTH);
+                key_accept = string_base64_encode((const char *) sha_hash, SHA_DIGEST_LENGTH);
                 http_response_set_sec_websocket_accept(resp, key_accept->str, -1);
                 del_string(key_accept);
             }
@@ -1176,14 +1176,14 @@ size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRI
 }
 
 // Generate WebSocket data
-int generate_websocket_data(const char *data, ssize_t len, int opcode, int mask, BSP_STRING *data_str)
+BSP_STRING * generate_websocket_data(const char *data, ssize_t len, int opcode, int mask)
 {
     char head[14];
     int head_len = 0;
 
-    if (!data || !data_str)
+    if (!data)
     {
-        return BSP_RTN_ERROR_GENERAL;
+        len = 0;
     }
 
     if (len < 0)
@@ -1192,7 +1192,7 @@ int generate_websocket_data(const char *data, ssize_t len, int opcode, int mask,
     }
 
     mask = mask ? 1 : 0;
-
+    BSP_STRING *ret = new_string(NULL, 0);
     head[0] = 0x80 | opcode;
     if (len > 65535)
     {
@@ -1220,24 +1220,24 @@ int generate_websocket_data(const char *data, ssize_t len, int opcode, int mask,
         head_len += 4;
     }
 
-    clean_string(data_str);
-    string_append(data_str, head, head_len);
+    string_append(ret, head, head_len);
     // Write data
-    string_fill(data_str, -1, head_len + len);
     if (!mask)
     {
-        memcpy(data_str->str + head_len, data, len);
+        string_append(ret, data, len);
     }
 
     else
     {
         // XOR with mask
+        string_fill(ret, -1, len);
         size_t i;
         for (i = 0; i < len; i ++)
         {
-            data_str->str[head_len + i] = data[i] ^ head[head_len - 4 + (i & 3)];
+            ret->str[head_len + i] = data[i] ^ head[head_len - 4 + (i & 3)];
         }
     }
 
-    return BSP_RTN_SUCCESS;
+    return ret;
 }
+

@@ -43,7 +43,7 @@ char * get_dir()
     char *ret = NULL;
     char *curr;
     ssize_t nbytes = readlink("/proc/self/exe", self_name, _POSIX_PATH_MAX - 1);
-    
+
     if (-1 == nbytes)
     {
         ret = "./";
@@ -53,7 +53,7 @@ char * get_dir()
         self_name[nbytes] = 0x0;
         ret = realpath(self_name, NULL);
         curr = strrchr(ret, '/');
-        
+
         if (curr)
         {
             curr[0] = 0x0;
@@ -65,7 +65,7 @@ char * get_dir()
             }
         }
     }
-    
+
     return ret;
 }
 
@@ -80,7 +80,7 @@ void set_dir(const char *dir)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Misc   : Change current working directory failed");
     }
-    
+
     BSP_CORE_SETTING *settings = get_core_setting();
     settings->base_dir = dir;
     if (settings->mod_dir)
@@ -98,7 +98,7 @@ void set_dir(const char *dir)
         free(settings->runtime_dir);
     }
     asprintf(&settings->runtime_dir, "%s/run/", dir);
-    
+
     return;
 }
 
@@ -116,12 +116,12 @@ void save_pid()
         trace_msg(TRACE_LEVEL_ERROR, "Misc   : Write PID file failed");
         return;
     }
-    
+
     pid_t pid = getpid();
     fprintf(fp, "%d", (int) pid);
     fclose(fp);
     trace_msg(TRACE_LEVEL_CORE, "Misc   : Saved process ID %d to file %s", (int) pid, filename);
-    
+
     return;
 }
 
@@ -131,19 +131,19 @@ size_t trace_msg(int level, const char *fmt, ...)
     size_t nbytes = 0;
     BSP_CORE_SETTING *settings = get_core_setting();
     char msg[MAX_TRACE_LENGTH];
-    
+
     if (!settings->trace_recorder && !settings->trace_printer)
     {
         // Nothing to do
         return 0;
     }
-    
+
     if (0 == (level & settings->trace_level))
     {
         // Level ignored
         return 0;
     }
-    
+
     bsp_spin_lock(&trace_lock);
     time_t now = time((time_t *) NULL);
     va_list ap;
@@ -154,19 +154,19 @@ size_t trace_msg(int level, const char *fmt, ...)
         msg[nbytes] = 0;
     }
     va_end(ap);
-    
+
     if (settings->trace_recorder)
     {
         settings->trace_recorder(now, level, msg);
     }
-    
+
     if (settings->trace_printer)
     {
         settings->trace_printer(now, level, msg);
     }
-    
+
     bsp_spin_unlock(&trace_lock);
-    
+
     return nbytes;
 }
 
@@ -196,7 +196,7 @@ char * get_trace_level_str(int level, int with_color)
         default : 
             return " UNKNOWN ";
     }
-    
+
     return "         ";
 }
 
@@ -207,14 +207,14 @@ int filter_non_pritable_char(char *input, ssize_t len, char r)
     {
         return 0;
     }
-    
+
     if (len < 0)
     {
         len = strlen(input);
     }
-    
+
     int i, nfiltered = 0;
-    
+
     for (i = 0; i < len; i ++)
     {
         if (input[i] < 32 || input[i] > 127)
@@ -223,6 +223,25 @@ int filter_non_pritable_char(char *input, ssize_t len, char r)
             nfiltered ++;
         }
     }
-    
+
     return nfiltered;
+}
+
+// LUA table real length
+size_t lua_table_size(lua_State *s, int idx)
+{
+    size_t ret = 0;
+    idx = lua_absindex(s, idx);
+    if (s && lua_istable(s, idx))
+    {
+        lua_checkstack(s, 2);
+        lua_pushnil(s);
+        while (0 != lua_next(s, idx))
+        {
+            ret ++;
+            lua_pop(s, 1);
+        }
+    }
+
+    return ret;
 }

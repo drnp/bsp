@@ -25,312 +25,303 @@
  * @update 01/28/2014
  * @chagelog 
  *      [01/14/2014] - Creation
- *      [01/28/2014] - next_item() mixed    
+ *      [01/28/2014] - next_item() mixed
+ *      [08/18/2014[ - Recode
  */
 
 #include "bsp.h"
 
-static void _json_append_obj(BSP_STRING *str, BSP_OBJECT *obj);
-static void _json_append_arr(BSP_STRING *str, BSP_OBJECT_ITEM *arr);
-// String operator
-static inline void _json_append_str(BSP_STRING *str, const char *data, ssize_t len)
+/* === SERIALIZE === */
+static inline void _append_string_to_json(BSP_STRING *str, BSP_STRING *src)
 {
-    int c;
-    ssize_t i, seg = -1;
-    const char *esc;
-    int utf_len;
-    int32_t utf_value;
-
-    if (!str || !data)
+    if (str && src && !str->is_const)
     {
-        return;
-    }
-
-    if (len < 0)
-    {
-        len = strlen(data);
-    }
-    
-    string_append(str, "\"", 1);
-    for (i = 0; i < len; i ++)
-    {
-        c = (unsigned char) data[i];
-        if (c < 0x80)
+        size_t i;
+        unsigned char c;
+        const char *esc;
+        int utf_len;
+        int32_t utf_value;
+        bsp_spin_lock(&src->lock);
+        for (i = 0; i < STR_LEN(src); i ++)
         {
-            // Try escape
-            esc = escape_char(c);
-            if (esc)
+            c = (unsigned char) STR_STR(src)[i];
+            if (c < 0x80)
             {
-                // Last
-                if (seg >= 0 && i > seg)
+                esc = escape_char(c);
+                if (esc)
                 {
-                    string_append(str, data + seg, (i - seg));
-                    seg = -1;
+                    // Escaped char
+                    string_append(str, esc, -1);
                 }
-                
-                // Append escaped data
-                string_append(str, esc, -1);
+                else
+                {
+                    // Normal
+                    string_append(str, STR_STR(src) + i, 1);
+                }
             }
             else
             {
-                // Continue normal characters
-                if (seg < 0)
-                {
-                    seg = i;
-                }
+                // UTF
+                utf_value = utf8_to_value(STR_STR(src) + i, STR_LEN(src) - i, &utf_len);
+                string_printf(str, "\\u%04x", utf_value);
+                i += (utf_len - 1);
             }
         }
-        else
-        {
-            if (seg >= 0 && i > seg)
-            {
-                string_append(str, data + seg, (i - seg));
-            }
-            
-            // Try UTF
-            utf_value = utf8_to_value(data + i, (len - i), &utf_len);
-            string_printf(str, "\\u%04x", utf_value);
-            i += (utf_len - 1);
-            seg = -1;
-        }
+        bsp_spin_unlock(&src->lock);
     }
-    
-    if (seg >= 0)
+
+    return;
+}
+
+static void _append_key_to_json(BSP_STRING *str, BSP_STRING *key);
+static void _append_value_to_json(BSP_STRING *str, BSP_VALUE *val);
+static void _append_object_to_json(BSP_STRING *str, BSP_OBJECT *obj);
+
+static void _append_key_to_json(BSP_STRING *str, BSP_STRING *key)
+{
+    if (!str || !key || str->is_const)
     {
-        string_append(str, data + seg, (len - seg));
+        return;
     }
-    
+
+    string_append(str, "\"", 1);
+    _append_string_to_json(str, key);
     string_append(str, "\"", 1);
 
     return;
 }
 
-// Append value
-static void _json_append_value(BSP_STRING *str, BSP_OBJECT_ITEM *item)
+static void _append_value_to_json(BSP_STRING *str, BSP_VALUE *val)
 {
-    if (!str || !item)
+    if (!str || !val || str->is_const)
     {
         return;
     }
 
-    BSP_OBJECT *next_obj;
-    switch (item->value.type)
+    int vlen = 0;
+    BSP_STRING *src = NULL;
+    BSP_OBJECT *sub_obj = NULL;
+    switch (val->type)
     {
-        case BSP_VAL_ARRAY : 
-            _json_append_arr(str, item);
-            break;
-        case BSP_VAL_OBJECT : 
-            next_obj = (BSP_OBJECT *) item->value.rval;
-            _json_append_obj(str, next_obj);
-            break;
-        case BSP_VAL_BOOLEAN : 
-            string_append(str, get_int8(item->value.lval) ? "true" : "false", -1);
-            break;
-        case BSP_VAL_FLOAT : 
-            string_printf(str, "%.14g", get_float(item->value.lval));
-            break;
-        case BSP_VAL_DOUBLE : 
-            string_printf(str, "%.14g", get_double(item->value.lval));
-            break;
-        case BSP_VAL_INT8 : 
-            string_printf(str, "%d", get_int8(item->value.lval));
-            break;
-        case BSP_VAL_INT16 : 
-            string_printf(str, "%d", get_int16(item->value.lval));
-            break;
-        case BSP_VAL_INT32 : 
-            string_printf(str, "%d", get_int32(item->value.lval));
-            break;
-        case BSP_VAL_INT64 : 
-            string_printf(str, "%lld", get_int64(item->value.lval));
-            break;
-        case BSP_VAL_STRING : 
-            _json_append_str(str, (const char *) item->value.rval, item->value.rval_len);
-            break;
         case BSP_VAL_NULL : 
-        default : 
             string_append(str, "null", 4);
             break;
+        case BSP_VAL_INT : 
+            string_printf(str, "%lld", get_vint(val->lval, &vlen));
+            break;
+        case BSP_VAL_FLOAT : 
+            string_printf(str, "%.14g", get_float(val->lval));
+            break;
+        case BSP_VAL_DOUBLE : 
+            string_printf(str, "%.14g", get_double(val->lval));
+            break;
+        case BSP_VAL_BOOLEAN_TRUE : 
+            string_append(str, "true", 4);
+            break;
+        case BSP_VAL_BOOLEAN_FALSE : 
+            string_append(str, "false", 5);
+            break;
+        case BSP_VAL_STRING : 
+            src = (BSP_STRING *) val->rval;
+            string_append(str, "\"", 1);
+            _append_string_to_json(str, src);
+            string_append(str, "\"", 1);
+            break;
+        case BSP_VAL_OBJECT : 
+            sub_obj = (BSP_OBJECT *) val->rval;
+            _append_object_to_json(str, sub_obj);
+            break;
+        default : 
+            break;
     }
 
     return;
 }
 
-// Array recursive
-static void _json_append_arr(BSP_STRING *str, BSP_OBJECT_ITEM *arr)
+static void _append_object_to_json(BSP_STRING *str, BSP_OBJECT *obj)
 {
-    if (!str || !arr || BSP_VAL_ARRAY != arr->value.type)
+    if (!str || !obj || str->is_const)
     {
         return;
     }
 
-    //BSP_OBJECT *next_obj = NULL;
-    BSP_OBJECT_ITEM *curr = NULL;
-    BSP_OBJECT_ITEM **list = (BSP_OBJECT_ITEM **) arr->value.rval;
-    size_t idx;
-    int has_item = 0;
-    
-    string_append(str, "[", 1);
-    for (idx = 0; idx < arr->value.rval_len; idx ++)
+    BSP_VALUE *val = NULL;
+    struct bsp_array_t *array = NULL;
+    struct bsp_hash_t *hash = NULL;
+    switch (obj->type)
     {
-        if (list[idx])
-        {
-            curr = list[idx];
-            if (has_item)
+        case OBJECT_TYPE_SINGLE : 
+            // Single
+            val = (BSP_VALUE *) obj->node;
+            _append_value_to_json(str, val);
+            break;
+        case OBJECT_TYPE_ARRAY : 
+            // Array
+            array = (struct bsp_array_t *) obj->node;
+            size_t idx;
+            if (array)
             {
-                string_append(str, ",", 1);
+                string_append(str, "[", 1);
+                for (idx = 0; idx < array->nitems; idx ++)
+                {
+                    size_t bucket = idx / ARRAY_BUCKET_SIZE;
+                    size_t seq = idx % ARRAY_BUCKET_SIZE;
+                    if (bucket < array->nbuckets && array->items[bucket])
+                    {
+                        val = array->items[bucket][seq];
+                    }
+                    else
+                    {
+                        val = NULL;
+                    }
+                    _append_value_to_json(str, val);
+                    if (idx < array->nitems - 1)
+                    {
+                        string_append(str, ",", 1);
+                    }
+                }
+                string_append(str, "]", 1);
             }
-            _json_append_value(str, curr);
-            has_item = 1;
-        }
-    }
-    string_append(str, "]", 1);
-    
-    return;
-}
-
-// Object recursive
-static void _json_append_obj(BSP_STRING *str, BSP_OBJECT *obj)
-{
-    if (!str || !obj)
-    {
-        return;
-    }
-
-    int has_item = 0;
-    BSP_OBJECT_ITEM *curr = NULL;
-    
-    reset_object(obj);
-    string_append(str, "{", 1);
-    while ((curr = curr_item(obj)))
-    {
-        if (has_item)
-        {
-            string_append(str, ",", 1);
-        }
-
-        // Read key
-        _json_append_str(str, curr->key, curr->key_len);
-        string_append(str, ":", 1);
-        
-        // Value
-        _json_append_value(str, curr);
-        has_item = 1;
-        next_item(obj);
-    }
-    string_append(str, "}", 1);
-
-    return;
-}
-
-// Decode string to normal
-static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr);
-static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj);
-static inline void _json_decode_int(BSP_OBJECT_ITEM *item, int64_t data)
-{
-    if (!item)
-    {
-        return;
-    }
-
-    if (0 != llabs(data) >> 31)
-    {
-        set_item_int64(item, (const int64_t) data);
-    }
-    else if (0 != llabs(data) >> 15)
-    {
-        set_item_int32(item, (const int32_t) data);
-    }
-    else if (0 != llabs(data) >> 7)
-    {
-        set_item_int16(item, (const int16_t) data);
-    }
-    else
-    {
-        set_item_int8(item, (const int8_t) data);
+            break;
+        case OBJECT_TYPE_HASH : 
+            // Hash
+            hash = (struct bsp_hash_t *) obj->node;
+            BSP_STRING *key;
+            if (hash)
+            {
+                string_append(str, "{", 1);
+                reset_object(obj);
+                val = curr_item(obj);
+                while (val)
+                {
+                    key = curr_hash_key(obj);
+                    if (key)
+                    {
+                        _append_key_to_json(str, key);
+                        string_append(str, ":", 1);
+                        _append_value_to_json(str, val);
+                    }
+                    next_item(obj);
+                    val = curr_item(obj);
+                    if (val)
+                    {
+                        string_append(str, ",", 1);
+                    }
+                }
+                string_append(str, "}", 1);
+            }
+            break;
+        case OBJECT_TYPE_UNDETERMINED : 
+        default : 
+            break;
     }
 
     return;
 }
 
-static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t len)
+BSP_STRING * json_nd_encode(BSP_OBJECT *obj)
 {
-    if (!str || !data)
+    BSP_STRING *json = NULL;
+    if (obj)
     {
-        return;
+        json = new_string(NULL, 0);
+        _append_object_to_json(json, obj);
     }
-    
-    if (len < 0)
+
+    return json;
+}
+
+/* === UNSERIALIZE === */
+static BSP_VALUE * _get_value_from_json(BSP_STRING *str);
+static void _traverse_json_array(BSP_OBJECT *obj, BSP_STRING *str);
+static void _traverse_json_hash(BSP_OBJECT *obj, BSP_STRING *str);
+
+static BSP_VALUE * _get_value_from_json(BSP_STRING *str)
+{
+    if (!str)
     {
-        len = strlen(data);
+        return NULL;
     }
-    
-    ssize_t i, seg = -1;
-    char c;
+
+    BSP_VALUE *ret = NULL;
+    unsigned char c;
+    char status = 0;
     char utf[5];
-    char utf_data[8];
-    long utf_value;
+    char utf_data[4];
+    long int utf_value;
+    BSP_STRING *v_str = NULL;
+    char *digit_end = NULL;
+    double intpart;
+    double v_digit = 0.0f;
+    BSP_OBJECT *v_obj = NULL;
+    int end = 0;
+    size_t normal = 0;
 
-    for (i = 0; i < len; i ++)
+    while (STR_REMAIN(str) > 0)
     {
-        if (data[i] == '\\')
+        c = STR_CHAR(str);
+        //fprintf(stderr, "%d => %03d => %c\n", (int) STR_NOW(str), c, c);
+        if (status & JSON_DECODE_STATUS_STR)
         {
-            // In escape
-            if (seg >= 0 && seg < i)
+            // In string
+            if (('\\' == c) && 0 == (status & JSON_DECODE_STATUS_STRIP))
             {
-                string_append(str, data + seg, (i - seg));
-                seg = -1;
+                // Strip
+                status |= JSON_DECODE_STATUS_STRIP;
+                // If normal remain
+                if (STR_NOW(str) > normal && v_str)
+                {
+                    string_append(v_str, STR_STR(str) + normal, (STR_NOW(str) - normal));
+                }
             }
-            
-            if (len - i >= 1)
+
+            if (status & JSON_DECODE_STATUS_STRIP)
             {
-                c = data[i + 1];
-                i ++;
                 switch (c)
                 {
-                    case 'b' : 
-                        string_append(str, "\b", 1);
-                        break;
-                    case 't' : 
-                        string_append(str, "\t", 1);
-                        break;
-                    case 'n' : 
-                        string_append(str, "\n", 1);
-                        break;
-                    case 'f' : 
-                        string_append(str, "\f", 1);
-                        break;
-                    case 'r' : 
-                        string_append(str, "\r", 1);
-                        break;
-                    case '"' : 
-                        string_append(str, "\"", 1);
+                    case '\\' : 
+                        string_append(v_str, "\\", 1);
                         break;
                     case '/' : 
-                        string_append(str, "/", 1);
+                        string_append(v_str, "/", 1);
                         break;
-                    case '\\' : 
-                        string_append(str, "\\", 1);
+                    case '"' : 
+                        string_append(v_str, "\"", 1);
+                        break;
+                    case 'b' : 
+                        string_append(v_str, "\b", 1);
+                        break;
+                    case 't' : 
+                        string_append(v_str, "\t", 1);
+                        break;
+                    case 'n' : 
+                        string_append(v_str, "\n", 1);
+                        break;
+                    case 'f' : 
+                        string_append(v_str, "\f", 1);
+                        break;
+                    case 'r' : 
+                        string_append(v_str, "\r", 1);
                         break;
                     case 'u' : 
-                        // UTF code
-                        if (len - i > 4)
+                        // Unicode
+                        if (STR_REMAIN(str) > 4)
                         {
-                            memcpy(utf, data + i + 1, 4);
+                            memcpy(utf, STR_CURR(str) + 1, 4);
                             utf[4] = 0x0;
                             utf_value = strtol(utf, NULL, 16);
-                            
+
                             if (utf_value < 0x80)
                             {
                                 utf_data[0] = utf_value;
-                                string_append(str, utf_data, 1);
+                                string_append(v_str, utf_data, 1);
                             }
                             else if (utf_value < 0x800)
                             {
                                 // 2 bytes
                                 utf_data[0] = ((utf_value >> 6) & 0x1f) | 0xc0;
                                 utf_data[1] = (utf_value & 0x3f) | 0x80;
-                                string_append(str, utf_data, 2);
+                                string_append(v_str, utf_data, 2);
                             }
                             else
                             {
@@ -338,382 +329,302 @@ static inline void _json_decode_str(BSP_STRING *str, const char *data, ssize_t l
                                 utf_data[0] = ((utf_value >> 12) & 0x0f) | 0xe0;
                                 utf_data[1] = ((utf_value >> 6) & 0x3f) | 0x80;
                                 utf_data[2] = (utf_value & 0x3f) | 0x80;
-                                string_append(str, utf_data, 3);
+                                string_append(v_str, utf_data, 3);
                             }
-                            
-                            i += 4;
+                            str->cursor += 4;
                         }
                         else
                         {
-                            string_append(str, "u", 1);
+                            string_append(v_str, "u", 1);  
                         }
-                        
                         break;
                     default : 
                         break;
                 }
+
+                status &= ~JSON_DECODE_STATUS_STRIP;
+                STR_NEXT(str);
+                normal = str->cursor;
+            }
+            else
+            {
+                if ('"' == c && v_str)
+                {
+                    // String exit
+                    status &= ~JSON_DECODE_STATUS_STR;
+                    if (STR_NOW(str) > normal)
+                    {
+                        string_append(v_str, STR_STR(str) + normal, (STR_NOW(str) - normal));
+                    }
+                    ret = new_value();
+                    value_set_string(ret, v_str);
+                    end = 1;
+                }
+                else
+                {
+                    // Normal
+                    // Just append
+                }
+                STR_NEXT(str);
             }
         }
         else
         {
-            // Normal char
-            if (seg < 0)
+            if ('"' == c)
             {
-                seg = i;
+                // String
+                status |= JSON_DECODE_STATUS_STR;
+                v_str = new_string(NULL, 0);
+                STR_NEXT(str);
+                normal = str->cursor;
             }
-        }
-    }
-    
-    if (seg >= 0 && seg < len)
-    {
-        string_append(str, data + seg, (len - seg));
-    }
-    
-    return;
-}
-
-// Decode data
-static int _json_decode_arr(const char *data, ssize_t len, BSP_OBJECT_ITEM *arr)
-{
-    if (!data || !arr)
-    {
-        return 0;
-    }
-
-    if (len < 0)
-    {
-        len = strlen(data);
-    }
-    
-    int in_str = 0, str_start = 0;
-    size_t i, next_len, idx = 0;
-    char *digit_next;
-    double v_number;
-    BSP_STRING *str = new_string(NULL, 0);
-    BSP_OBJECT_ITEM *curr_item = NULL;
-    BSP_OBJECT *next_obj;
-    
-    for (i = 0; i < len; i ++)
-    {
-        if (data[i] == '"')
-        {
-            // String
-            if (i > 0 && data[i - 1] == '\\')
+            else if ('{' == c)
             {
-                continue;
+                // A new hash
+                v_obj = new_object(OBJECT_TYPE_HASH);
+                STR_NEXT(str);
+                _traverse_json_hash(v_obj, str);
+                ret = new_value();
+                value_set_object(ret, v_obj);
+                end = 1;
             }
-            
-            if (in_str && str_start >= 0)
+            else if ('}' == c)
             {
-                // String end
-                clean_string(str);
-                _json_decode_str(str, data + str_start + 1, (i - str_start - 1));
-                curr_item = new_object_item(NULL, 0);
-                if (curr_item)
-                {
-                    set_item_string(curr_item, STR_STR(str), STR_LEN(str));
-                    array_set_item(arr, curr_item, idx ++);
-                }
-                in_str = 0;
+                // hash endding
+                ret = new_value();
+                ret->type = BSP_VAL_OBJECT_HASH_END;
+                STR_NEXT(str);
+                end = 1;
             }
-            else
+            else if ('[' == c)
             {
-                in_str = 1;
-                str_start = i;
+                // A new array
+                v_obj = new_object(OBJECT_TYPE_ARRAY);
+                STR_NEXT(str);
+                _traverse_json_array(v_obj, str);
+                ret = new_value();
+                value_set_object(ret, v_obj);
+                end = 1;
             }
-        }
-        else if (!in_str)
-        {
-            if (data[i] == '{')
+            else if (']' == c)
             {
-                // Next object
-                curr_item = new_object_item(NULL, 0);
-                if (curr_item)
-                {
-                    next_obj = new_object();
-                    next_len = _json_decode_obj(data + i + 1, len - i - 1, next_obj);
-                    set_item_object(curr_item, next_obj);
-                    array_set_item(arr, curr_item, idx ++);
-                    i += next_len;
-                }
+                // Array endding
+                ret = new_value();
+                ret->type = BSP_VAL_OBJECT_ARRAY_END;
+                STR_NEXT(str);
+                end = 1;
             }
-            else if (data[i] == '[')
+            else if (STR_REMAIN(str) >= 4 && 0 == strncmp("null", STR_CURR(str), 4))
             {
-                // Next array
-                curr_item = new_object_item(NULL, 0);
-                {
-                    if (curr_item)
-                    {
-                        set_item_array(curr_item);
-                        next_len = _json_decode_arr(data + i + 1, len - i - 1, curr_item);
-                        array_set_item(arr, curr_item, idx ++);
-                        i += next_len;
-                    }
-                }
+                // null
+                ret = new_value();
+                value_set_null(ret);
+                str->cursor += 4;
+                end = 1;
             }
-            else if (data[i] == ']')
-            {
-                // Array ending
-                del_string(str);
-                return i + 1;
-            }
-            else if (len - i >= 4 && 0 == strncasecmp(data + i, "true", 4))
+            else if (STR_REMAIN(str) >= 4 && 0 == strncmp("true", STR_CURR(str), 4))
             {
                 // Boolean true
-                curr_item = new_object_item(NULL, 0);
-                set_item_boolean(curr_item, 1);
-                array_set_item(arr, curr_item, idx ++);
-                i += 3;
+                ret = new_value();
+                value_set_boolean_true(ret);
+                str->cursor += 4;
+                end = 1;
             }
-            else if (len - i >= 5 && 0 == strncasecmp(data + i, "false", 5))
+            else if (STR_REMAIN(str) >= 5 && 0 == strncmp("false", STR_CURR(str), 5))
             {
                 // Boolean false
-                curr_item = new_object_item(NULL, 0);
-                set_item_boolean(curr_item, 0);
-                array_set_item(arr, curr_item, idx ++);
-                i += 4;
+                ret = new_value();
+                value_set_boolean_false(ret);
+                str->cursor += 5;
+                end = 1;
             }
-            else if (len - i >= 4 && 0 == strncasecmp(data + i, "null", 4))
+            else if (c > 0x20)
             {
-                // Null
-                curr_item = new_object_item(NULL, 0);
-                set_item_null(curr_item);
-                array_set_item(arr, curr_item, idx ++);
-                i += 3;
-            }
-            else
-            {
-                // Digital
-                curr_item = new_object_item(NULL, 0);
-                v_number = strtod(data + i, &digit_next);
-                if (curr_item && digit_next > (data + i))
+                // Digit
+                errno = 0;
+                v_digit = strtod(STR_CURR(str), &digit_end);
+                if (digit_end && digit_end > STR_CURR(str) && !errno)
                 {
-                    double intpart;
-                    if (0.0 == modf(v_number, &intpart))
+                    // Has value
+                    ret = new_value();
+                    if (0.0f == modf(v_digit, &intpart))
                     {
                         // Integer
-                        _json_decode_int(curr_item, (int64_t) v_number);
+                        value_set_int(ret, (const int64_t) v_digit);
                     }
                     else
                     {
                         // Double
-                        set_item_double(curr_item, v_number);
+                        value_set_double(ret, (const double) v_digit);
                     }
-                    array_set_item(arr, curr_item, idx ++);
-                    i = digit_next - data - 1;
-                }
-            }
-        }
-        else
-        {
-            // Just ignore
-        }
-    }
-    del_string(str);
-    
-    return i;
-}
-
-static int _json_decode_obj(const char *data, ssize_t len, BSP_OBJECT *obj)
-{
-    if (!data || !obj)
-    {
-        return 0;
-    }
-    
-    if (len < 0)
-    {
-        len = strlen(data);
-    }
-    
-    int in_str = 0, str_start = 0, is_value = 0;
-    size_t i, next_len;
-    char *digit_next;
-    double v_number;
-    BSP_STRING *str = new_string(NULL, 0);
-    BSP_OBJECT_ITEM *curr_item = NULL;
-    BSP_OBJECT *next_obj;
-
-    for (i = 0; i < len; i ++)
-    {
-        if (data[i] == '"')
-        {
-            // String
-            if (i > 0 && data[i - 1] == '\\')
-            {
-                continue;
-            }
-            
-            if (in_str && str_start >= 0)
-            {
-                // String end
-                clean_string(str);
-                _json_decode_str(str, data + str_start + 1, (i - str_start - 1));
-                if (is_value)
-                {
-                    // Value
-                    if (curr_item)
-                    {
-                        set_item_string(curr_item, STR_STR(str), STR_LEN(str));
-                        object_insert_item(obj, curr_item);
-                        is_value = 0;
-                        curr_item = NULL;
-                    }
+                    str->cursor += (digit_end - STR_CURR(str));
+                    end = 1;
                 }
                 else
                 {
-                    // Key
-                    curr_item = new_object_item(STR_STR(str), STR_LEN(str));
-                    is_value = 1;
+                    // Other char
+                    STR_NEXT(str);
                 }
-                in_str = 0;
             }
             else
             {
-                in_str = 1;
-                str_start = i;
+                // Just ignore
+                STR_NEXT(str);
             }
         }
-        else if (!in_str && is_value)
+        if (end)
         {
-            if (data[i] == '{')
-            {
-                // Next object
-                if (curr_item)
-                {
-                    next_obj = new_object();
-                    next_len = _json_decode_obj(data + i + 1, len - i - 1, next_obj);
-                    set_item_object(curr_item, next_obj);
-                    object_insert_item(obj, curr_item);
-                    i += next_len;
-                    is_value = 0;
-                    curr_item = NULL;
-                }
-            }
-            else if (data[i] == '[')
-            {
-                // Next array
-                if (curr_item)
-                {
-                    set_item_array(curr_item);
-                    next_len = _json_decode_arr(data + i + 1, len - i - 1, curr_item);
-                    object_insert_item(obj, curr_item);
-                    i += next_len;
-                    is_value = 0;
-                    curr_item = NULL;
-                }
-            }
-            else if (len - i >= 4 && 0 == strncasecmp(data + i, "true", 4))
-            {
-                // Boolean true
-                if (curr_item)
-                {
-                    set_item_boolean(curr_item, 1);
-                    object_insert_item(obj, curr_item);
-                    is_value = 0;
-                    curr_item = NULL;
-                }
-                i += 3;
-            }
-            else if (len - i >= 5 && 0 == strncasecmp(data + i, "false", 5))
-            {
-                // Boolean false
-                if (curr_item)
-                {
-                    set_item_boolean(curr_item, 0);
-                    object_insert_item(obj, curr_item);
-                    is_value = 0;
-                    curr_item = NULL;
-                }
-                i += 4;
-            }
-            else if (len - i >= 4 && 0 == strncasecmp(data + i, "null", 4))
-            {
-                // Null
-                if (curr_item)
-                {
-                    set_item_null(curr_item);
-                    object_insert_item(obj, curr_item);
-                    is_value = 0;
-                    curr_item = NULL;
-                }
-                i += 3;
-            }
-            else
-            {
-                // Digital
-                v_number = strtod(data + i, &digit_next);
-                if (digit_next > (data + i))
-                {
-                    if (curr_item)
-                    {
-                        double intpart;
-                        if (0.0 == modf(v_number, &intpart))
-                        {
-                            // Integer
-                            _json_decode_int(curr_item, (int64_t) v_number);
-                        }
-                        else
-                        {
-                            // Double
-                            set_item_double(curr_item, v_number);
-                        }
-                        object_insert_item(obj, curr_item);
-                        is_value = 0;
-                        curr_item = NULL;
-                    }
-                    i = digit_next - data - 1;
-                }
-            }
-        }
-        else
-        {
-            if (data[i] == '}')
-            {
-                del_string(str);
-                return i + 1;
-            }
-        }
-    }
-    del_string(str);
-    
-    return 0;
-}
-
-int json_nd_encode(BSP_OBJECT *obj, BSP_STRING *str)
-{
-    if (!obj || !str)
-    {
-        return 0;
-    }
-
-    _json_append_obj(str, obj);
-
-    return 0;
-}
-
-int json_nd_decode(const char *data, ssize_t len, BSP_OBJECT *obj)
-{
-    if (!data || !obj)
-    {
-        return 0;
-    }
-
-    if (len < 0)
-    {
-        len = strlen(data);
-    }
-
-    size_t i;
-    for (i = 0; i < len; i ++)
-    {
-        // Support object only
-        if ('{' == data[i])
-        {
-            _json_decode_obj(data + i + 1, len - i - 1, obj);
             break;
         }
     }
+    // Non-closed object
+    if (status & JSON_DECODE_STATUS_STR && v_str)
+    {
+        if (STR_NOW(str) > normal)
+        {
+            string_append(v_str, STR_STR(str) + normal, (STR_NOW(str) - normal));
+        }
+        ret = new_value();
+        value_set_string(ret, v_str);
+    }
 
-    return 0;
+    return ret;
+}
+
+static void _traverse_json_array(BSP_OBJECT *obj, BSP_STRING *str)
+{
+    if (!obj || OBJECT_TYPE_ARRAY != obj->type)
+    {
+        return;
+    }
+
+    BSP_VALUE *val = NULL;
+    // One by one
+    while (1)
+    {
+        val = _get_value_from_json(str);
+        if (!val)
+        {
+            // unwilling break
+            break;
+        }
+        if (BSP_VAL_OBJECT_ARRAY_END == val->type)
+        {
+            // Endding
+            del_value(val);
+            break;
+        }
+
+        object_set_array(obj, -1, val);
+    }
+
+    return;
+}
+
+static void _traverse_json_hash(BSP_OBJECT *obj, BSP_STRING *str)
+{
+    if (!obj || OBJECT_TYPE_HASH != obj->type)
+    {
+        return;
+    }
+
+    BSP_VALUE *key = NULL;
+    BSP_VALUE *val = NULL;
+    BSP_STRING *key_str = NULL;
+    // Key : Value
+    // We ignore [:] here, we accept any decollator here -_-
+    while (1)
+    {
+        key = _get_value_from_json(str);
+        if (!key)
+        {
+            // Unwilling break
+            break;
+        }
+
+        if (BSP_VAL_OBJECT_HASH_END == key->type)
+        {
+            // Succeed
+            del_value(key);
+            break;
+        }
+
+        val = _get_value_from_json(str);
+        if (!val)
+        {
+            // No value
+            del_value(key);
+            break;
+        }
+
+        if (BSP_VAL_OBJECT_HASH_END == val->type)
+        {
+            // Endding
+            del_value(key);
+            del_value(val);
+            break;
+        }
+
+        if (BSP_VAL_STRING == key->type)
+        {
+            // K/V pair
+            key_str = (BSP_STRING *) key->rval;
+            object_set_hash(obj, key_str, val);
+        }
+        else
+        {
+            // Unavailable key
+            del_value(key);
+            del_value(val);
+        }
+    }
+
+    return;
+}
+
+BSP_OBJECT * json_nd_decode(BSP_STRING *str)
+{
+    BSP_OBJECT *ret = NULL;
+    if (str)
+    {
+        str->cursor = 0;
+        bsp_spin_lock(&str->lock);
+        // Try first value
+        BSP_VALUE *first = _get_value_from_json(str);
+        if (first)
+        {
+            if (BSP_VAL_OBJECT == first->type)
+            {
+                ret = value_get_object(first);
+                switch (ret->type)
+                {
+                    case OBJECT_TYPE_ARRAY : 
+                        // Json array : [n1, n2, n3, n4 ...]
+                        _traverse_json_array(ret, str);
+                        break;
+                    case OBJECT_TYPE_HASH : 
+                        // Json hash : {key1:n1, key2:n2, key3:n3 ...}
+                        _traverse_json_hash(ret, str);
+                        break;
+                    case OBJECT_TYPE_SINGLE : 
+                    default : 
+                        // You kidding me?
+                        // Ni Ta Ma Zai Dou Wo?
+                        break;
+                }
+                // No leak -_-
+                first->rval = NULL;
+                del_value(first);
+            }
+            else
+            {
+                // Single value
+                ret = new_object(OBJECT_TYPE_SINGLE);
+                object_set_single(ret, first);
+            }
+        }
+        bsp_spin_unlock(&str->lock);
+    }
+
+    return ret;
 }

@@ -68,4 +68,7 @@ char * get_trace_level_str(int level, int with_color);
 // Filtering non-printable characters, replace them by given substitute
 int filter_non_pritable_char(char *input, ssize_t len, char r);
 
+// LUA table real length
+size_t lua_table_size(lua_State *s, int idx);
+
 #endif  /* _LIB_BSP_CORE_MISC_H */

@@ -27,6 +27,7 @@
  *      [06/14/2012] - Creation
  *      [12/17/2013] - BSP_VAL_POINTER added
  *      [06/04/2014] - debug_lua_stack() added
+ *      [08/11/2014] - debug_object rewrite
  */
 
 #include "bsp.h"
@@ -53,7 +54,7 @@ void trace_output(time_t now, int level, const char *msg)
                     "%s"
                     "\033[1;37m]\033[0m"
                     " : %s\n", tgdate, get_trace_level_str(level, 1), msg);
-    
+
     return;
 }
 
@@ -131,7 +132,7 @@ void debug_hex(const char *data, ssize_t len)
             fprintf(stderr, "  ");
         }
     }
-    
+
     fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s DATA > ===\033[0m\n", (int) len, tgdate);
     for (i = 0; i < len; i ++)
     {
@@ -160,66 +161,72 @@ void debug_hex(const char *data, ssize_t len)
 }
 
 // Pretty print a BSP-Object with indent
-void _var_dump_object(BSP_OBJECT *obj, int layer);
-void _var_dump_array(BSP_OBJECT_ITEM *array, int layer);
-static void _var_dump_item(BSP_OBJECT_ITEM *item, const char *curr_key)
+static void _dump_value(BSP_VALUE *val, int layer);
+static void _dump_object(BSP_OBJECT *obj, int layer);
+
+static void _dump_value(BSP_VALUE *val, int layer)
 {
-    if (!item)
+    if (!val)
     {
+        fprintf(stderr, "\033[1;35m### NO VALUE ###\033[0m\n");
         return;
     }
 
-    switch (item->value.type)
+    switch (val->type)
     {
-        case BSP_VAL_INT8 : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT8)\033[0m => %d\n", curr_key, get_int8(item->value.lval));
+        case BSP_VAL_NULL : 
+            fprintf(stderr, "\033[1;31m(NULL)\033[0m\n");
             break;
-        case BSP_VAL_INT16 : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT16)\033[0m => %d\n", curr_key, get_int16(item->value.lval));
+        case BSP_VAL_INT : 
+            fprintf(stderr, "\033[1;33m(INTEGER)\033[0m => %lld\n", (long long int) get_vint(val->lval, NULL));
             break;
-        case BSP_VAL_INT32 : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT32)\033[0m => %d\n", curr_key, get_int32(item->value.lval));
-            break;
-        case BSP_VAL_INT64 : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(INT64)\033[0m => %lld\n", curr_key, (long long int) get_int64(item->value.lval));
-            break;
-        case BSP_VAL_BOOLEAN : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(BOOLEAN)\033[0m => %s\n", curr_key, (get_int8(item->value.lval) == 0) ? "false" : "true");
+        case BSP_VAL_INT29 : 
+            fprintf(stderr, "\033[1;33m(INTEGER29)\033[0m => %d\n", (int) get_vint29(val->lval, NULL));
             break;
         case BSP_VAL_FLOAT : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(FLOAT)\033[0m => %f\n", curr_key, get_float(item->value.lval));
+            fprintf(stderr, "\033[1;34m(FLOAT)\033[0m => %f\n", get_float(val->lval));
             break;
         case BSP_VAL_DOUBLE : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(DOUBLE)\033[0m => %f\n", curr_key, get_double(item->value.lval));
+            fprintf(stderr, "\033[1;34m(DOUBLE)\033[0m => %g\n", get_double(val->lval));
+            break;
+        case BSP_VAL_BOOLEAN_TRUE : 
+            fprintf(stderr, "\033[1;35m(BOOLEAN_TRUE)\033[0m\n");
+            break;
+        case BSP_VAL_BOOLEAN_FALSE : 
+            fprintf(stderr, "\033[1;35m(BOOLEAN_FALSE)\033[0m\n");
             break;
         case BSP_VAL_STRING : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(STRING)\033[0m => ", curr_key);
-            if (item->value.rval)
+            fprintf(stderr, "\033[1;32m(STRING)\033[0m => ");
+            BSP_STRING *str = (BSP_STRING *) val->rval;
+            if (str && STR_STR(str))
             {
-                write(STDERR_FILENO, (char *) item->value.rval, item->value.rval_len);
+                write(STDERR_FILENO, STR_STR(str), STR_LEN(str));
             }
             else
             {
-                fprintf(stderr, "### NULL STRING ###");
+                fprintf(stderr, "\033[1,31m### NULL_STRING ###\033[0m");
             }
-            
             fprintf(stderr, "\n");
             break;
         case BSP_VAL_POINTER : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(POINTER)\033[0m => %p\n", curr_key, item->value.rval);
+            fprintf(stderr, "\033[1;36m(POINTER)\033[0m => %p\n", (void *) val->rval);
             break;
-        case BSP_VAL_NULL : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(NULL)\033[0m\n", curr_key);
+        case BSP_VAL_OBJECT : 
+            fprintf(stderr, "\033[1;36m(OBJECT)\033[0m => ");
+            BSP_OBJECT *sub_obj = (BSP_OBJECT *) val->rval;
+            _dump_object(sub_obj, layer + 1);
+            break;
+        case BSP_VAL_UNKNOWN : 
+            fprintf(stderr, "\033[1;31m(UNKNOWN)\033[0m\n");
             break;
         default : 
-            fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(UNKNOWN)\033[0m\n", curr_key);
             break;
     }
-    
+
     return;
 }
 
-void _var_dump_object(BSP_OBJECT *obj, int layer)
+static void _dump_object(BSP_OBJECT *obj, int layer)
 {
     if (!obj)
     {
@@ -227,123 +234,66 @@ void _var_dump_object(BSP_OBJECT *obj, int layer)
     }
 
     int i;
-    BSP_OBJECT *next_obj = NULL;
-    BSP_OBJECT_ITEM *curr = NULL;
-    char curr_key[1024];
-
-    for (i = 0; i < layer; i ++)
-    {
-        fprintf(stderr, "\t");
-    }
-
-    fprintf(stderr, "{\n");
+    BSP_VALUE *val;
     reset_object(obj);
-    while ((curr = curr_item(obj)))
+    switch (obj->type)
     {
-        for (i = 0; i <= layer; i ++)
-        {
-            fprintf(stderr, "\t");
-        }
-
-        if (curr->key_len > 1023)
-        {
-            strncpy(curr_key, curr->key, 1023);
-            curr_key[1023] = 0x0;
-        }
-        else
-        {
-            strncpy(curr_key, curr->key, curr->key_len);
-            curr_key[curr->key_len] = 0x0;
-        }
-
-        switch (curr->value.type)
-        {
-            case BSP_VAL_ARRAY : 
-                fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(ARRAY)\033[0m =>\n", curr_key);
-                _var_dump_array(curr, layer + 1);
-                break;
-            case BSP_VAL_OBJECT : 
-                next_obj = (BSP_OBJECT *) curr->value.rval;
-                if (next_obj)
+        case OBJECT_TYPE_SINGLE : 
+            // Single
+            fprintf(stderr, "\033[1;37mObject type : [SINGLE]\033[0m\n");
+            val = object_get_single(obj);
+            _dump_value(val, layer);
+            break;
+        case OBJECT_TYPE_ARRAY : 
+            // Array
+            fprintf(stderr, "\033[1;37mObject type : [ARRAY]\033[0m\n");
+            size_t idx = 0;
+            for (idx = 0; idx < object_size(obj); idx ++)
+            {
+                for (i = 0; i <= layer; i ++)
                 {
-                    fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(OBJECT)\033[0m => %d items\n", curr_key, (int) next_obj->nitems);
-                    _var_dump_object(next_obj, layer + 1);
+                    fprintf(stderr, "\t");
                 }
-                break;
-            default : 
-                _var_dump_item(curr, curr_key);
-        }
-
-        next_item(obj);
-    }
-
-    for (i = 0; i < layer; i ++)
-    {
-        fprintf(stderr, "\t");
-    }
-
-    fprintf(stderr, "}\n");
-    
-    return;
-}
-
-void _var_dump_array(BSP_OBJECT_ITEM *array, int layer)
-{
-    if (!array || BSP_VAL_ARRAY != array->value.type)
-    {
-        return;
-    }
-
-    int i;
-    BSP_OBJECT *next_obj = NULL;
-    BSP_OBJECT_ITEM *curr = NULL;
-    BSP_OBJECT_ITEM **list = (BSP_OBJECT_ITEM **) array->value.rval;
-    char curr_key[1024];
-
-    for (i = 0; i < layer; i ++)
-    {
-        fprintf(stderr, "\t");
-    }
-
-    fprintf(stderr, "{\n");
-    size_t idx;
-    for (idx = 0; idx < array->value.rval_len; idx ++)
-    {
-        if (list[idx])
-        {
-            for (i = 0; i <= layer; i ++)
-            {
-                fprintf(stderr, "\t");
+                fprintf(stderr, "\033[1;35m%lld\033[0m\t=> ", (long long int) idx);
+                val = object_get_array(obj, idx);
+                _dump_value(val, layer);
             }
-
-            curr = list[idx];
-            sprintf(curr_key, "%llu", (unsigned long long int) idx);
-            switch (curr->value.type)
+            fprintf(stderr, "\n");
+            break;
+        case OBJECT_TYPE_HASH : 
+            // Dict
+            fprintf(stderr, "\033[1;37mObject type : [HASH]\033[0m\n");
+            val = curr_item(obj);
+            BSP_STRING *key;
+            while (val)
             {
-                case BSP_VAL_ARRAY : 
-                    fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(ARRAY)\033[0m =>\n", curr_key);
-                    _var_dump_array(curr, layer + 1);
-                    break;
-                case BSP_VAL_OBJECT : 
-                    next_obj = (BSP_OBJECT *) curr->value.rval;
-                    if (next_obj)
-                    {
-                        fprintf(stderr, "\033[1;33m%s\033[0m \033[1;32m(OBJECT)\033[0m => %d items\n", curr_key, (int) next_obj->nitems);
-                        _var_dump_object(next_obj, layer + 1);
-                    }
-                    break;
-                default : 
-                    _var_dump_item(curr, curr_key);
+                key = curr_hash_key(obj);
+                for (i = 0; i <= layer; i ++)
+                {
+                    fprintf(stderr, "\t");
+                }
+                if (key)
+                {
+                    fprintf(stderr, "\033[1;33m");
+                    write(STDERR_FILENO, STR_STR(key), STR_LEN(key));
+                    fprintf(stderr, "\033[0m");
+                }
+                else
+                {
+                    fprintf(stderr, "### NO KEY ###");
+                }
+                fprintf(stderr, "\t=> ");
+                _dump_value(val, layer);
+                next_item(obj);
+                val = curr_item(obj);
             }
-        }
+            fprintf(stderr, "\n");
+            break;
+        case OBJECT_TYPE_UNDETERMINED : 
+        default : 
+            // Null
+            break;
     }
-
-    for (i = 0; i < layer; i ++)
-    {
-        fprintf(stderr, "\t");
-    }
-
-    fprintf(stderr, "}\n");
 
     return;
 }
@@ -354,9 +304,9 @@ void debug_object(BSP_OBJECT *obj)
     {
         return;
     }
-    
-    fprintf(stderr, "\n\033[1;37m=== [Debug Object %d items] === < START > ===\033[0m\n", (int) obj->nitems);
-    _var_dump_object(obj, 0);
+
+    fprintf(stderr, "\n\033[1;37m=== [Debug Object] === < START > ===\033[0m\n");
+    _dump_object(obj, 0);
     fprintf(stderr, "\033[1;37m=== [Debug Object] === < END > ===\033[0m\n\n");
 
     return;
@@ -369,7 +319,7 @@ void debug_lua_stack(lua_State *l)
     {
         return;
     }
-    
+
     fprintf(stderr, "\n\033[1;33m== [Stack top] ==\033[0m\n");
     int size = lua_gettop(l), n, type;
     for (n = 1; n <= size; n ++)
@@ -409,6 +359,6 @@ void debug_lua_stack(lua_State *l)
         }
     }
     fprintf(stderr, "\033[1;33m== [Stack button] ==\033[0m\n\n");
-    
+
     return;
 }
