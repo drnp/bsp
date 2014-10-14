@@ -533,11 +533,7 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                         }
                     }
                     del_string(str);
-<<<<<<< HEAD
-                    ret += 1 + (l_type = LENGTH_TYPE_32B ? 4 : 8) + plen;
-=======
                     ret += 1 + safe + plen;
->>>>>>> dev
                 }
                 else
                 {
