@@ -96,17 +96,9 @@ int script_load_string(lua_State *l, BSP_STRING *code)
 }
 
 // Call a script function or resume coruntine
-int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
+int script_call(lua_State *caller, const char *func, BSP_OBJECT *p)
 {
-    int ret, status;
-    size_t len;
-    int nargs = 0;
-    BSP_SCRIPT_CALL_PARAM *curr;
-    int32_t vi;
-    int64_t vl;
-    float vf;
-    double vd;
-    BSP_STRING *str;
+    int ret, status, nargs = 0;
 
     if (!caller)
     {
@@ -126,71 +118,10 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
     }
     else
     {
-        while (p)
+        if (p)
         {
-            curr = &p[nargs];
-            if (!curr || CALL_PTYPE_END == curr->type || !curr->ptr)
-            {
-                break;
-            }
-
-            if (!lua_checkstack(caller, 1))
-            {
-                // Stack full!
-                trace_msg(TRACE_LEVEL_ERROR, "Script : Lua stack full when call");
-                lua_settop(caller, 0);
-                return BSP_RTN_ERROR_SCRIPT;
-            }
-
-            switch (curr->type)
-            {
-                case CALL_PTYPE_BOOLEAN : 
-                    // Boolean
-                    memcpy(&vi, curr->ptr, sizeof(int32_t));
-                    lua_pushboolean(caller, (int) vi);
-                    break;
-                case CALL_PTYPE_INTEGER : 
-                    // Integer
-                    memcpy(&vi, curr->ptr, sizeof(int32_t));
-                    lua_pushinteger(caller, (lua_Integer) vi);
-                    break;
-                case CALL_PTYPE_INTEGER64 : 
-                    // Integer
-                    memcpy(&vl, curr->ptr, sizeof(int64_t));
-                    lua_pushinteger(caller, (lua_Integer) vl);
-                    break;
-                case CALL_PTYPE_FLOAT : 
-                    // Float
-                    memcpy(&vf, curr->ptr, sizeof(float));
-                    lua_pushnumber(caller, (lua_Number) vf);
-                    break;
-                case CALL_PTYPE_DOUBLE : 
-                    // Integer
-                    memcpy(&vd, curr->ptr, sizeof(double));
-                    lua_pushnumber(caller, (lua_Number) vd);
-                    break;
-                case CALL_PTYPE_OSTRING : 
-                case CALL_PTYPE_OSTRING_F : 
-                    // String / Binary
-                    len = (curr->len < 0) ? strlen((const char *) curr->ptr) : curr->len;
-                    lua_pushlstring(caller, (const char *) curr->ptr, len);
-                    break;
-                case CALL_PTYPE_STRING : 
-                case CALL_PTYPE_STRING_F : 
-                    // BSP.String
-                    str = (BSP_STRING *) curr->ptr;
-                    lua_pushlstring(caller, STR_STR(str), STR_LEN(str));
-                    break;
-                case CALL_PTYPE_OBJECT : 
-                case CALL_PTYPE_OBJECT_F : 
-                    // BSP Object
-                    object_to_lua_stack(caller, (BSP_OBJECT *) curr->ptr);
-                    break;
-                default : 
-                    // Unknown
-                    break;
-            }
-            nargs ++;
+            object_to_lua_stack(caller, p);
+            nargs = 1;
         }
         status = lua_status(caller);
         if (LUA_OK == status)
@@ -219,38 +150,11 @@ int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[])
         }
         else
         {
-            trace_msg(TRACE_LEVEL_DEBUG, "Script : Stack call successfully with params %d", nargs);
+            trace_msg(TRACE_LEVEL_DEBUG, "Script : Stack call successfully");
         }
         status_op_script(STATUS_OP_SCRIPT_CALL, 0);
     }
     lua_settop(caller, 0);
-
-    // Recycle
-    while (p)
-    {
-        curr = &p[nargs];
-        if (!curr || CALL_PTYPE_END == curr->type || !curr->ptr)
-        {
-            break;
-        }
-
-        switch (curr->type)
-        {
-            case CALL_PTYPE_OSTRING_F : 
-                // Try to free
-                bsp_free(curr->ptr);
-                break;
-            case CALL_PTYPE_STRING_F : 
-                del_string(curr->ptr);
-                break;
-            case CALL_PTYPE_OBJECT_F : 
-                del_object(curr->ptr);
-                break;
-            default : 
-                break;
-        }
-        nargs ++;
-    }
 
     return BSP_RTN_SUCCESS;
 }
@@ -266,12 +170,14 @@ int script_new_state(BSP_SCRIPT_STATE *ss)
     lua_State *state = lua_newstate(_default_allocator, NULL);
     if (!state)
     {
+        trace_msg(TRACE_LEVEL_ERROR, "Script : Create new script state error");
         return BSP_RTN_ERROR_SCRIPT;
     }
     luaL_openlibs(state);
     ss->state = state;
     ss->load_times = 0;
     trace_msg(TRACE_LEVEL_DEBUG, "Script : Create a new script state");
+    status_op_script(STATUS_OP_SCRIPT_STATE_ADD, 0);
 
     return BSP_RTN_SUCCESS;
 }
@@ -288,12 +194,14 @@ int script_new_stack(BSP_SCRIPT_STACK *ts)
     lua_State *stack = lua_newthread(ts->state);
     if (!stack)
     {
+        trace_msg(TRACE_LEVEL_ERROR, "Script : Create new LUA thread error");
         return -1;
     }
 
     ts->stack = stack;
     int ref = ts->stack_ref = luaL_ref(ts->state, LUA_REGISTRYINDEX);
     bsp_spin_init(&ts->lock);
+    status_op_script(STATUS_OP_SCRIPT_STACK_ADD, 0);
     trace_msg(TRACE_LEVEL_NOTICE, "Script : Generate a new LUA thread registed at index %d", ref);
 
     return ref;
@@ -309,6 +217,7 @@ int script_remove_stack(BSP_SCRIPT_STACK *ts)
     }
 
     luaL_unref(ts->state, LUA_REGISTRYINDEX, ts->stack_ref);
+    status_op_script(STATUS_OP_SCRIPT_STACK_DEL, 0);
     trace_msg(TRACE_LEVEL_NOTICE, "Script : unregisted a LUA thread from index %d", ts->stack_ref);
     ts->stack = NULL;
     ts->stack_ref = 0;

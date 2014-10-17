@@ -64,8 +64,10 @@
 
 #define STATUS_OP_SCRIPT_STATE_ADD              0x1401
 #define STATUS_OP_SCRIPT_STATE_DEL              0x1402
-#define STATUS_OP_SCRIPT_MEMORY_ALLOC           0x1403
-#define STATUS_OP_SCRIPT_MEMORY_FREE            0x1404
+#define STATUS_OP_SCRIPT_STACK_ADD              0x1403
+#define STATUS_OP_SCRIPT_STACK_DEL              0x1404
+#define STATUS_OP_SCRIPT_MEMORY_ALLOC           0x1405
+#define STATUS_OP_SCRIPT_MEMORY_FREE            0x1406
 #define STATUS_OP_SCRIPT_COMPILE                0x1411
 #define STATUS_OP_SCRIPT_CALL                   0x1412
 #define STATUS_OP_SCRIPT_FAILURE                0x1413
@@ -86,6 +88,9 @@
 
 #define STATUS_OP_HTTP_REQUEST                  0x1701
 #define STATUS_OP_HTTP_RESPONSE                 0x1702
+
+#define STATUS_OP_FCGI_REQUEST                  0x1801
+#define STATUS_OP_FCGI_RESPONSE                 0x1802
 
 /* Macros */
 
@@ -157,6 +162,7 @@ struct bsp_status_timer_t
 struct bsp_status_script_t
 {
     size_t              states_total;
+    size_t              stacks_total;
     size_t              compile_times;
     size_t              call_times;
     size_t              failure_times;
@@ -192,6 +198,12 @@ struct bsp_status_http_t
     size_t              response_times;
 };
 
+struct bsp_status_fcgi_t
+{
+    size_t              request_times;
+    size_t              response_times;
+};
+
 typedef struct bsp_status_t
 {
     int                 instance_id;
@@ -212,6 +224,8 @@ typedef struct bsp_status_t
                         db_sqlite;
     struct bsp_status_http_t
                         http;
+    struct bsp_status_fcgi_t
+                        fcgi;
 } BSP_STATUS;
 
 /* Functions */
@@ -228,6 +242,7 @@ void status_op_script(int op, size_t value);
 void status_op_db_mysql(int op);
 void status_op_db_sqlite(int op);
 void status_op_http(int op);
+void status_op_fcgi(int op);
 
 // Debug apis
 void debug_status();

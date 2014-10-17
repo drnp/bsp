@@ -44,7 +44,7 @@ typedef struct bsp_core_setting_t
 {
     int                 initialized;
     int                 instance_id;
-    
+
     // Process
     int                 max_fds;
     int                 is_daemonize;
@@ -54,6 +54,10 @@ typedef struct bsp_core_setting_t
     int                 trace_level;
     int                 udp_proto_main;
     int                 udp_proto_status;
+
+    // Server callback
+    void                (* on_srv_data) (BSP_CLIENT *clt, const char *data, ssize_t len);
+    void                (* on_srv_events) (BSP_CALLBACK *cb);
 
     // Debug callback
     void                (* trace_recorder) (time_t timestamp, int level, const char *msg);
@@ -74,7 +78,6 @@ typedef struct bsp_core_setting_t
     char                *log_dir;
     char                *runtime_dir;
     char                *script_dir;
-    char                *script_callback_entry;
 
     // Debug
     int                 debug_hex_connector_input;
@@ -93,6 +96,6 @@ char * get_core_version(void);
 int core_init();
 
 // Start main loop
-int core_loop(BSP_SERVER_CALLBACK sc_list[], void (* timer_event)(BSP_TIMER *));
+int core_loop(void (* server_event)(BSP_CALLBACK *), void (* timer_event)(BSP_TIMER *));
 
 #endif  /* _LIB_BSP_CORE_CORE_H */

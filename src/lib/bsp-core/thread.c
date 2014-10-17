@@ -192,12 +192,13 @@ void * thread_process(void *arg)
     BSP_CLIENT *clt = NULL;
     BSP_CONNECTOR *cnt = NULL;
     BSP_TIMER *tmr = NULL;
+    BSP_CALLBACK cb;
     struct sockaddr_storage udp_from;
     socklen_t udp_addrlen = sizeof(udp_from);
     static char udp_buff[16384];
     ssize_t udp_dlen = 0;
     int udp_proto;
-    char udp_resp[4];
+    //char udp_resp[4];
     char notify_buff[8];
     uint64_t timer;
     pthread_setspecific(lid_key, (void *) &me->id);
@@ -257,10 +258,13 @@ void * thread_process(void *arg)
                                 clt->packet_serialize_type = (CLIENT_TYPE_WEBSOCKET_HANDSHAKE == clt->client_type) ? SERIALIZE_TYPE_JSON : SERIALIZE_TYPE_NATIVE;
                                 clt->packet_compress_type = COMPRESS_TYPE_NONE;
                                 clt->last_hb_time = time(NULL);
-                                if (srv->on_events)
+                                if (settings->on_srv_events)
                                 {
                                     trace_msg(TRACE_LEVEL_VERBOSE, "Thread : Server %d ON_ACCEPT event triggered", srv->sck.fd);
-                                    srv->on_events(clt, SERVER_CALLBACK_ON_CONNECT, 0, NULL, 0);
+                                    cb.server = srv;
+                                    cb.client = clt;
+                                    cb.event = SERVER_CALLBACK_ON_CONNECT;
+                                    settings->on_srv_events(&cb);
                                 }
                             }
                             else
@@ -278,13 +282,16 @@ void * thread_process(void *arg)
                                             break;
                                         }
                                         // Send response
-                                        set_int32(udp_proto, udp_resp);
-                                        append_data_socket(&clt->sck, udp_resp, 4);
-                                        flush_socket(&clt->sck);
-                                        if (srv->on_events)
+                                        //set_int32(udp_proto, udp_resp);
+                                        //append_data_socket(&clt->sck, udp_resp, 4);
+                                        //flush_socket(&clt->sck);
+                                        if (settings->on_srv_events)
                                         {
                                             trace_msg(TRACE_LEVEL_VERBOSE, "Thread : Server %d ON_ACCEPT event triggered", srv->sck.fd);
-                                            srv->on_events(clt, SERVER_CALLBACK_ON_CONNECT, 0, NULL, 0);
+                                            cb.server = srv;
+                                            cb.client = clt;
+                                            cb.event = SERVER_CALLBACK_ON_CONNECT;
+                                            settings->on_srv_events(&cb);
                                         }
                                     }
                                     else

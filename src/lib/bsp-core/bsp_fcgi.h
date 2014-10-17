@@ -55,7 +55,6 @@
 #define FCGI_OVERLOADED                         0x2
 #define FCGI_UNKNOWN_ROLE                       0x3
 
-#define FCGI_PARAMS_DEFAULT_REQUEST_METHOD      "GET"
 #define FCGI_PARAMS_DEFAULT_SERVER_PROTOCOL     "HTTP/1.1"
 #define FCGI_PARAMS_DEFAULT_GATEWAY_INTERFACE   "CGI/1.1"
 #define FCGI_PARAMS_DEFAULT_SERVER_SOFTWARE     "BS.Play_FCGI_Client"
@@ -92,7 +91,7 @@ typedef struct bsp_fcgi_params_t
 
 typedef struct bsp_fcgi_response_t
 {
-    int                 request_id;                             
+    int                 request_id;
     int                 app_status;
     int                 protocol_status;
     int                 is_ended;
@@ -100,11 +99,43 @@ typedef struct bsp_fcgi_response_t
     BSP_STRING          *data_stderr;
 } BSP_FCGI_RESPONSE;
 
+struct bsp_fcgi_upstream_entry_t
+{
+    const char          *host;
+    const char          *sock;
+    const char          *script_filename;
+    int                 port;
+    int                 weight;
+};
+
+typedef struct bsp_fcgi_upstream_t
+{
+    const char          *name;
+    struct bsp_fcgi_upstream_entry_t
+                        **pool;
+    size_t              pool_size;
+} BSP_FCGI_UPSTREAM;
+
 /* Functions */
 // Build FastCGI request
-BSP_STRING * build_fcgi_request(BSP_FCGI_PARAMS *params, const char *post_data, ssize_t post_len);
+BSP_STRING * build_fcgi_request(BSP_FCGI_PARAMS *params, BSP_STRING *post_data);
 
 // Parse FCGI response
-size_t parse_fcgi_response(BSP_FCGI_RESPONSE *resp, const char *data, size_t len);
+size_t parse_fcgi_response(BSP_FCGI_RESPONSE *resp, BSP_STRING *data);
+
+// New upstream (Server group)
+BSP_FCGI_UPSTREAM * new_fcgi_upstream(const char *name);
+
+// Del upstream
+int del_fcgi_upstream(BSP_FCGI_UPSTREAM *upstream);
+
+// Add fastcgi server entry to upstream
+void add_fcgi_server_entry(BSP_FCGI_UPSTREAM *upstream, struct bsp_fcgi_upstream_entry_t *entry);
+
+// Select an entry from upstream (Rate calculated by weight)
+struct bsp_fcgi_upstream_entry_t * get_fcgi_upstream_entry(BSP_FCGI_UPSTREAM *upstream);
+
+// Send FCGI request
+int fcgi_call(BSP_FCGI_UPSTREAM *upstream, BSP_OBJECT *p, struct sockaddr_storage *addr);
 
 #endif  /* _LIB_BSP_CORE_FCGI_H */

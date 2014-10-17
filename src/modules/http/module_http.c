@@ -336,7 +336,7 @@ static int http_send_request(lua_State *s)
                 // Nothing to call
                 lua_pushnil(cnt->script_stack.stack);
             }
-            append_data_socket(&SCK(cnt), (const char *) STR_STR(str), STR_LEN(str));
+            append_data_socket(&SCK(cnt), str);
             flush_socket(&SCK(cnt));
         }
     }

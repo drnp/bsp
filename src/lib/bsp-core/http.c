@@ -1176,20 +1176,11 @@ size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRI
 }
 
 // Generate WebSocket data
-BSP_STRING * generate_websocket_data(const char *data, ssize_t len, int opcode, int mask)
+BSP_STRING * generate_websocket_data(BSP_STRING *data, int opcode, int mask)
 {
     char head[14];
     int head_len = 0;
-
-    if (!data)
-    {
-        len = 0;
-    }
-
-    if (len < 0)
-    {
-        len = strlen(data);
-    }
+    int len = data ? STR_LEN(data) : 0;
 
     mask = mask ? 1 : 0;
     BSP_STRING *ret = new_string(NULL, 0);
@@ -1221,20 +1212,23 @@ BSP_STRING * generate_websocket_data(const char *data, ssize_t len, int opcode, 
     }
 
     string_append(ret, head, head_len);
-    // Write data
-    if (!mask)
+    if (data)
     {
-        string_append(ret, data, len);
-    }
-
-    else
-    {
-        // XOR with mask
-        string_fill(ret, -1, len);
-        size_t i;
-        for (i = 0; i < len; i ++)
+        // Write data
+        if (!mask)
         {
-            ret->str[head_len + i] = data[i] ^ head[head_len - 4 + (i & 3)];
+            string_append(ret, STR_STR(data), len);
+        }
+
+        else
+        {
+            // XOR with mask
+            string_fill(ret, -1, len);
+            size_t i;
+            for (i = 0; i < len; i ++)
+            {
+                ret->str[head_len + i] = (unsigned char) STR_STR(data)[i] ^ head[head_len - 4 + (i & 3)];
+            }
         }
     }
 

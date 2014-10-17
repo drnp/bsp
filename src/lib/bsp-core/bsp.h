@@ -60,6 +60,7 @@
 #include <time.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <netdb.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
@@ -68,6 +69,11 @@
 #include <sys/eventfd.h>
 #include <sys/timerfd.h>
 #include <sys/time.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+#include <arpa/inet.h>
 
 #include <lua.h>
 #include <lualib.h>
@@ -90,13 +96,13 @@
 #include "bsp_mempool.h"
 #include "bsp_misc.h"
 #include "bsp_os.h"
+#include "bsp_http.h"
+#include "bsp_fcgi.h"
 #include "bsp_socket.h"
 #include "bsp_thread.h"
 #include "bsp_db_sqlite.h"
 #include "bsp_db_mysql.h"
 #include "bsp_ip_list.h"
-#include "bsp_http.h"
-#include "bsp_fcgi.h"
 #include "bsp_server.h"
 #include "bsp_bootstrap.h"
 #include "bsp_core.h"
@@ -106,7 +112,7 @@
 
 /* Definations */
 // General
-#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20140522-dev"
+#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20141017-dev"
 #define BSP_PACKAGE_NAME                        "bsp"
 
 // Instances

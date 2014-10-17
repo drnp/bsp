@@ -31,6 +31,8 @@
 
 #include "bsp.h"
 
+// Server list
+BSP_OBJECT *server_list = NULL;
 // One process can only have one loop
 struct bsp_main_loop_t loop = {-1, -1, -1, -1, NULL, NULL, NULL};
 size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len);
@@ -63,6 +65,16 @@ int add_server(BSP_SERVER *srv)
             srv->on_data = proc_data;
         }
 
+        // Add to list
+        if (!server_list)
+        {
+            server_list = new_object(OBJECT_TYPE_HASH);
+        }
+        BSP_VALUE *val = new_value();
+        BSP_STRING *key = new_string_const(srv->name, -1);
+        value_set_pointer(val, (void *) srv);
+        object_set_hash(server_list, key, val);
+
         // Add into epoll
         dispatch_to_thread(SFD(srv), MAIN_THREAD);
 
@@ -72,19 +84,35 @@ int add_server(BSP_SERVER *srv)
     return BSP_RTN_ERROR_GENERAL;
 }
 
-// Server output
-static size_t _real_output_client(BSP_CLIENT *clt, const char *data, ssize_t len)
+// Get server by name
+BSP_SERVER * get_server(const char *name)
 {
-    if (!clt)
+    if (!server_list)
+    {
+        return NULL;
+    }
+
+    BSP_STRING *key = new_string_const(name, -1);
+    BSP_VALUE *val = object_get_hash(server_list, key);
+    BSP_SERVER *srv = (BSP_SERVER *) value_get_pointer(val);
+    del_string(key);
+
+    return srv;
+}
+
+// Server output
+static ssize_t _real_output_client(BSP_CLIENT *clt, BSP_STRING *data)
+{
+    if (!clt || !data)
     {
         return -1;
     }
 
-    size_t slen = 0;
-    
+    ssize_t slen = 0;
+
     if (clt->client_type == CLIENT_TYPE_DATA)
     {
-        slen = append_data_socket(&SCK(clt), (const char *) data, (ssize_t) len);
+        slen = append_data_socket(&SCK(clt), data);
     }
     else if (clt->client_type == CLIENT_TYPE_WEBSOCKET_DATA)
     {
@@ -92,8 +120,8 @@ static size_t _real_output_client(BSP_CLIENT *clt, const char *data, ssize_t len
         BSP_STRING *ws_data = new_string(NULL, 0);
         if (ws_data)
         {
-            ws_data = generate_websocket_data((const char *) data, (ssize_t) len, WS_OPCODE_BINARY, 0);
-            slen = append_data_socket(&SCK(clt), (const char *) STR_STR(ws_data), STR_LEN(ws_data));
+            ws_data = generate_websocket_data(data, WS_OPCODE_BINARY, 0);
+            slen = append_data_socket(&SCK(clt), ws_data);
             del_string(ws_data);
         }
     }
@@ -168,7 +196,7 @@ size_t output_client_raw(BSP_CLIENT *clt, const char *data, ssize_t len)
     int num_len = set_vint((int64_t) STR_LEN(stream), num_str);
     string_append(str, (const char *) num_str, (ssize_t) num_len);
     string_append(str, STR_STR(stream), STR_LEN(stream));
-    sent = _real_output_client(clt, STR_STR(str), STR_LEN(str));
+    sent = _real_output_client(clt, str);
     del_string(stream);
     del_string(str);
 
@@ -246,7 +274,7 @@ size_t output_client_obj(BSP_CLIENT *clt, BSP_OBJECT *obj)
     int num_len = set_vint((int64_t) STR_LEN(stream), num_str);
     string_append(str, (const char *) num_str, (ssize_t) num_len);
     string_append(str, STR_STR(stream), STR_LEN(stream));
-    sent = _real_output_client(clt, STR_STR(str), STR_LEN(str));
+    sent = _real_output_client(clt, str);
     del_string(stream);
     del_string(str);
 
@@ -335,7 +363,7 @@ size_t output_client_cmd(BSP_CLIENT *clt, int cmd, BSP_OBJECT *obj)
     int num_len = set_vint((int64_t) STR_LEN(stream), num_str);
     string_append(str, (const char *) num_str, (ssize_t) num_len);
     string_append(str, STR_STR(stream), STR_LEN(stream));
-    sent = _real_output_client(clt, STR_STR(str), STR_LEN(str));
+    sent = _real_output_client(clt, str);
     del_string(stream);
     del_string(str);
 
@@ -348,6 +376,7 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
 {
     int fd_type = FD_TYPE_SOCKET_SERVER;
     BSP_SERVER *srv = (BSP_SERVER *) get_fd(clt->srv_fd, &fd_type);
+    BSP_CORE_SETTING *settings = get_core_setting();
 
     if (!srv || !clt || !data)
     {
@@ -362,14 +391,20 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
     BSP_OBJECT *obj = NULL;
     char hdr;
     int p_type, s_type, c_type;
+    BSP_CALLBACK cb;
+    cb.server = srv;
+    cb.client = clt;
 
     switch (clt->data_type)
     {
         case DATA_TYPE_STREAM : 
             // Just through out all data
-            if (srv->on_events)
+            if (settings->on_srv_events)
             {
-                srv->on_events(clt, SERVER_CALLBACK_ON_DATA_RAW, 0, (void *) data, len);
+                cb.event = SERVER_CALLBACK_ON_DATA_RAW;
+                cb.stream = new_string_const(data, len);
+                settings->on_srv_events(&cb);
+                //del_string(cb.stream);
             }
             ret = len;
             break;
@@ -448,9 +483,11 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                     if (PACKET_TYPE_RAW == p_type)
                     {
                         // Lengthed string
-                        if (srv->on_events)
+                        if (settings->on_srv_events)
                         {
-                            srv->on_events(clt, SERVER_CALLBACK_ON_DATA_RAW, 0, STR_STR(str), STR_LEN(str));
+                            cb.event = SERVER_CALLBACK_ON_DATA_RAW;
+                            cb.stream = str;
+                            settings->on_srv_events(&cb);
                         }
                     }
                     else if (PACKET_TYPE_OBJ == p_type)
@@ -479,12 +516,15 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                                 break;
                         }
 
-                        if (srv->on_events)
+                        if (settings->on_srv_events)
                         {
-                            srv->on_events(clt, SERVER_CALLBACK_ON_DATA_OBJ, 0, obj, 0);
+                            cb.event = SERVER_CALLBACK_ON_DATA_OBJ;
+                            cb.obj = obj;
+                            settings->on_srv_events(&cb);
                         }
 
-                        del_object(obj);
+                        del_string(str);
+                        //del_object(obj);
                     }
                     else
                     {
@@ -520,19 +560,23 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                                 del_string(body);
                             }
 
-                            if (srv->on_events)
+                            if (settings->on_srv_events)
                             {
-                                srv->on_events(clt, SERVER_CALLBACK_ON_DATA_CMD, cmd, obj, 0);
+                                cb.event = SERVER_CALLBACK_ON_DATA_CMD;
+                                cb.cmd = cmd;
+                                cb.obj = obj;
+                                settings->on_srv_events(&cb);
                             }
 
-                            del_object(obj);
+                            del_string(str);
+                            //del_object(obj);
                         }
                         else
                         {
                             trace_msg(TRACE_LEVEL_DEBUG, "Server : Ignore a sick packet");
                         }
                     }
-                    del_string(str);
+                    //del_string(str);
                     ret += 1 + safe + plen;
                 }
                 else
@@ -545,7 +589,9 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                         clt->packet_compress_type = c_type;
                         trace_msg(TRACE_LEVEL_VERBOSE, "Server : Client %d report as serialize type : %d, compress type : %d", SFD(clt), s_type, c_type);
                         // Send back a response
-                        _real_output_client(clt, stream, 1);
+                        str = new_string_const(stream, 1);
+                        _real_output_client(clt, str);
+                        del_string(str);
                         ret ++;
                     }
                     else if (PACKET_TYPE_HEARTBEAT == p_type)
@@ -553,7 +599,9 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                         // Heartbeat
                         // Send back a response
                         trace_msg(TRACE_LEVEL_VERBOSE, "Server : Client %d send a heartbeat request", SFD(clt));
-                        _real_output_client(clt, stream, 1);
+                        str = new_string_const(stream, 1);
+                        _real_output_client(clt, str);
+                        del_string(str);
                         ret ++;
                     }
                     else
@@ -618,7 +666,7 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
                     {
                         // Change client type
                         clt->client_type = CLIENT_TYPE_WEBSOCKET_DATA;
-                        append_data_socket(&SCK(clt), STR_STR(resp_str), STR_LEN(resp_str));
+                        append_data_socket(&SCK(clt), resp_str);
                         flush_socket(&SCK(clt));
                         trace_msg(TRACE_LEVEL_NOTICE, "Server : Websocket handshake from client %d responsed", SFD(clt));
                         del_string(resp_str);
@@ -656,8 +704,8 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
                         break;
                     case WS_OPCODE_PING : 
                         // Send a PONG back
-                        resp_str = generate_websocket_data((const char *) STR_STR(data_str), STR_LEN(data_str), WS_OPCODE_PONG, 0);
-                        append_data_socket(&SCK(clt), (const char *) STR_STR(resp_str), STR_LEN(resp_str));
+                        resp_str = generate_websocket_data(data_str, WS_OPCODE_PONG, 0);
+                        append_data_socket(&SCK(clt), resp_str);
                         del_string(resp_str);
                         flush_socket(&SCK(clt));
                         // Refresh heartbeat
@@ -669,8 +717,8 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
                         break;
                     case WS_OPCODE_CLOSE : 
                         // Send a CLOSE back
-                        resp_str = generate_websocket_data((const char *) STR_STR(data_str), STR_LEN(data_str), WS_OPCODE_CLOSE, 0);
-                        append_data_socket(&SCK(clt), (const char *) STR_STR(resp_str), STR_LEN(resp_str));
+                        resp_str = generate_websocket_data(data_str, WS_OPCODE_CLOSE, 0);
+                        append_data_socket(&SCK(clt), resp_str);
                         del_string(resp_str);
                         flush_socket(&SCK(clt));
                         // Close connection

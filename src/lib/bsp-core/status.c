@@ -38,7 +38,7 @@ int status_init()
     bsp_spin_init(&slock);
     memset(&s, 0, sizeof(BSP_STATUS));
     s.start_time = time(NULL);
-    
+
     return BSP_RTN_SUCCESS;
 }
 
@@ -76,7 +76,7 @@ void status_op_mempool(int slab_id, int op, size_t value)
         
         return;
     }
-    
+
     if (STATUS_OP_MEMPOOL_HUGE_FREE == op)
     {
         s.mempool.huge_item_free_times ++;
@@ -141,7 +141,7 @@ void status_op_fd(int op, size_t value)
         default : 
             break;
     }
-    
+
     return;
 }
 
@@ -202,14 +202,13 @@ void status_op_socket(int fd, int op, size_t value)
                         default : 
                             break;
                     }
-                    
                     break;
                 }
             }
             break;
     }
     bsp_spin_unlock(&slock);
-    
+
     return;
 }
 
@@ -231,7 +230,7 @@ void status_op_timer(int op)
             break;
     }
     bsp_spin_unlock(&slock);
-    
+
     return;
 }
 
@@ -245,6 +244,12 @@ void status_op_script(int op, size_t value)
             break;
         case STATUS_OP_SCRIPT_STATE_DEL : 
             s.script.states_total --;
+            break;
+        case STATUS_OP_SCRIPT_STACK_ADD : 
+            s.script.stacks_total ++;
+            break;
+        case STATUS_OP_SCRIPT_STACK_DEL : 
+            s.script.stacks_total --;
             break;
         case STATUS_OP_SCRIPT_COMPILE : 
             s.script.compile_times ++;
@@ -267,7 +272,7 @@ void status_op_script(int op, size_t value)
             break;
     }
     bsp_spin_unlock(&slock);
-    
+
     return;
 }
 
@@ -298,7 +303,7 @@ void status_op_db_mysql(int op)
             break;
     }
     bsp_spin_unlock(&slock);
-    
+
     return;
 }
 
@@ -329,7 +334,7 @@ void status_op_db_sqlite(int op)
             break;
     }
     bsp_spin_unlock(&slock);
-    
+
     return;
 }
 
@@ -348,7 +353,26 @@ void status_op_http(int op)
             break;
     }
     bsp_spin_unlock(&slock);
-    
+
+    return;
+}
+
+void status_op_fcgi(int op)
+{
+    bsp_spin_lock(&slock);
+    switch (op)
+    {
+        case STATUS_OP_FCGI_REQUEST : 
+            s.fcgi.request_times ++;
+            break;
+        case STATUS_OP_FCGI_RESPONSE : 
+            s.fcgi.response_times ++;
+            break;
+        default : 
+            break;
+    }
+    bsp_spin_unlock(&slock);
+
     return;
 }
 
@@ -357,10 +381,10 @@ void debug_status()
 {
     BSP_STATUS *ds = &s;
     int i;
-    
+
     fprintf(stderr, "\n\033[1;32m          * * * BSP.Core Statistics dump * * *\033[0m\n");
     fprintf(stderr, "=========================================================\n\n");
-    
+
     // Core
     fprintf(stderr, "\033[1;33m  CORE STATUS :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Instance ID                  :\033[0m %d\n"
@@ -422,7 +446,7 @@ void debug_status()
             (long long unsigned int) ds->fd.unreg_times, 
             (long long unsigned int) ds->fd.max_used_fd);
     fprintf(stderr, "\n");
-    
+
     // Socket
     fprintf(stderr, "\033[1;33m  SOCKET :\033[0m\n");
     fprintf(stderr, "\033[1;34m    SUMMARY :\033[0m\n");
@@ -453,7 +477,7 @@ void debug_status()
             (long long unsigned int) ds->socket.connector.bytes_read, 
             (long long unsigned int) ds->socket.connector.bytes_sent);
     fprintf(stderr, "\n");
-    
+
     // Timer
     fprintf(stderr, "\033[1;33m  TIMER :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Timers total                 :\033[0m %llu\n"
@@ -461,10 +485,11 @@ void debug_status()
             (long long unsigned int) ds->timer.timers_total, 
             (long long unsigned int) ds->timer.trigger_times);
     fprintf(stderr, "\n");
-    
+
     // Script
     fprintf(stderr, "\033[1;33m  SCRIPT :\033[0m\n");
     fprintf(stderr, "\033[1;36m    States total                 :\033[0m %llu\n"
+                    "\033[1;36m    Stacks total                 :\033[0m %llu\n"
                     "\033[1;36m    Compile times                :\033[0m %llu\n"
                     "\033[1;36m    Call times                   :\033[0m %llu\n"
                     "\033[1;36m    Failure times                :\033[0m %llu\n"
@@ -473,6 +498,7 @@ void debug_status()
                     "\033[1;36m    Memory free times            :\033[0m %llu\n"
                     "\033[1;36m    Memory freed                 :\033[0m %llu\n", 
             (long long unsigned int) ds->script.states_total, 
+            (long long unsigned int) ds->script.stacks_total, 
             (long long unsigned int) ds->script.compile_times, 
             (long long unsigned int) ds->script.call_times, 
             (long long unsigned int) ds->script.failure_times, 
@@ -481,7 +507,7 @@ void debug_status()
             (long long unsigned int) ds->script.memory_free_times, 
             (long long unsigned int) ds->script.memory_freed);
     fprintf(stderr, "\n");
-    
+
     // MySQL
     fprintf(stderr, "\033[1;33m  DB::MYSQL :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Connect times                :\033[0m %llu\n"
@@ -497,7 +523,7 @@ void debug_status()
             (long long unsigned int) ds->db_mysql.results_total, 
             (long long unsigned int) ds->db_mysql.free_times);
     fprintf(stderr, "\n");
-    
+
     // SQLite
     fprintf(stderr, "\033[1;33m  DB::SQLITE :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Open times                   :\033[0m %llu\n"
@@ -513,7 +539,7 @@ void debug_status()
             (long long unsigned int) ds->db_sqlite.results_total, 
             (long long unsigned int) ds->db_sqlite.free_times);
     fprintf(stderr, "\n");
-    
+
     // HTTP
     fprintf(stderr, "\033[1;33m  HTTP OPERATES :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Request times                :\033[0m %llu\n"
@@ -521,8 +547,16 @@ void debug_status()
             (long long unsigned int) ds->http.request_times, 
             (long long unsigned int) ds->http.response_times);
     fprintf(stderr, "\n");
-    
+
+    // FCGI
+    fprintf(stderr, "\033[1;33m  FCGI OPERATES :\033[0m\n");
+    fprintf(stderr, "\033[1;36m    Request times                :\033[0m %llu\n"
+                    "\033[1;36m    Response times               :\033[0m %llu\n", 
+            (long long unsigned int) ds->fcgi.request_times, 
+            (long long unsigned int) ds->fcgi.response_times);
     fprintf(stderr, "\n");
-    
+
+    fprintf(stderr, "=========================================================\n\n");
+
     return;
 }

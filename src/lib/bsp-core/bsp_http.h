@@ -237,6 +237,6 @@ int websocket_handshake(BSP_HTTP_REQUEST *req, BSP_HTTP_RESPONSE *resp);
 size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRING *data_str);
 
 // Generate WebSocket data
-BSP_STRING * generate_websocket_data(const char *data, ssize_t len, int opcode, int mask);
+BSP_STRING * generate_websocket_data(BSP_STRING *data, int opcode, int mask);
 
 #endif  /* _LIB_BSP_CORE_HTTP_H */

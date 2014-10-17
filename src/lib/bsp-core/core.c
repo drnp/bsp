@@ -47,6 +47,9 @@ static void init_core_setting()
     core_settings.trace_level = TRACE_LEVEL_NONE;
     core_settings.udp_proto_main = 0;
     core_settings.udp_proto_status = 0;
+
+    core_settings.on_srv_data = NULL;
+    core_settings.on_srv_events = NULL;
     core_settings.trace_recorder = NULL;
     core_settings.trace_printer = NULL;
     core_settings.on_proc_exit = NULL;
@@ -60,7 +63,6 @@ static void init_core_setting()
     core_settings.log_dir = NULL;
     core_settings.runtime_dir = NULL;
     core_settings.script_dir = NULL;
-    core_settings.script_callback_entry = NULL;
 
     core_settings.debug_hex_connector_input = 0;
     core_settings.debug_hex_output = 0;
@@ -239,13 +241,11 @@ int core_init()
         }
     }
 
-    load_bootstrap();
-
     return BSP_RTN_SUCCESS;
 }
 
 // Start main loop
-int core_loop(BSP_SERVER_CALLBACK sc_list[], void (* timer_event)(BSP_TIMER *))
+int core_loop(void (* server_event)(BSP_CALLBACK *), void (* timer_event)(BSP_TIMER *))
 {
     BSP_THREAD *t = get_thread(MAIN_THREAD);
     if (!t)
@@ -337,7 +337,6 @@ int core_loop(BSP_SERVER_CALLBACK sc_list[], void (* timer_event)(BSP_TIMER *))
 
                 // Add server
                 BSP_SERVER *s;
-                BSP_SERVER_CALLBACK *sc;
                 int srv_fds[MAX_SERVER_PER_CREATION], srv_ct, fd_type;
                 int nfds = MAX_SERVER_PER_CREATION;
                 nfds = new_server(srv.server_addr, srv.server_port, srv.server_inet, srv.server_sock, srv_fds, &nfds);
@@ -355,30 +354,6 @@ int core_loop(BSP_SERVER_CALLBACK sc_list[], void (* timer_event)(BSP_TIMER *))
                         s->max_clients = srv.max_clients;
                         s->debug_hex_input = srv.debug_hex_input;
                         s->debug_hex_output = srv.debug_hex_output;
-                        // Find callback defination
-                        int idx = 0;
-                        while (sc_list)
-                        {
-                            sc = &sc_list[idx];
-                            if (sc && sc->server_name)
-                            {
-                                if ((srv.server_name && 0 == strcmp(sc->server_name, srv.server_name)) || (!s->on_events && sc->server_name[0] == '*'))
-                                {
-                                    s->on_events = sc->on_events;
-                                }
-
-                                if (sc->on_data)
-                                {
-                                    s->on_data = sc->on_data;
-                                }
-                                break;
-                            }
-                            else
-                            {
-                                break;
-                            }
-                            idx ++;
-                        }
 
                         add_server(s);
                     }
@@ -391,17 +366,25 @@ int core_loop(BSP_SERVER_CALLBACK sc_list[], void (* timer_event)(BSP_TIMER *))
         }
     }
 
+    // Server event
+    if (server_event)
+    {
+        core_settings.on_srv_events = server_event;
+    }
+
     // Main clock event
     if (timer_event)
     {
         // Create 1 Hz clock
         BSP_TIMER *tmr = new_timer(BASE_CLOCK_SEC, BASE_CLOCK_USEC, -1);
         tmr->on_timer = timer_event;
+        core_settings.main_timer = tmr;
         dispatch_to_thread(tmr->fd, MAIN_THREAD);
         start_timer(tmr);
     }
 
     // Let's go
+    load_bootstrap();
     trace_msg(TRACE_LEVEL_CORE, "Core   : Main thread loop started");
     thread_process((void *) t);
 

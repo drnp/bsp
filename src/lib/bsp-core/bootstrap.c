@@ -66,13 +66,15 @@ static int bootstrap_load_script(lua_State *s)
     return 0;
 }
 
-static int bootstrap_set_entry(lua_State *s)
+// Set LUA entry function
+static int bootstrap_set_lua_entry(lua_State *s)
 {
-    if (!s || lua_gettop(s) < 1)
+    if (!s || !lua_isstring(s, -1) || !lua_isstring(s, -2))
     {
         return 0;
     }
 
+    const char *server_name = lua_tostring(s, -2);
     const char *callback_entry = lua_tostring(s, -1);
     if (!callback_entry)
     {
@@ -80,8 +82,92 @@ static int bootstrap_set_entry(lua_State *s)
         return 0;
     }
 
-    BSP_CORE_SETTING *settings = get_core_setting();
-    settings->script_callback_entry = strdup(callback_entry);
+    BSP_SERVER *srv = get_server(server_name);
+    if (srv)
+    {
+        srv->lua_entry = bsp_strdup(callback_entry);
+        trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Server %s LUA entry set", server_name);
+    }
+    else
+    {
+        trace_msg(TRACE_LEVEL_ERROR, "BStrap : Cannot find server %s", server_name);
+    }
+
+    return 0;
+}
+
+// Set FastCGI pass upstream
+static int bootstrap_set_fcgi_upstream(lua_State *s)
+{
+    if (!s || !lua_istable(s, -1) || !lua_isstring(s, -2))
+    {
+        return 0;
+    }
+
+    const char *server_name = lua_tostring(s, -2);
+    // Upstream
+    BSP_SERVER *srv = get_server(server_name);
+    if (!srv)
+    {
+        trace_msg(TRACE_LEVEL_ERROR, "BStrap : Cannot find server %s", server_name);
+        return 0;
+    }
+
+    BSP_FCGI_UPSTREAM *upstream = new_fcgi_upstream(server_name);
+    struct bsp_fcgi_upstream_entry_t *entry = NULL;
+    const char *host;
+    const char *sock;
+    const char *script_filename;
+    int port;
+    int weight;
+    lua_checkstack(s, 1);
+    lua_pushnil(s);
+    while (0 != lua_next(s, -2))
+    {
+        if (lua_istable(s, -1))
+        {
+            // New entry
+            entry = bsp_calloc(1, sizeof(struct bsp_fcgi_upstream_entry_t));
+            if (entry)
+            {
+                lua_getfield(s, -1, "host");
+                host = lua_tostring(s, -1);
+                lua_pop(s, 1);
+                lua_getfield(s, -1, "sock");
+                sock = lua_tostring(s, -1);
+                lua_pop(s, 1);
+                lua_getfield(s, -1, "script_filename");
+                script_filename = lua_tostring(s, -1);
+                lua_pop(s, 1);
+                lua_getfield(s, -1, "port");
+                port = lua_tointeger(s, -1);
+                lua_pop(s, 1);
+                lua_getfield(s, -1, "weight");
+                weight = lua_tointeger(s, -1);
+                lua_pop(s, 1);
+
+                if (host)
+                {
+                    entry->host = bsp_strdup(host);
+                }
+                if (sock)
+                {
+                    entry->sock = bsp_strdup(sock);
+                }
+                if (script_filename)
+                {
+                    entry->script_filename = bsp_strdup(script_filename);
+                }
+                entry->port = port;
+                entry->weight = weight;
+
+                add_fcgi_server_entry(upstream, entry);
+            }
+        }
+        lua_pop(s, 1);
+    }
+    srv->fcgi_upstream = upstream;
+    trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Server %s FastCGI upstream set", server_name);
 
     return 0;
 }
@@ -104,8 +190,10 @@ int start_bootstrap(BSP_STRING *bs)
     // Regist original load function
     lua_pushcfunction(t->script_runner.state, bootstrap_load_script);
     lua_setglobal(t->script_runner.state, "bsp_load_script");
-    lua_pushcfunction(t->script_runner.state, bootstrap_set_entry);
-    lua_setglobal(t->script_runner.state, "bsp_set_entry");
+    lua_pushcfunction(t->script_runner.state, bootstrap_set_lua_entry);
+    lua_setglobal(t->script_runner.state, "bsp_set_lua_entry");
+    lua_pushcfunction(t->script_runner.state, bootstrap_set_fcgi_upstream);
+    lua_setglobal(t->script_runner.state, "bsp_set_fcgi_upstream");
 
     // Change working location to script_dir
     BSP_CORE_SETTING *settings = get_core_setting();
@@ -126,6 +214,7 @@ int start_bootstrap(BSP_STRING *bs)
     }
 
     lua_settop(t->script_runner.state, 0);
+    trace_msg(TRACE_LEVEL_DEBUG, "BSTrap : Bootstrap started");
 
     return BSP_RTN_SUCCESS;
 }

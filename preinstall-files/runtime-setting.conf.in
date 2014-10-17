@@ -3,6 +3,7 @@
         "script_dir"        : "/opt/bsp/script/9173/", 
         "instance_id"       : 9173, 
         "debug_output"      : true, 
+        "debug_connector_input" : true, 
         "enable_log"        : false
     }, 
 
@@ -12,8 +13,7 @@
         "http", 
         "word_filter", 
         "mysql", 
-        "sqlite", 
-        "fcgi"
+        "sqlite"
     ], 
 
     "servers" : [
@@ -26,7 +26,8 @@
             "websocket"     : false, 
             "data_type"     : "packet", 
             "debug_input"   : false, 
-            "debug_output"  : false
+            "debug_output"  : false, 
+            "data_runner"   : "internal"
         }, 
         {
             "name"          : "websocket_server", 
@@ -37,7 +38,8 @@
             "websocket"     : true, 
             "data_type"     : "packet", 
             "debug_input"   : true, 
-            "debug_output"  : true
+            "debug_output"  : true, 
+            "data_runner"   : "fastcgi:php"
         }, 
         {
             "name"          : "internal_server", 

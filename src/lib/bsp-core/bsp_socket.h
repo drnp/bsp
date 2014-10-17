@@ -35,15 +35,6 @@
 
 #define _LIB_BSP_CORE_SOCKET_H
 /* Headers */
-#include <netdb.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
-#include <arpa/inet.h>
-#include <sys/epoll.h>
-
-#include "bsp_spinlock.h"
 
 /* Definations */
 #ifndef __need_IOV_MAX
@@ -110,17 +101,17 @@ struct bsp_socket_t
                         saddr;
     struct addrinfo     addr;
     struct epoll_event  ev;
-    
+
     // State
     int                 state;
-    
+
     // Buffers
     char                *read_block;
     char                *read_buffer;
     size_t              read_buffer_size;
     size_t              read_buffer_data_size;
     size_t              read_buffer_offset;
-    
+
     // UIO
     struct iovec        *iov_list;
     ssize_t             iov_list_size;
@@ -128,7 +119,7 @@ struct bsp_socket_t
     ssize_t             iov_list_curr;
     
     time_t              conn_time;
-    
+
     // Lock
     BSP_SPINLOCK        send_lock;
 };
@@ -138,17 +129,17 @@ typedef struct bsp_connector_t
     // Summaries
     struct bsp_socket_t sck;
     time_t              last_hb_time;
-    
+
     // Callbacks
     void                (* on_close) (struct bsp_connector_t *cnt);
     size_t              (* on_data) (struct bsp_connector_t *cnt, const char *data, ssize_t len);
-    
+
     // For other object
     void                *additional;
-    
+
     // UDP protocol
     int32_t             udp_proto;
-    
+
     // Script runner
     BSP_SCRIPT_STACK    script_stack;
 } BSP_CONNECTOR;
@@ -159,25 +150,25 @@ typedef struct bsp_client_t
     int                 srv_fd;
     struct bsp_socket_t sck;
     time_t              last_hb_time;
-    
+
     // For other object
     void                *additional;
-    
+
     // Connection type (Raw / WebSocket)
     int                 client_type;
-    
+
     // Data type (Stream / Packet)
     int                 data_type;
-    
+
     // UDP Protocol
     int32_t             udp_proto;
-    
+
     // Packet
     int                 packet_length_type;
     int                 packet_serialize_type;
     int                 packet_compress_type;
     int                 packet_heartbeat;
-    
+
     // Script runner
     BSP_SCRIPT_STACK    script_stack;
 } BSP_CLIENT;
@@ -186,15 +177,15 @@ typedef struct bsp_server_t
 {
     // Summaries
     struct bsp_socket_t sck;
-    char                *name;
-    
+    const char          *name;
+
     // Callbacks
     size_t              (* on_data) (BSP_CLIENT *clt, const char *data, ssize_t len);
-    void                (* on_events) (BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len);
-    
+    //void                (* on_events) (BSP_CALLBACK *cb);
+
     // Status
     size_t              nclients;
-    
+
     // Client default behavior
     int                 heartbeat_check;
     int                 def_client_type;
@@ -205,17 +196,14 @@ typedef struct bsp_server_t
     // Debug
     int                 debug_hex_input;
     int                 debug_hex_output;
-    
+
+    // Logic backend entry
+    const char          *lua_entry;
+    BSP_FCGI_UPSTREAM   *fcgi_upstream;
+
     // Other entry
     void                *additional;
 } BSP_SERVER;
-
-typedef struct bsp_server_callback_t
-{
-    const char          *server_name;
-    size_t              (* on_data) (BSP_CLIENT *clt, const char *data, ssize_t len);
-    void                (* on_events) (BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len);
-} BSP_SERVER_CALLBACK;
 
 /* Functions */
 // Initialization
@@ -253,7 +241,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
 int free_connector(BSP_CONNECTOR *cnt);
 
 // Append data to socket
-size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t len);
+size_t append_data_socket(struct bsp_socket_t *sck, BSP_STRING *data);
 
 // Try send data
 size_t send_data_socket(struct bsp_socket_t *sck);

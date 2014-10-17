@@ -86,130 +86,97 @@ static void _usage()
 }
 
 /* Server callback */
-/*
-static void fcgi_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len)
+static void server_callback(BSP_CALLBACK *cb)
 {
-    if (!clt)
+    BSP_OBJECT *p = new_object(OBJECT_TYPE_HASH);
+    if (!cb || !cb->server || !cb->client || !cb->client->script_stack.stack || !p)
     {
         return;
     }
 
-    BSP_SERVER *srv = get_client_connected_server(clt);
-    if (!srv)
-    {
-        return;
-    }
+    BSP_STRING *key;
+    BSP_VALUE *val;
 
-    switch (callback)
+    key = new_string_const("server_name", -1);
+    val = new_value();
+    BSP_STRING *srv_name = new_string_const(cb->server->name, -1);
+    value_set_string(val, srv_name);
+    object_set_hash(p, key, val);
+
+    key = new_string_const("client", -1);
+    val = new_value();
+    value_set_int(val, SFD(cb->client));
+    object_set_hash(p, key, val);
+
+    switch (cb->event)
     {
         case SERVER_CALLBACK_ON_CONNECT : 
+            key = new_string_const("event", -1);
+            val = new_value();
+            value_set_string(val, new_string_const("connect", -1));
+            object_set_hash(p, key, val);
             break;
         case SERVER_CALLBACK_ON_CLOSE : 
+            key = new_string_const("event", -1);
+            val = new_value();
+            value_set_string(val, new_string_const("close", -1));
+            object_set_hash(p, key, val);
             break;
         case SERVER_CALLBACK_ON_ERROR : 
+            key = new_string_const("event", -1);
+            val = new_value();
+            value_set_string(val, new_string_const("error", -1));
+            object_set_hash(p, key, val);
             break;
         case SERVER_CALLBACK_ON_DATA_RAW : 
+            key = new_string_const("event", -1);
+            val = new_value();
+            value_set_string(val, new_string_const("raw", -1));
+            object_set_hash(p, key, val);
+            key = new_string_const("raw", -1);
+            val = new_value();
+            value_set_string(val, cb->stream);
+            object_set_hash(p, key, val);
             break;
         case SERVER_CALLBACK_ON_DATA_OBJ : 
+            key = new_string_const("event", -1);
+            val = new_value();
+            value_set_string(val, new_string_const("obj", -1));
+            object_set_hash(p, key, val);
+            key = new_string_const("obj", -1);
+            val = new_value();
+            value_set_object(val, cb->obj);
+            object_set_hash(p, key, val);
             break;
         case SERVER_CALLBACK_ON_DATA_CMD : 
+            key = new_string_const("event", -1);
+            val = new_value();
+            value_set_string(val, new_string_const("cmd", -1));
+            object_set_hash(p, key, val);
+            key = new_string_const("cmd", -1);
+            val = new_value();
+            value_set_int(val, cb->cmd);
+            object_set_hash(p, key, val);
+            key = new_string_const("params", -1);
+            val = new_value();
+            value_set_object(val, cb->obj);
+            object_set_hash(p, key, val);
             break;
         default : 
             break;
     }
 
-    return;
-}
-*/
-static void main_server(BSP_CLIENT *clt, int callback, int cmd, void *data, ssize_t len)
-{
-    if (!clt)
+    if (cb->server->lua_entry && cb->client->script_stack.stack)
     {
-        return;
+        script_call(cb->client->script_stack.stack, cb->server->lua_entry, p);
     }
 
-    BSP_CORE_SETTING *settings = get_core_setting();
-    BSP_SERVER *srv = get_client_connected_server(clt);
-    if (!srv || !settings->script_callback_entry)
+    if (cb->server->fcgi_upstream)
     {
-        return;
+        fcgi_call(cb->server->fcgi_upstream, p, &cb->client->sck.saddr);
     }
 
-    switch (callback)
-    {
-        case SERVER_CALLBACK_ON_CONNECT : 
-            {
-                BSP_SCRIPT_CALL_PARAM p[] = {
-                    {CALL_PTYPE_OSTRING, -1, srv->name}, 
-                    {CALL_PTYPE_OSTRING, -1, "connect"}, 
-                    {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
-                    {CALL_PTYPE_END, 0, NULL}
-                };
-                script_call(clt->script_stack.stack, settings->script_callback_entry, p);
-            }
-            break;
-        case SERVER_CALLBACK_ON_CLOSE : 
-            {
-                BSP_SCRIPT_CALL_PARAM p[] = {
-                    {CALL_PTYPE_OSTRING, -1, srv->name}, 
-                    {CALL_PTYPE_OSTRING, -1, "close"}, 
-                    {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
-                    {CALL_PTYPE_END, 0, NULL}
-                };
-                script_call(clt->script_stack.stack, settings->script_callback_entry, p);
-            }
-            break;
-        case SERVER_CALLBACK_ON_ERROR : 
-            {
-                BSP_SCRIPT_CALL_PARAM p[] = {
-                    {CALL_PTYPE_OSTRING, -1, srv->name}, 
-                    {CALL_PTYPE_OSTRING, -1, "error"}, 
-                    {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
-                    {CALL_PTYPE_END, 0, NULL}
-                };
-                script_call(clt->script_stack.stack, settings->script_callback_entry, p);
-            }
-            break;
-        case SERVER_CALLBACK_ON_DATA_RAW : 
-            {
-                BSP_SCRIPT_CALL_PARAM p[] = {
-                    {CALL_PTYPE_OSTRING, -1, srv->name}, 
-                    {CALL_PTYPE_OSTRING, -1, "raw"}, 
-                    {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
-                    {CALL_PTYPE_OSTRING, len, data}, 
-                    {CALL_PTYPE_END, 0, NULL}
-                };
-                script_call(clt->script_stack.stack, settings->script_callback_entry, p);
-            }
-            break;
-        case SERVER_CALLBACK_ON_DATA_OBJ : 
-            {
-                BSP_SCRIPT_CALL_PARAM p[] = {
-                    {CALL_PTYPE_OSTRING, -1, srv->name}, 
-                    {CALL_PTYPE_OSTRING, -1, "obj"}, 
-                    {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
-                    {CALL_PTYPE_OBJECT, 0, data}, 
-                    {CALL_PTYPE_END, 0, NULL}
-                };
-                script_call(clt->script_stack.stack, settings->script_callback_entry, p);
-            }
-            break;
-        case SERVER_CALLBACK_ON_DATA_CMD : 
-            {
-                BSP_SCRIPT_CALL_PARAM p[] = {
-                    {CALL_PTYPE_OSTRING, -1, srv->name}, 
-                    {CALL_PTYPE_OSTRING, -1, "cmd"}, 
-                    {CALL_PTYPE_INTEGER, 0, &SFD(clt)}, 
-                    {CALL_PTYPE_INTEGER, 0, &cmd}, 
-                    {CALL_PTYPE_OBJECT, 0, data}, 
-                    {CALL_PTYPE_END, 0, NULL}
-                };
-                script_call(clt->script_stack.stack, settings->script_callback_entry, p);
-            }
-            break;
-        default : 
-            break;
-    }
+    del_object(p);
 
     return;
 }
@@ -332,13 +299,9 @@ int main(int argc, char **argv)
 #ifdef ENABLE_MEMPOOL
     mempool_init();
 #endif
-    BSP_SERVER_CALLBACK sc[] = {
-        {"*", NULL, main_server}, 
-        {NULL, NULL, NULL}
-    };
 
     core_init();
-    core_loop(sc, _dida);
+    core_loop(server_callback, _dida);
 
     return BSP_RTN_SUCCESS;
 }

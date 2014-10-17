@@ -252,6 +252,7 @@ ssize_t string_fill(BSP_STRING *str, int code, size_t len)
     if (!new_str)
     {
         // Alloc error
+        bsp_spin_unlock(&str->lock);
         return -1;
     }
 

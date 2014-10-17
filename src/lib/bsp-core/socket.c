@@ -438,6 +438,7 @@ int drive_socket(struct bsp_socket_t *sck)
     BSP_CLIENT *clt = NULL;
     BSP_CONNECTOR *cnt = NULL;
     BSP_CORE_SETTING *settings = get_core_setting();
+    BSP_CALLBACK cb;
 
     if (FD_TYPE_SOCKET_CLIENT == fd_type)
     {
@@ -460,9 +461,12 @@ int drive_socket(struct bsp_socket_t *sck)
         if (srv)
         {
             trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Server %d ON_ERROR triggered", SFD(srv));
-            if (srv->on_events)
+            if (settings->on_srv_events)
             {
-                srv->on_events(clt, SERVER_CALLBACK_ON_ERROR, 0, NULL, 0);
+                cb.server = srv;
+                cb.client = clt;
+                cb.event = SERVER_CALLBACK_ON_ERROR;
+                settings->on_srv_events(&cb);
             }
         }
     }
@@ -474,9 +478,12 @@ int drive_socket(struct bsp_socket_t *sck)
             srv->nclients --;
             status_op_socket(SFD(srv), STATUS_OP_SOCKET_SERVER_DISCONNECT, 0);
             trace_msg(TRACE_LEVEL_VERBOSE, "Socket : Server %d ON_CLOSE triggered", SFD(srv));
-            if (srv->on_events)
+            if (settings->on_srv_events)
             {
-                srv->on_events(clt, SERVER_CALLBACK_ON_CLOSE, 0, NULL, 0);
+                cb.server = srv;
+                cb.client = clt;
+                cb.event = SERVER_CALLBACK_ON_CLOSE;
+                settings->on_srv_events(&cb);
             }
         }
         else if (cnt && cnt->on_close)
@@ -560,7 +567,7 @@ int drive_socket(struct bsp_socket_t *sck)
                 }
                 else
                 {
-                    SOCKET_RPASSALL(clt)
+                    SOCKET_RPASSALL(cnt)
                 }
             }
         }
@@ -612,19 +619,14 @@ int drive_socket(struct bsp_socket_t *sck)
 }
 
 // Append data to socket's send buffer
-size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t len)
+size_t append_data_socket(struct bsp_socket_t *sck, BSP_STRING *data)
 {
-    if (!sck)
+    if (!sck || !data)
     {
         return 0;
     }
 
-    if (len < 0)
-    {
-        len = strlen(data);
-    }
-
-    size_t leftover = len;
+    size_t leftover = STR_LEN(data);
     size_t append;
     void *buf;
     struct iovec *iov = NULL;
@@ -632,7 +634,7 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
     if (settings->debug_hex_output && !settings->is_daemonize)
     {
         fprintf(stderr, "Appendding data to socket %d ...\n", sck->fd);
-        debug_hex(data, len);
+        debug_hex(STR_STR(data), STR_LEN(data));
     }
 
     bsp_spin_lock(&sck->send_lock);
@@ -647,16 +649,16 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
             {
                 bsp_spin_unlock(&sck->send_lock);
                 trace_msg(TRACE_LEVEL_ERROR, "Socket : Alloc send buffer error");
-                return len - leftover;
+                return STR_LEN(data) - leftover;
             }
-            memcpy(buf, data + (len - leftover), append);
+            memcpy(buf, STR_STR(data) + (STR_LEN(data) - leftover), append);
             iov = _new_iovec(sck);
             if (!iov)
             {
                 bsp_free(buf);
                 bsp_spin_unlock(&sck->send_lock);
                 trace_msg(TRACE_LEVEL_ERROR, "Socket : Create new IOV error");
-                return len - leftover;
+                return STR_LEN(data) - leftover;
             }
             leftover -= append;
             iov->iov_base = buf;
@@ -665,14 +667,14 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
     }
     else
     {
-        buf = bsp_malloc(len);
+        buf = bsp_malloc(STR_LEN(data));
         if (!buf)
         {
             bsp_spin_unlock(&sck->send_lock);
             trace_msg(TRACE_LEVEL_ERROR, "Socket : Alloc send buffer error");
             return 0;
         }
-        memcpy(buf, data, len);
+        memcpy(buf, STR_STR(data), STR_LEN(data));
         iov = _new_iovec(sck);
         if (!iov)
         {
@@ -682,13 +684,13 @@ size_t append_data_socket(struct bsp_socket_t *sck, const char *data, ssize_t le
             return 0;
         }
         iov->iov_base = buf;
-        iov->iov_len = len;
+        iov->iov_len = STR_LEN(data);
     }
 
     bsp_spin_unlock(&sck->send_lock);
-    trace_msg(TRACE_LEVEL_DEBUG, "Socket : Append %d byte to socket %d's send buffer", (int) len, sck->fd);
+    trace_msg(TRACE_LEVEL_DEBUG, "Socket : Append %d byte to socket %d's send buffer", (int) STR_LEN(data), sck->fd);
 
-    return len;
+    return STR_LEN(data);
 }
 
 // If any data in send buffer(IOV), try send all
@@ -771,7 +773,6 @@ static BSP_SERVER * _new_unix_server(const char *path, int access_mask)
     _init_socket(&srv->sck, fd, NULL, NULL);
     srv->nclients = 0;
     srv->on_data = NULL;
-    srv->on_events = NULL;
     srv->def_client_type = 0;
     srv->def_data_type = 0;
     reg_fd(fd, FD_TYPE_SOCKET_SERVER, (void *) srv);
@@ -974,7 +975,6 @@ int new_server(
         srv->name = NULL;
         srv->nclients = 0;
         srv->on_data = NULL;
-        srv->on_events = NULL;
         srv->def_client_type = 0;
         srv->def_data_type = 0;
         reg_fd(fd, FD_TYPE_SOCKET_SERVER, (void *) srv);

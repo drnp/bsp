@@ -118,7 +118,7 @@ int script_load_string(lua_State *l, BSP_STRING *code);
 int script_close();
 */
 // Call a script function with given parameters
-int script_call(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[]);
+int script_call(lua_State *caller, const char *func, BSP_OBJECT *p);
 
 // New state(runner), create a new LUA state
 int script_new_state(BSP_SCRIPT_STATE *ss);

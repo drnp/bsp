@@ -87,6 +87,16 @@ struct bsp_main_loop_t
     void                (*on_timer) (unsigned long long);
 };
 
+typedef struct bsp_callback_t
+{
+    BSP_SERVER          *server;
+    BSP_CLIENT          *client;
+    int                 event;
+    int                 cmd;
+    BSP_STRING          *stream;
+    BSP_OBJECT          *obj;
+} BSP_CALLBACK;
+
 /* Functions */
 BSP_CLIENT * server_accept(BSP_SERVER *srv, struct sockaddr_storage *addr);
 
@@ -104,7 +114,7 @@ BSP_CLIENT * server_accept(BSP_SERVER *srv, struct sockaddr_storage *addr);
 
 // Add server to main loop
 int add_server(BSP_SERVER *srv);
-//int del_server(int srv_fd);
+BSP_SERVER * get_server(const char *name);
 size_t output_client_raw(BSP_CLIENT *clt, const char *data, ssize_t len);
 size_t output_client_obj(BSP_CLIENT *clt, BSP_OBJECT *obj);
 size_t output_client_cmd(BSP_CLIENT *clt, int cmd, BSP_OBJECT *obj);

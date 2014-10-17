@@ -9,9 +9,15 @@ bsp_online_init({
     pid         = 'i'
 });
 
-bsp_fcgi_set_upstream('php', {
-    {host = 'localhost', port = 9000}
+-- We have three server here
+-- main_server
+-- websocket_server
+-- internal_server
+
+bsp_set_fcgi_upstream('websocket_server', {
+    {host = 'localhost', port = 9000, script_filename = '/home/np/Projects/web/timer.php'}
 });
 
+bsp_set_lua_entry('main_server', 'server');
+bsp_set_lua_entry('internal_server', 'server');
 bsp_load_script("main.lua");
-bsp_set_entry("server");
