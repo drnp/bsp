@@ -62,9 +62,11 @@
 #define UDP_PACKET_DATA                         0x0
 
 // Callback type
+#define SERVER_CALLBACK_ON_ACCEPT               0x80
 #define SERVER_CALLBACK_ON_CONNECT              0x81
 #define SERVER_CALLBACK_ON_CLOSE                0x82
 #define SERVER_CALLBACK_ON_ERROR                0x83
+#define SERVER_CALLBACK_ON_HEARTBEAT            0x84
 #define SERVER_CALLBACK_ON_DATA_RAW             0x1
 #define SERVER_CALLBACK_ON_DATA_OBJ             0x2
 #define SERVER_CALLBACK_ON_DATA_CMD             0x3

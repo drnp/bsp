@@ -52,7 +52,7 @@
 #define FD_TYPE_UNKNOWN                         255
 
 #define HARD_LIMIT_FDS                          1048576
-#define SAFE_LIMIT_FDS                          131702
+#define SAFE_LIMIT_FDS                          1024
 
 /* Macros */
 
@@ -63,6 +63,7 @@ typedef struct bsp_fd_t
     int                 type;
     int                 tid;
     void                *ptr;
+    BSP_ONLINE          *online;
 } BSP_FD;
 
 /* Functions */

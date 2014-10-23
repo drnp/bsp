@@ -588,6 +588,12 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                         clt->packet_serialize_type = s_type;
                         clt->packet_compress_type = c_type;
                         trace_msg(TRACE_LEVEL_VERBOSE, "Server : Client %d report as serialize type : %d, compress type : %d", SFD(clt), s_type, c_type);
+                        // Trigger online event
+                        if (settings->on_srv_events)
+                        {
+                            cb.event = SERVER_CALLBACK_ON_CONNECT;
+                            settings->on_srv_events(&cb);
+                        }
                         // Send back a response
                         str = new_string_const(stream, 1);
                         _real_output_client(clt, str);
@@ -597,8 +603,14 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                     else if (PACKET_TYPE_HEARTBEAT == p_type)
                     {
                         // Heartbeat
-                        // Send back a response
                         trace_msg(TRACE_LEVEL_VERBOSE, "Server : Client %d send a heartbeat request", SFD(clt));
+                        // Trigger heartbeat event
+                        if (settings->on_srv_events)
+                        {
+                            cb.event = SERVER_CALLBACK_ON_HEARTBEAT;
+                            settings->on_srv_events(&cb);
+                        }
+                        // Send back a response
                         str = new_string_const(stream, 1);
                         _real_output_client(clt, str);
                         del_string(str);
@@ -741,4 +753,3 @@ size_t proc_data(BSP_CLIENT *clt, const char *data, ssize_t len)
     }
     return 0;
 }
-

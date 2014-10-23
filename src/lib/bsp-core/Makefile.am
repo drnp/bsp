@@ -21,12 +21,16 @@ libbsp_core_la_SOURCES = \
 	bsp_http.h \
 	logger.c \
 	bsp_logger.h \
+	memdb.c \
+	bsp_memdb.h \
 	mempool.c \
 	bsp_mempool.h \
 	misc.c \
 	bsp_misc.h \
 	object.c \
 	bsp_object.h \
+	online.c \
+	bsp_online.h \
 	os.c \
 	bsp_os.h \
 	script.c \

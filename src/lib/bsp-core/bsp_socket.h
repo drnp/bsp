@@ -164,7 +164,6 @@ typedef struct bsp_client_t
     int32_t             udp_proto;
 
     // Packet
-    int                 packet_length_type;
     int                 packet_serialize_type;
     int                 packet_compress_type;
     int                 packet_heartbeat;

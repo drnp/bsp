@@ -66,7 +66,7 @@ static void _shr_hash_insert(struct _online_info_map_t *entry)
         entry->next = online_info_map[hkey];
         online_info_map[hkey] = entry;
     }
-    
+
     return;
 }
 
@@ -87,7 +87,7 @@ static struct _online_info_map_t * _shr_hash_find(const char *key)
         }
         ret = ret->next;
     }
-    
+
     return ret;
 }
 
@@ -257,7 +257,7 @@ static int shr_online_property(lua_State *s)
                         break;
                 }
             }
-            
+
             lua_pop(s, 1);
         }
 
@@ -458,7 +458,7 @@ static int shr_online_list(lua_State *s)
         }
     }
     bsp_spin_unlock(&online_list_lock);
-    
+
     return 1;
 }
 
@@ -485,7 +485,6 @@ static int shr_online_info(lua_State *s)
     {
         lua_pushnil(s);
     }
-    
     else
     {
         bsp_spin_lock(&online_list[client_id].lock);
@@ -512,7 +511,7 @@ static int shr_online_info(lua_State *s)
         }
         bsp_spin_unlock(&online_list[client_id].lock);
     }
-    
+
     return 1;
 }
 
