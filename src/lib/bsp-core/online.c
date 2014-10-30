@@ -43,6 +43,7 @@ int online_init()
         trigger_exit(BSP_RTN_ERROR_MEMORY, "Cannot create online list");
     }
     bsp_spin_init(&hash_lock);
+    trace_msg(TRACE_LEVEL_DEBUG, "Online : Online table initialized");
 
     return BSP_RTN_SUCCESS;
 }
@@ -131,19 +132,87 @@ static BSP_ONLINE * _hash_remove(const char *key)
 }
 
 // Create new online entry
-BSP_ONLINE * new_online(const char *key)
+void new_online(int fd, const char *key)
 {
     if (!key)
     {
-        return NULL;
+        return;
     }
 
-    BSP_ONLINE *entry = bsp_calloc(1, sizeof(BSP_ONLINE));
+    BSP_ONLINE *entry = _hash_find(key);
     if (entry)
     {
-        entry->key = key;
-        // Insert into hash
+        // Used
+        entry->bind = fd;
+        if (entry->data)
+        {
+            del_object(entry->data);
+            entry->data = NULL;
+        }
     }
+    else
+    {
+        entry = bsp_malloc(sizeof(BSP_ONLINE));
+        if (entry)
+        {
+            entry->key = bsp_strdup(key);
+            entry->bind = fd;
+            entry->data = NULL;
 
-    return entry;
+            _hash_insert(entry);
+        }
+    }
+    trace_msg(TRACE_LEVEL_VERBOSE, "Online : New online info registered");
+
+    // Bind entry to fd
+    set_fd_online(fd, entry);
+
+    return;
+}
+
+// Remove online(set offline) by given fd(bind)
+void del_online_by_bind(int fd)
+{
+    BSP_ONLINE *entry = get_fd_online(fd);
+    if (entry)
+    {
+        _hash_remove(entry->key);
+        if (entry->data)
+        {
+            del_object(entry->data);
+        }
+        bsp_free(entry->key);
+        bsp_free(entry);
+    }
+    set_fd_online(fd, NULL);
+    trace_msg(TRACE_LEVEL_VERBOSE, "Online : Online info <%d> removed", fd);
+
+    return;
+}
+
+// Remove online by given key
+void del_online_by_key(const char *key)
+{
+    BSP_ONLINE *entry = _hash_remove(key);
+    if (entry)
+    {
+        set_fd_online(entry->bind, NULL);
+        if (entry->data)
+        {
+            del_object(entry->data);
+        }
+        bsp_free(entry->key);
+        bsp_free(entry);
+    }
+    trace_msg(TRACE_LEVEL_VERBOSE, "Online : Online info[%s] removed", key);
+
+    return;
+}
+
+// Load online data by handler
+void load_online_data(const char *key)
+{
+    BSP_THREAD *t = get_thread(MAIN_THREAD);
+
+    return;
 }

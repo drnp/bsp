@@ -56,6 +56,8 @@
 #define SCRIPT_HOOK_SUB_RELOAD                  0x12
 #define SCRIPT_HOOK_SUB_EXIT                    0x13
 
+#define DEFAULT_SCRIPT_GC_INTERVAL              300
+
 /* Macros */
 
 /* Structs */
@@ -65,12 +67,6 @@ typedef struct bsp_script_call_param_t
     ssize_t             len;
     void                *ptr;
 } BSP_SCRIPT_CALL_PARAM;
-
-typedef struct bsp_script_state_t
-{
-    lua_State           *state;
-    size_t              load_times;
-} BSP_SCRIPT_STATE;
 
 typedef struct bsp_script_stack_t
 {
@@ -113,15 +109,15 @@ void script_set_hook(int hook, const char *func);
 */
 // Load script code block
 int script_load_string(lua_State *l, BSP_STRING *code);
-/*
-// Unload / close LUA script
-int script_close();
-*/
+
+// Load script code from file
+int script_load_file(lua_State *l, const char *filename);
+
 // Call a script function with given parameters
-int script_call(lua_State *caller, const char *func, BSP_OBJECT *p);
+int script_call(BSP_SCRIPT_STACK *caller, const char *func, BSP_OBJECT *p);
 
 // New state(runner), create a new LUA state
-int script_new_state(BSP_SCRIPT_STATE *ss);
+lua_State * script_new_state();
 
 // New stack(caller), create a new LUA thread and bind to state
 int script_new_stack(BSP_SCRIPT_STACK *ts);

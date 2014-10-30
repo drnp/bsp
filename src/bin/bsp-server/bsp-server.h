@@ -37,7 +37,6 @@
 
 /* Definations */
 #define HEARTBEAT_CHECK_RATE                    60
-#define SCRIPT_GC_RATE                          300
 
 /* Macros */
 

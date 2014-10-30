@@ -95,24 +95,48 @@ int script_load_string(lua_State *l, BSP_STRING *code)
     return BSP_RTN_ERROR_GENERAL;
 }
 
+// Load script code from file
+int script_load_file(lua_State *l, const char *filename)
+{
+    if (!l || !filename)
+    {
+        return BSP_RTN_ERROR_SCRIPT;
+    }
+
+    BSP_STRING *code = new_string_from_file(filename);
+    int ret = script_load_string(l, code);
+    del_string(code);
+
+    return ret;
+}
+
 // Call a script function or resume coruntine
-int script_call(lua_State *caller, const char *func, BSP_OBJECT *p)
+static int _cont(lua_State *l)
+{
+    //lua_settop(l, 0);
+
+    return 0;
+}
+
+int script_call(BSP_SCRIPT_STACK *caller, const char *func, BSP_OBJECT *p)
 {
     int ret, status, nargs = 0;
 
-    if (!caller)
+    if (!caller || !caller->state)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Script : Not available state");
         return BSP_RTN_ERROR_SCRIPT;
     }
+    lua_State *l = (caller->stack) ? (caller->stack) : (caller->state);
 
+    //bsp_spin_lock(&caller->lock);
     if (func)
     {
-        lua_checkstack(caller, 1);
-        lua_getglobal(caller, func);
+        lua_checkstack(l, 1);
+        lua_getglobal(l, func);
     }
 
-    if (!lua_isfunction(caller, -1))
+    if (!lua_isfunction(l, -1))
     {
         trace_msg(TRACE_LEVEL_ERROR, "Script : No function specified");
     }
@@ -120,21 +144,21 @@ int script_call(lua_State *caller, const char *func, BSP_OBJECT *p)
     {
         if (p)
         {
-            object_to_lua_stack(caller, p);
+            object_to_lua_stack(l, p);
             nargs = 1;
         }
-        status = lua_status(caller);
+        status = lua_status(l);
         if (LUA_OK == status)
         {
             // Pcall
-            ret = lua_pcall(caller, nargs, 0, 0);
             trace_msg(TRACE_LEVEL_VERBOSE, "Script : Call a stack");
+            ret = lua_pcallk(l, nargs, 0, 0, 0, _cont);
         }
         else if (LUA_YIELD == status)
         {
             // Resume
-            ret = lua_resume(caller, NULL, nargs);
             trace_msg(TRACE_LEVEL_VERBOSE, "Script : Resume a yielded stack");
+            ret = lua_resume(l, NULL, nargs);
         }
         else
         {
@@ -146,7 +170,7 @@ int script_call(lua_State *caller, const char *func, BSP_OBJECT *p)
         if (LUA_YIELD != ret && LUA_OK != ret)
         {
             status_op_script(STATUS_OP_SCRIPT_FAILURE, 0);
-            trace_msg(TRACE_LEVEL_ERROR, "Script : Call lua function error : %s", lua_tostring(caller, -1));
+            trace_msg(TRACE_LEVEL_ERROR, "Script : Call lua function error : %s", lua_tostring(l, -1));
         }
         else
         {
@@ -154,32 +178,26 @@ int script_call(lua_State *caller, const char *func, BSP_OBJECT *p)
         }
         status_op_script(STATUS_OP_SCRIPT_CALL, 0);
     }
-    lua_settop(caller, 0);
+    _cont(l);
+    //bsp_spin_unlock(&caller->lock);
 
     return BSP_RTN_SUCCESS;
 }
 
 // New state(runner), create a new LUA state
-int script_new_state(BSP_SCRIPT_STATE *ss)
+lua_State * script_new_state()
 {
-    if (!ss)
-    {
-        return BSP_RTN_ERROR_GENERAL;
-    }
-
     lua_State *state = lua_newstate(_default_allocator, NULL);
     if (!state)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Script : Create new script state error");
-        return BSP_RTN_ERROR_SCRIPT;
+        return NULL;
     }
     luaL_openlibs(state);
-    ss->state = state;
-    ss->load_times = 0;
     trace_msg(TRACE_LEVEL_DEBUG, "Script : Create a new script state");
     status_op_script(STATUS_OP_SCRIPT_STATE_ADD, 0);
 
-    return BSP_RTN_SUCCESS;
+    return state;
 }
 
 // New stack(caller), create a new LUA thread and bind to state
@@ -200,7 +218,6 @@ int script_new_stack(BSP_SCRIPT_STACK *ts)
 
     ts->stack = stack;
     int ref = ts->stack_ref = luaL_ref(ts->state, LUA_REGISTRYINDEX);
-    bsp_spin_init(&ts->lock);
     status_op_script(STATUS_OP_SCRIPT_STACK_ADD, 0);
     trace_msg(TRACE_LEVEL_NOTICE, "Script : Generate a new LUA thread registed at index %d", ref);
 

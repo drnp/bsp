@@ -31,6 +31,46 @@
 BSP_CORE_SETTING core_settings = {.initialized = 0};
 BSP_OBJECT *runtime_settings = NULL;
 
+// Base timer event
+static void base_timer(BSP_TIMER *tmr)
+{
+    if (!tmr)
+    {
+        return;
+    }
+
+    // Script garbage collection
+    if (core_settings.script_gc_interval)
+    {
+        if (0 == (tmr->timer + 1) % (core_settings.script_gc_interval * 10))
+        {
+            trigger_gc(MAIN_THREAD);
+        }
+
+        if (0 == (tmr->timer % core_settings.script_gc_interval))
+        {
+            trigger_gc((tmr->timer / core_settings.script_gc_interval) % core_settings.static_workers);
+        }
+    }
+
+    // Online autosave
+    if (core_settings.online_autosave_interval)
+    {
+        if (0 == tmr->timer % core_settings.online_autosave_interval)
+        {
+            // Auto save
+        }
+    }
+
+    // External callback
+    if (core_settings.ext_timer_callback)
+    {
+        core_settings.ext_timer_callback(tmr);
+    }
+
+    return;
+}
+
 // Set default values
 static void init_core_setting()
 {
@@ -57,6 +97,9 @@ static void init_core_setting()
     core_settings.on_proc_usr1 = NULL;
     core_settings.on_proc_usr2 = NULL;
     core_settings.main_timer = NULL;
+    core_settings.ext_timer_callback = NULL;
+    core_settings.script_gc_interval = DEFAULT_SCRIPT_GC_INTERVAL;
+    core_settings.online_autosave_interval = DEFAULT_ONLINE_AUTOSAVE_INTERVAL;
 
     core_settings.base_dir = NULL;
     core_settings.mod_dir = NULL;
@@ -146,6 +189,11 @@ int _parse_runtime_setting(BSP_STRING *rs)
         val = object_get_hash_str(vobj, "script_dir");
         vstr = value_get_string(val);
         core_settings.script_dir = (vstr) ? bsp_strndup(STR_STR(vstr), STR_LEN(vstr)) : NULL;
+        val = object_get_hash_str(vobj, "script_gc_interval");
+        if (val && BSP_VAL_INT == val->type)
+        {
+            core_settings.script_gc_interval = value_get_int(val);
+        }
     }
 
     return BSP_RTN_SUCCESS;
@@ -216,6 +264,7 @@ int core_init()
     save_pid();
     signal_init();
     socket_init();
+    online_init();
 
     // Load modules
     BSP_VALUE *val = object_get_hash_str(runtime_settings, "modules");
@@ -245,7 +294,7 @@ int core_init()
 }
 
 // Start main loop
-int core_loop(void (* server_event)(BSP_CALLBACK *), void (* timer_event)(BSP_TIMER *))
+int core_loop(void (* server_event)(BSP_CALLBACK *))
 {
     BSP_THREAD *t = get_thread(MAIN_THREAD);
     if (!t)
@@ -372,16 +421,12 @@ int core_loop(void (* server_event)(BSP_CALLBACK *), void (* timer_event)(BSP_TI
         core_settings.on_srv_events = server_event;
     }
 
-    // Main clock event
-    if (timer_event)
-    {
-        // Create 1 Hz clock
-        BSP_TIMER *tmr = new_timer(BASE_CLOCK_SEC, BASE_CLOCK_USEC, -1);
-        tmr->on_timer = timer_event;
-        core_settings.main_timer = tmr;
-        dispatch_to_thread(tmr->fd, MAIN_THREAD);
-        start_timer(tmr);
-    }
+    // Create 1 Hz clock
+    BSP_TIMER *tmr = new_timer(BASE_CLOCK_SEC, BASE_CLOCK_USEC, -1);
+    tmr->on_timer = base_timer;
+    core_settings.main_timer = tmr;
+    dispatch_to_thread(tmr->fd, MAIN_THREAD);
+    start_timer(tmr);
 
     // Let's go
     load_bootstrap();

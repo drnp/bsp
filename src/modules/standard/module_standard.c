@@ -37,11 +37,11 @@
 // Timer callback
 void _timer_on_timer(BSP_TIMER *tmr)
 {
-    if (tmr && tmr->script_stack.stack)
+    if (tmr)
     {
-        script_call(tmr->script_stack.stack, NULL, NULL);
+        script_call(&tmr->script_stack, NULL, NULL);
     }
-    
+
     return;
 }
 
@@ -183,7 +183,7 @@ static int standard_timer_create(lua_State *s)
     {
         return 0;
     }
-    
+
     //const char *func = strdup(lua_tostring(s, -1));
     int loop = lua_tointeger(s, -2);
     int usec = lua_tointeger(s, -3);
@@ -194,21 +194,21 @@ static int standard_timer_create(lua_State *s)
         lua_settop(s, 0);
         return 0;
     }
-    
+
     BSP_TIMER *tmr= new_timer((time_t) sec, (long) usec, loop);
     if (!tmr)
     {
         lua_settop(s, 0);
         return 0;
     }
-    
+
     tmr->on_timer = _timer_on_timer;
     tmr->on_stop = _timer_on_stop;
     dispatch_to_thread(tmr->fd, curr_thread_id());
     // Push function into timer
     lua_xmove(s, tmr->script_stack.stack, 1);
     start_timer(tmr);
-    
+
     lua_pushinteger(s, tmr->fd);
 
     return 1;

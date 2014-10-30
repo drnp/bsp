@@ -32,6 +32,59 @@
 
 #include "module_online.h"
 
+static int online_set_online(lua_State *s)
+{
+    if (!s || !lua_isstring(s, -1) || !lua_isnumber(s, -2))
+    {
+        return 0;
+    }
+
+    int fd = lua_tointeger(s, -2);
+    const char *key = lua_tostring(s, -1);
+
+    new_online(fd, key);
+    // Trigger handler
+    
+
+    return 1;
+}
+
+static int online_set_offline_by_fd(lua_State *s)
+{
+    if (!s || !lua_isnumber(s, -1))
+    {
+        return 0;
+    }
+
+    int fd = lua_tointeger(s, -1);
+    del_online_by_bind(fd);
+
+    return 0;
+}
+
+static int online_set_offline_by_key(lua_State *s)
+{
+    if (!s || !lua_isstring(s, -1))
+    {
+        return 0;
+    }
+
+    const char *key = lua_tostring(s, -1);
+    del_online_by_key(key);
+
+    return 0;
+}
+
+static int online_get_data(lua_State *s)
+{
+    if (!s || !lua_isstring(s, -1))
+    {
+        return 0;
+    }
+
+    return 0;
+}
+/*
 struct _online_entry_t *online_list = NULL;
 size_t online_list_size = 0;
 int max_client_id = 0;
@@ -147,7 +200,6 @@ static int shr_online_map(lua_State *s)
                 if (0 == strncasecmp(value, "ii", 2))
                 {
                     item->index = 1;
-                    /* TODO : Generate B+ index */
                 }
             }
 
@@ -373,7 +425,6 @@ static int shr_online_list(lua_State *s)
     }
     // Each entry of list
     lua_newtable(s);
-    /* TODO B+ index */
     int i, j;
     int ori_val_int;
     const char *ori_val_str;
@@ -514,7 +565,7 @@ static int shr_online_info(lua_State *s)
 
     return 1;
 }
-
+*/
 int bsp_module_online(lua_State *s)
 {
     if (!s || !lua_checkstack(s, 1))
@@ -522,31 +573,17 @@ int bsp_module_online(lua_State *s)
         return 0;
     }
 
-    bsp_spin_lock(&online_list_lock);
-    if (!online_list)
-    {
-        _shr_init();
-    }
-    bsp_spin_unlock(&online_list_lock);
-
-    if (!online_list)
-    {
-        // Initialized error?
-        trace_msg(TRACE_LEVEL_ERROR, "Online : Initialization error");
-        return 0;
-    }
-
-    lua_pushcfunction(s, shr_online_map);
-    lua_setglobal(s, "bsp_online_init");
-                  
-    lua_pushcfunction(s, shr_online_property);
+    lua_pushcfunction(s, online_set_online);
     lua_setglobal(s, "bsp_set_online");
+                  
+    lua_pushcfunction(s, online_set_offline_by_fd);
+    lua_setglobal(s, "bsp_set_offline");
 
-    lua_pushcfunction(s, shr_online_list);
-    lua_setglobal(s, "bsp_online_list");
+    lua_pushcfunction(s, online_set_offline_by_key);
+    lua_setglobal(s, "bsp_set_offline_by_key");
 
-    lua_pushcfunction(s, shr_online_info);
-    lua_setglobal(s, "bsp_online_info");
+    lua_pushcfunction(s, online_get_data);
+    lua_setglobal(s, "bsp_get_online");
     
     lua_settop(s, 0);
 

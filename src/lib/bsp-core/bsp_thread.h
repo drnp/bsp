@@ -65,7 +65,7 @@ typedef struct bsp_thread_t
     BSP_SPINLOCK        fd_lock;
 
     // Critical
-    BSP_SCRIPT_STATE    script_runner;
+    BSP_SCRIPT_STACK    script_runner;
     char                read_block[READ_ONCE];
 } BSP_THREAD;
 
@@ -99,9 +99,6 @@ int remove_from_thread(const int fd);
 
 // Modify fd's listening event in epoll
 int modify_fd_events(const int fd, struct epoll_event *ev);
-
-// Set main server looper
-//void set_main_loop_fd(int fd);
 
 // Trigger script garbage-collection
 int trigger_gc(int tid);

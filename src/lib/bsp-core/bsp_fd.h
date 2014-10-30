@@ -87,6 +87,12 @@ void set_fd_thread(const int fd, const int tid);
 // Get worker thread id
 int get_fd_thread(const int fd);
 
+// Set fd online info
+void set_fd_online(const int fd, BSP_ONLINE *online);
+
+// Get fd online info
+BSP_ONLINE * get_fd_online(const int fd);
+
 // Set fd non-blocking
 int set_fd_nonblock(const int fd);
 

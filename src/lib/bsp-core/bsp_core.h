@@ -71,6 +71,9 @@ typedef struct bsp_core_setting_t
 
     // Main base (1Hz) timer callback
     BSP_TIMER           *main_timer;
+    void                (* ext_timer_callback) (BSP_TIMER *tmr);
+    int                 script_gc_interval;
+    int                 online_autosave_interval;
 
     // Application base dir (prefix)
     const char          *base_dir;
@@ -96,6 +99,6 @@ char * get_core_version(void);
 int core_init();
 
 // Start main loop
-int core_loop(void (* server_event)(BSP_CALLBACK *), void (* timer_event)(BSP_TIMER *));
+int core_loop(void (* server_event)(BSP_CALLBACK *));
 
 #endif  /* _LIB_BSP_CORE_CORE_H */

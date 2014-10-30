@@ -33,6 +33,7 @@
 /* Headers */
 
 /* Definations */
+/*
 #define ONLINE_MAP_KEY_LENGTH                   32
 #define DEFAULT_ONLINE_INFO_STRING_LENGTH       32
 #define ONLINE_INFO_HASH_SIZE                   64
@@ -43,10 +44,11 @@
 #define ONLINE_STATUS_BLOCKED                   3
 #define ONLINE_STATUS_INVALID                   4
 #define ONLINE_STATUS_OFFLINE                   5
-
+*/
 /* Macros */
 
 /* Structs */
+/*
 struct _online_entry_t
 {
     void                *info;
@@ -66,7 +68,7 @@ struct _online_info_map_t
     struct _online_info_map_t
                         *lnext;
 };
-
+*/
 /* Functions */
 int bsp_module_online(lua_State *s);
 

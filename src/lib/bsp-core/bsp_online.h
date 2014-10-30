@@ -34,6 +34,9 @@
 
 /* Definations */
 #define ONLINE_HASH_SIZE                        4096
+#define ONLINE_HANDLER_NAME_SAVE                "_bsp_online_handler_save_"
+#define ONLINE_HANDLER_NAME_LOAD                "_bsp_online_handler_load_"
+#define DEFAULT_ONLINE_AUTOSAVE_INTERVAL        300
 
 /* Macros */
 
@@ -41,12 +44,22 @@
 typedef struct bsp_online_entry_t
 {
     int                 bind;
-    const char          *key;
+    time_t              last_save;
+    char                *key;
     BSP_OBJECT          *data;
     struct bsp_online_entry_t
                         *next;
 } BSP_ONLINE;
 
 /* Functions */
+// Initialize online hash table
+int online_init();
+
+// Create new online entry
+void new_online(int fd, const char *key);
+
+// Remove online entry
+void del_online_by_bind(int fd);
+void del_online_by_key(const char *key);
 
 #endif  /* _LIB_BSP_CORE_ONLINE_H */

@@ -168,7 +168,7 @@ static void server_callback(BSP_CALLBACK *cb)
 
     if (cb->server->lua_entry && cb->client->script_stack.stack)
     {
-        script_call(cb->client->script_stack.stack, cb->server->lua_entry, p);
+        script_call(&cb->client->script_stack, cb->server->lua_entry, p);
     }
 
     if (cb->server->fcgi_upstream)
@@ -207,23 +207,6 @@ static void _dida(BSP_TIMER * tmr)
                 flush_socket(&SCK(clt));
             }
         }
-    }
-
-    // Garbage-Collection
-    if (!SCRIPT_GC_RATE)
-    {
-        return;
-    }
-
-    BSP_CORE_SETTING *settings = get_core_setting();
-    if (0 == (tmr->timer + 1) % (SCRIPT_GC_RATE * 10))
-    {
-        trigger_gc(MAIN_THREAD);
-    }
-
-    if (0 == (tmr->timer % SCRIPT_GC_RATE))
-    {
-        trigger_gc((tmr->timer / SCRIPT_GC_RATE) % settings->static_workers);
     }
 
     return;
@@ -291,6 +274,7 @@ int main(int argc, char **argv)
     settings->on_proc_tstp = _app_on_tstp;
     settings->on_proc_usr1 = _app_on_usr1;
     settings->on_proc_usr2 = _app_on_usr2;
+    settings->ext_timer_callback = _dida;
 #endif
 
     // Try Huge-TLB
@@ -301,7 +285,7 @@ int main(int argc, char **argv)
 #endif
 
     core_init();
-    core_loop(server_callback, _dida);
+    core_loop(server_callback);
 
     return BSP_RTN_SUCCESS;
 }

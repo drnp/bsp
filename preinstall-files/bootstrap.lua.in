@@ -1,13 +1,18 @@
 -- Bootstrap script
-bsp_online_init({
-    kid         = 'i', 
-    nickname    = 's64', 
-    horn        = 'i', 
-    horn_used   = 'i', 
-    union       = 'i', 
-    country     = 'i', 
-    pid         = 'i'
+
+-- Online init
+bsp_set_online_handler({
+    load = function(id)
+        -- Do restore
+        print("Data of " .. id .. " loaded");
+    end, 
+    save = function(id)
+        -- Do save
+        print("Data of " .. id .. " saved");
+    end
 });
+
+print("Bootstrap for BSP.Server DEMO v1.0 starting...");
 
 -- We have three server here
 -- main_server

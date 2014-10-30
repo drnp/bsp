@@ -99,12 +99,14 @@ int create_worker(BSP_THREAD *t)
     }
 
     // Create runner
-    script_new_state(&t->script_runner);
+    t->script_runner.state = script_new_state();
     if (!t->script_runner.state)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Thread : Thread create runner error");
         return BSP_RTN_ERROR_SCRIPT;
     }
+    bsp_spin_init(&t->script_runner.lock);
+    //script_new_stack(&t->script_runner);
     BSP_CORE_SETTING *settings = get_core_setting();
     t->loop_fd = epoll_create(settings->epoll_wait_conns);
     if (-1 == t->loop_fd)

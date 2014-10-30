@@ -1131,6 +1131,7 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
         clt->client_type = 0;
         clt->data_type = 0;
         clt->additional = NULL;
+        bsp_spin_init(&clt->script_stack.lock);
 
         reg_fd(fd, FD_TYPE_SOCKET_CLIENT, (void *) clt);
         status_op_socket(SFD(srv), STATUS_OP_SOCKET_SERVER_CONNECT, 0);
@@ -1210,6 +1211,7 @@ static BSP_CONNECTOR * _new_unix_connector(const char *path)
         _exit(BSP_RTN_ERROR_MEMORY);
     }
     _init_socket(&cnt->sck, fd, NULL, NULL);
+    bsp_spin_init(&cnt->script_stack.lock);
 
     reg_fd(fd, FD_TYPE_SOCKET_CONNECTOR, (void *) cnt);
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : UNIX connector %d connected to %s", fd, path);
@@ -1350,6 +1352,7 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
         }
         set_fd_nonblock(fd);
         _init_socket(&cnt->sck, fd, (struct sockaddr_storage *) ai->ai_addr, ai);
+        bsp_spin_init(&cnt->script_stack.lock);
 
         reg_fd(fd, FD_TYPE_SOCKET_CONNECTOR, (void *) cnt);
         status_op_socket(0, STATUS_OP_SOCKET_CONNECTOR_CONNECT, 0);

@@ -172,6 +172,49 @@ static int bootstrap_set_fcgi_upstream(lua_State *s)
     return 0;
 }
 
+// Set online behavior
+static int bootstrap_set_online_handler(lua_State *s)
+{
+    if (!s || !lua_istable(s, -1))
+    {
+        return 0;
+    }
+
+    BSP_CORE_SETTING *settings = get_core_setting();
+    lua_getfield(s, -1, "load");
+    if (lua_isfunction(s, -1))
+    {
+        // Set load behavior
+        lua_setfield(s, LUA_REGISTRYINDEX, ONLINE_HANDLER_NAME_LOAD);
+        trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Online handler <load> set");
+    }
+    else
+    {
+        lua_pop(s, 1);
+    }
+
+    lua_getfield(s, -1, "save");
+    if (lua_isfunction(s, -1))
+    {
+        // Set save behavior
+        lua_setfield(s, LUA_REGISTRYINDEX, ONLINE_HANDLER_NAME_SAVE);
+        trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Online handler <save> set");
+    }
+    else
+    {
+        lua_pop(s, 1);
+    }
+
+    lua_getfield(s, -1, "autosave");
+    if (lua_isnumber(s, -1))
+    {
+        // Set auto-save interval
+        settings->online_autosave_interval = lua_tointeger(s, -1);
+    }
+
+    return 0;
+}
+
 // Start bootstrap
 int start_bootstrap(BSP_STRING *bs)
 {
@@ -194,6 +237,8 @@ int start_bootstrap(BSP_STRING *bs)
     lua_setglobal(t->script_runner.state, "bsp_set_lua_entry");
     lua_pushcfunction(t->script_runner.state, bootstrap_set_fcgi_upstream);
     lua_setglobal(t->script_runner.state, "bsp_set_fcgi_upstream");
+    lua_pushcfunction(t->script_runner.state, bootstrap_set_online_handler);
+    lua_setglobal(t->script_runner.state, "bsp_set_online_handler");
 
     // Change working location to script_dir
     BSP_CORE_SETTING *settings = get_core_setting();
@@ -205,7 +250,7 @@ int start_bootstrap(BSP_STRING *bs)
     if (BSP_RTN_SUCCESS == script_load_string(t->script_runner.state, bs))
     {
         // Run code
-        script_call(t->script_runner.state, NULL, NULL);
+        script_call(&t->script_runner, NULL, NULL);
     }
     else
     {

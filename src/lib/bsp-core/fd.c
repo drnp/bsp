@@ -187,6 +187,29 @@ int get_fd_thread(const int fd)
     return UNBOUNDED_THREAD;
 }
 
+// Set fd online info
+void set_fd_online(const int fd, BSP_ONLINE *online)
+{
+    if (fd >= 0 && fd < fd_list_size && fd_list[fd].fd == fd)
+    {
+        fd_list[fd].online = online;
+        trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : Set FD %d's online info");
+    }
+
+    return;
+}
+
+// Get fd online info
+BSP_ONLINE * get_fd_online(const int fd)
+{
+    if (fd > 0 && fd < fd_list_size && fd_list[fd].fd == fd)
+    {
+        return fd_list[fd].online;
+    }
+
+    return NULL;
+}
+
 // Set fd non-blocking
 int set_fd_nonblock(const int fd)
 {

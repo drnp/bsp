@@ -4,7 +4,8 @@
         "instance_id"       : 9173, 
         "debug_output"      : true, 
         "debug_connector_input" : true, 
-        "enable_log"        : false
+        "enable_log"        : false, 
+        "script_gc_interval": 1
     }, 
 
     "modules" : [
@@ -26,8 +27,7 @@
             "websocket"     : false, 
             "data_type"     : "packet", 
             "debug_input"   : false, 
-            "debug_output"  : false, 
-            "data_runner"   : "internal"
+            "debug_output"  : false
         }, 
         {
             "name"          : "websocket_server", 
@@ -38,8 +38,7 @@
             "websocket"     : true, 
             "data_type"     : "packet", 
             "debug_input"   : true, 
-            "debug_output"  : true, 
-            "data_runner"   : "fastcgi:php"
+            "debug_output"  : true
         }, 
         {
             "name"          : "internal_server", 
