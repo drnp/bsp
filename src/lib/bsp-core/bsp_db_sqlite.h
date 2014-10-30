@@ -29,7 +29,7 @@
 #ifndef _LIB_BSP_CORE_DB_SQLITE_H
 #define _LIB_BSP_CORE_DB_SQLITE_H
 /* Headers */
-#include "sqlite3.h"
+#include <sqlite3.h>
 
 /* Definations */
 

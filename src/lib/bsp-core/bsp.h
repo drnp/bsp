@@ -75,6 +75,8 @@
 #include <netinet/udp.h>
 #include <arpa/inet.h>
 
+#include <mongo.h>
+
 #include <lua.h>
 #include <lualib.h>
 #include <lauxlib.h>
@@ -114,7 +116,7 @@
 
 /* Definations */
 // General
-#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20141017-dev"
+#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20141030-dev"
 #define BSP_PACKAGE_NAME                        "bsp"
 
 // Instances

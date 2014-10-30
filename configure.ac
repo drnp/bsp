@@ -10,8 +10,11 @@ AC_PREFIX_DEFAULT([/opt/bsp])
 AC_PROG_CC
 AC_PROG_CXX([gcc c++ g++])
 AC_PROG_INSTALL
+AC_PROG_MAKE_SET
 AM_PROG_CC_C_O
 AC_PROG_LIBTOOL
+PKG_PROG_PKG_CONFIG
+AC_HEADER_STDC
 
 test "$prefix" = NONE && prefix=/opt/bsp
 
@@ -36,7 +39,10 @@ AC_CHECK_FUNCS([dup2 \
     getpagesizes \
     memcntl \
     sigignore \
-    mmap
+    mmap \
+    getaddrinfo \
+    munmap \
+    strerror
 ])
 
 AC_CHECK_HEADERS([ \
@@ -47,6 +53,7 @@ AC_CHECK_HEADERS([ \
     sched.h \
     fcntl.h \
     stdint.h \
+    netdb.h \
     sys/stat.h \
     sys/socket.h \
     sys/syscall.h \
@@ -91,7 +98,7 @@ AC_FUNC_REALLOC
 AC_TYPE_SIZE_T
 LT_INIT
 
-CPPFLAGS="-I$PWD -I$PWD/deps/lua/ -I$PWD/src/modules -I$PWD/src/lib/bsp-core/"
+CPPFLAGS="-I$PWD -I$PWD/deps/mongo/ -I$PWD/deps/lua/ -I$PWD/src/modules -I$PWD/src/lib/bsp-core/"
 CFLAGS="-O3 -g -Wall"
 LIBS="-L$prefix/lib/ $LIBS"
 
@@ -128,13 +135,9 @@ AC_ARG_WITH([mysql-config],
         fi
     ]
 )
-
 AC_CACHE_CHECK([for mysqlclient installation], ac_cv_mysqlclient_dir, [
-    saved_LIBS="$LIBS"
-    saved_LDFLAGS="$LDFLAGS"
-    saved_CPPFLAGS="$CPPFLAGS"
     lm_found=no
-    
+
     LIBS=`$trymysqlconfig --libs`" $LIBS"
     CPPFLAGS=`$trymysqlconfig --include`" $CPPFLAGS"
     AC_TRY_LINK([#include <stdlib.h>
@@ -146,12 +149,41 @@ AC_CACHE_CHECK([for mysqlclient installation], ac_cv_mysqlclient_dir, [
         ac_cv_mysqlclient_dir="$trymysqlconfig"
         lm_found=yes
     fi
-    
     if test $lm_found = no; then
-        LIBS="$saved_LIBS"
-        LDFLAGS="$saved_LDFLAGS"
-        CPPFLAGS="$saved_CPPFLAGS"
         AC_MSG_ERROR([mysql_config is required!])
+    fi
+])
+
+# GLib-2.x
+tryglib="no"
+AC_ARG_WITH([glib], 
+    [AS_HELP_STRING([--with-glib=DIR], [Specify location of GNU GLib-2.x])], 
+    [
+        if test "x$withval" != "xno"; then
+            tryglib=$withval
+        fi
+    ]
+)
+AC_CACHE_CHECK([For GNU GLib-2.x installation], ac_cv_glib_dir, [
+    saved_LIBS="$LIBS"
+    saved_LDFLAGS="$LDFLAGS"
+    saved_CPPFLAGS="$CPPFLAGS"
+    lg_found=no
+
+    LIBS=`pkg-config --libs glib-2.0`" $LIBS"
+    CPPFLAGS=`pkg-config --cflags glib-2.0`" $CPPFLAGS"
+    #Try compile
+    AC_TRY_LINK(
+        [#include <glib.h>], 
+        [int test=GLIB_SIZEOF_LONG;], 
+        [lg_linked=yes], 
+        [lg_linked=no])
+    if test $lg_linked = yes; then
+        ac_cv_glib_dir=`pkg-config --modversion glib-2.0`
+        lg_found=yes
+    fi
+    if test $lg_found = no; then
+        AC_MSG_ERROR([GNU GLib-2.x not found])
     fi
 ])
 
@@ -439,6 +471,8 @@ AC_OUTPUT([
 Makefile
 deps/Makefile
 deps/lua/Makefile
+deps/mongo/Makefile
+deps/mongo/libmongo-client.pc
 src/Makefile
 src/lib/Makefile
 src/lib/bsp-core/Makefile

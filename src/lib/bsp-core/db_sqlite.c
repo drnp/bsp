@@ -20,7 +20,7 @@
 /**
  * SQLite3 handler
  * 
- * @package bsp::libbsp-ext
+ * @package bsp::libbsp-core
  * @author Dr.NP <np@bsgroup.org>
  * @update 09/12/2012
  * @changelog 

@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+
+Name: libmongo-client
+Version: @VERSION@
+Description: MongoDB client library
+URL: https://github.com/algernon/libmongo-client
+Requires.private: glib-2.0
+Libs: -L${libdir} -lmongo-client
+Cflags: -I${includedir}/mongo-client

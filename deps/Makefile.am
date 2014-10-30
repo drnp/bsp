@@ -5,4 +5,5 @@
 #	-DPACKAGE_DATA_DIR=\""$(pkgdatadir)"\"
 
 SUBDIRS = \
+	mongo \
 	lua

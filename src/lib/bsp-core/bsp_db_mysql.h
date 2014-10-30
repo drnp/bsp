@@ -20,14 +20,14 @@
 /**
  * MySQL database extension header
  * 
- * @package bsp::libbsp-ext
+ * @package bsp::libbsp-core
  * @author Dr.NP <np@bsgroup.org>
  * @update 08/31/2012
  * @changelog 
  *      [08/31/2012] - Creation
  */
-#ifndef _LIB_BSP_EXT_DB_MYSQL_H
-#define _LIB_BSP_EXT_DB_MYSQL_H
+#ifndef _LIB_BSP_CORE_DB_MYSQL_H
+#define _LIB_BSP_CORE_DB_MYSQL_H
 /* Headers */
 #include <mysql.h>
 
@@ -67,4 +67,4 @@ BSP_DB_MYSQL_RES * db_mysql_query(BSP_DB_MYSQL *m, const char *query, ssize_t le
 const char * db_mysql_error(BSP_DB_MYSQL *m);
 BSP_OBJECT * db_mysql_fetch_row(BSP_DB_MYSQL_RES *r);
 
-#endif  /* _LIB_BSP_EXT_DB_MYSQL_H */
+#endif  /* _LIB_BSP_CORE_DB_MYSQL_H */

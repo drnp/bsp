@@ -59,6 +59,8 @@ libbsp_core_la_SOURCES = \
 	bsp_db_sqlite.h \
 	db_mysql.c \
 	bsp_db_mysql.h \
+	db_mongodb.c \
+	bsp_db_mongodb.h \
 	ip_list.c \
 	bsp_ip_list.h \
 	server.c \

@@ -20,7 +20,7 @@
 /**
  * MySQL database extension
  * 
- * @package bsp::libbsp-ext
+ * @package bsp::libbsp-core
  * @author Dr.NP <np@bsgroup.org>
  * @update 08/31/2012
  * @changelog 
