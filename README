@@ -1,44 +1,4 @@
 # BS.Play - Sickycat #
   实时通讯服务
 
-Dr.NP <np@bsgroup.org> 2012
-
-### 描述
-BS.Play（简称BSP）是一个支持脚本扩展的通讯服务。BSP运行于现代内核版本的Linux发行版，支持LUA脚本编写的业务逻辑，支持多种客户端，拥有自有的通讯协议。BSP单机版本遵守GPL v2协议开放源代码。
-
-### 历史
-2008-2010：BSP1.0（Comoro），单纯为在线游戏设计的结构，支持游戏相关的Region、组、房间概念。（Comoro是一种蜥蜴，科莫多龙）
-2010-2012：BSP1.1（Amanita），提供完整的对外C API——corelib，优化线程模型和内存池。（Amanita是一种毒草的名字）
-2012：BSP2.0（SickyCat?），去除游戏特有属性，转为通用平台。重新整理支持压缩的二进制通讯协议，内嵌LUA5.2，提供更完整的C API，去除一些不必要的功能，增加一些下层支持如SpinLock?等，支持内嵌的Object对象。（SickyCat?是一只神经质的黑猫）
-
-### 特性
-BSP完全基于Linux2.6.32+版本内核，未使用任何IO复用封装，直接由源生epoll完成事件驱动。线程间通讯使用eventfd，计时器使用timerfd。所以bsp基本是很难移植到其它操作系统平台上的。
-由于bsp使用了自有的自旋锁，所以为了使其发挥效用，建议在x64的多处理器的硬件平台上运行服务应用。
-Bsp私有的BSP.Packet协议，直接由BSP-Core中的结构化对象序列化得来，并提供了若干种语言的编码解码程序。如果想使用常用的标准序列化算法，如Json、XML，可以自行修改服务应用。Json现在直接被bsp内嵌的LUA支持。后续版本将添加对AMF输入输出的原生支持。
-
-### 部署
-#### 单机模式（开发版）
-  => 源码根目录中：./autogen.sh --prefix=[目标安装目录]（默认为/opt/bsp） --enable-standalone
-  => 其它配置参数：--with-jemalloc=[JeMalloc安装位置] --with-mysql=[MySQL安装位置]
-  => 其它开关：--enable-mempool（打开内存池支持）--enable-bsp-spin（打开BSP.Spin自旋锁支持）
-  => 压缩算法开关：--enable-lz4 --enable-snappy
-#### 集群模式（未完成）
-
-  => make & make install
-
-### 配置（单机模式）
-寻找并修改runtime-setting.conf（位于安装目标位置的etc目录中），修改必要参数。这个文件内容是一个标准的json，用于配置bsp-server的启动参数。
-寻找并修改bootstrap.lua，这个文件是一个lua脚本，将于bsp-server启动之后被执行，可以做一些初始化动作，如在线列表，关键词过滤器，数据库链接等。
-bootstrap.lua中关键的两个调用：
-  bsp_load_script(文件名) - 用于加载逻辑脚本。这个调用可以执行多次，并且可以覆盖执行。
-  bsp_set_entry(函数名) - 用于设置逻辑脚本中的入口函数名。
-
-### 启动
-[PREFIX]/bin/bsp-server
-参数：-v - 调试模式，打印更多信息
-     -d - 后台服务模式
-     -h - 帮助
-
-### 信号
-USR1 : 重建log，用于logrotate等服务的日志管理
-USR2 : 打印状态
+开发中，有空再写说明。
