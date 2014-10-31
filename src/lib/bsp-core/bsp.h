@@ -88,6 +88,7 @@
 #include "bsp_object.h"
 #include "bsp_json.h"
 #include "bsp_msgpack.h"
+#include "bsp_bson.h"
 #include "bsp_amf.h"
 #include "bsp_debugger.h"
 #include "bsp_script.h"
@@ -106,6 +107,7 @@
 #include "bsp_thread.h"
 #include "bsp_db_sqlite.h"
 #include "bsp_db_mysql.h"
+#include "bsp_db_mongodb.h"
 #include "bsp_ip_list.h"
 #include "bsp_server.h"
 #include "bsp_bootstrap.h"
@@ -142,6 +144,7 @@
 
 #define BSP_RTN_ERROR_NETWORK                   2001
 #define BSP_RTN_ERROR_SCRIPT                    3001
+#define BSP_RTN_ERROR_DB                        4001
 
 // Compatible
 #ifndef _POSIX_PATH_MAX

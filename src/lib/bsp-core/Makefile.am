@@ -5,6 +5,8 @@ libbsp_core_la_SOURCES = \
 	bsp.h \
 	bootstrap.c \
 	bsp_bootstrap.h \
+	bson.c \
+	bsp_bson.h \
 	conf.c \
 	bsp_conf.h \
 	core.c \

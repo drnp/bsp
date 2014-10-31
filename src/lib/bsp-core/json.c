@@ -20,7 +20,7 @@
 /**
  * Native JSON encoder / decoder
  * 
- * @package libbsp::core
+ * @package bsp::libbsp-core
  * @author Dr.NP <np@bsgroup.org>
  * @update 01/28/2014
  * @chagelog 

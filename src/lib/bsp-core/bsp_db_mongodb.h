@@ -37,7 +37,15 @@
 /* Macros */
 
 /* Structs */
+typedef struct bsp_db_mongodb_t
+{
+    mongo_sync_connection
+                        *conn;
+    size_t              queries;
+    BSP_SPINLOCK        query_lock;
+} BSP_DB_MONGODB;
 
 /* Functions */
+BSP_DB_MONGODB * db_mongodb_connect(const char *host, int port);
 
 #endif  /* _LIB_BSP_CORE_DB_MONGODB_H */

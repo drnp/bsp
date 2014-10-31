@@ -64,6 +64,15 @@ inline void set_int16(int16_t data, char *addr)
     return;
 }
 
+inline void set_int16_le(int16_t data, char *addr)
+{
+    if (addr)
+    {
+        addr[1] = data >> 8;
+        addr[0] = data & 0xFF;
+    }
+}
+
 inline void set_int32(int32_t data, char *addr)
 {
     if (addr)
@@ -72,6 +81,19 @@ inline void set_int32(int32_t data, char *addr)
         addr[1] = (data >> 16) & 0xFF;
         addr[2] = (data >> 8) & 0xFF;
         addr[3] = data & 0xFF;
+    }
+
+    return;
+}
+
+inline void set_int32_le(int32_t data, char *addr)
+{
+    if (addr)
+    {
+        addr[3] = data >> 24;
+        addr[2] = (data >> 16) & 0xFF;
+        addr[1] = (data >> 8) & 0xFF;
+        addr[0] = data & 0xFF;
     }
 
     return;
@@ -89,6 +111,23 @@ inline void set_int64(int64_t data, char *addr)
         addr[5] = ((int64_t) data >> 16) & 0xFF;
         addr[6] = ((int64_t) data >> 8) & 0xFF;
         addr[7] = (int64_t) data & 0xFF;
+    }
+
+    return;
+}
+
+inline void set_int64_le(int64_t data, char *addr)
+{
+    if (addr)
+    {
+        addr[7] = (int64_t) data >> 56;
+        addr[6] = ((int64_t) data >> 48) & 0xFF;
+        addr[5] = ((int64_t) data >> 40) & 0xFF;
+        addr[4] = ((int64_t) data >> 32) & 0xFF;
+        addr[3] = ((int64_t) data >> 24) & 0xFF;
+        addr[2] = ((int64_t) data >> 16) & 0xFF;
+        addr[1] = ((int64_t) data >> 8) & 0xFF;
+        addr[0] = (int64_t) data & 0xFF;
     }
 
     return;
@@ -298,15 +337,32 @@ inline int16_t get_int16(const char *addr)
     return addr ? ((int8_t) addr[0] << 8 | (uint8_t) addr[1]) : 0;
 }
 
+inline int16_t get_int16_le(const char *addr)
+{
+    return addr ? ((int8_t) addr[1] << 8 | (uint8_t) addr[0]) : 0;
+}
+
 inline int32_t get_int32(const char *addr)
 {
     return addr ? ((int8_t) addr[0] << 24 | (uint8_t) addr[1] << 16 | (uint8_t) addr[2] << 8 | (uint8_t) addr[3]) : 0;
+}
+
+inline int32_t get_int32_le(const char *addr)
+{
+    return addr ? ((int8_t) addr[3] << 24 | (uint8_t) addr[2] << 16 | (uint8_t) addr[1] << 8 | (uint8_t) addr[0]) : 0;
 }
 
 inline int64_t get_int64(const char *addr)
 {
     return addr ? (int64_t) (((int64_t) ((uint8_t) addr[0] << 24 | (uint8_t) addr[1] << 16 | (uint8_t) addr[2] << 8 | (uint8_t) addr[3])) << 32) + 
                     ((uint32_t) ((uint8_t) addr[4] << 24 | (uint8_t) addr[5] << 16 | (uint8_t) addr[6] << 8 | (uint8_t) addr[7]))
+        : 0;
+}
+
+inline int64_t get_int64_le(const char *addr)
+{
+    return addr ? (int64_t) (((int64_t) ((uint8_t) addr[7] << 24 | (uint8_t) addr[6] << 16 | (uint8_t) addr[5] << 8 | (uint8_t) addr[4])) << 32) + 
+                    ((uint32_t) ((uint8_t) addr[3] << 24 | (uint8_t) addr[2] << 16 | (uint8_t) addr[1] << 8 | (uint8_t) addr[0]))
         : 0;
 }
 

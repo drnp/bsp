@@ -44,8 +44,6 @@
 /* Structs */
 
 /* Functions */
-//int json_nd_encode(BSP_OBJECT *obj, BSP_STRING *str);
-//int json_nd_decode(const char *data, ssize_t len, BSP_OBJECT *obj);
 BSP_STRING * json_nd_encode(BSP_OBJECT *obj);
 BSP_OBJECT * json_nd_decode(BSP_STRING *str);
 

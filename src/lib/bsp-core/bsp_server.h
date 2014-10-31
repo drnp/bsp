@@ -54,6 +54,7 @@
 #define SERIALIZE_TYPE_JSON                     0x1
 #define SERIALIZE_TYPE_MSGPACK                  0x2
 #define SERIALIZE_TYPE_AMF                      0x3
+#define SERIALIZE_TYPE_BSON                     0x4
 
 #define UDP_PACKET_REG                          0x1
 #define UDP_PACKET_UNREG                        0x2
