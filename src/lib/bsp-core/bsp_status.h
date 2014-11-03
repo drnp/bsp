@@ -86,11 +86,20 @@
 #define STATUS_OP_DB_SQLITE_RESULT              0x1613
 #define STATUS_OP_DB_SQLITE_FREE                0x1614
 
-#define STATUS_OP_HTTP_REQUEST                  0x1701
-#define STATUS_OP_HTTP_RESPONSE                 0x1702
+#define STATUS_OP_DB_MONGODB_CONNECT            0x1701
+#define STATUS_OP_DB_MONGODB_DISCONNECT         0x1702
+#define STATUS_OP_DB_MONGODB_QUERY              0x1711
+#define STATUS_OP_DB_MONGODB_ERROR              0x1712
+#define STATUS_OP_DB_MONGODB_RESULT             0x1713
+#define STATUS_OP_DB_MONGODB_FREE               0x1714
+#define STATUS_OP_DB_MONGODB_UPDATE             0x1715
+#define STATUS_OP_DB_MONGODB_DELETE             0x1716
 
-#define STATUS_OP_FCGI_REQUEST                  0x1801
-#define STATUS_OP_FCGI_RESPONSE                 0x1802
+#define STATUS_OP_HTTP_REQUEST                  0x2101
+#define STATUS_OP_HTTP_RESPONSE                 0x2102
+
+#define STATUS_OP_FCGI_REQUEST                  0x2201
+#define STATUS_OP_FCGI_RESPONSE                 0x2202
 
 /* Macros */
 
@@ -192,6 +201,18 @@ struct bsp_status_db_sqlite_t
     size_t              free_times;
 };
 
+struct bsp_status_db_mongodb_t
+{
+    size_t              connect_times;
+    size_t              disconnect_times;
+    size_t              query_times;
+    size_t              error_times;
+    size_t              results_total;
+    size_t              free_times;
+    size_t              update_times;
+    size_t              delete_times;
+};
+
 struct bsp_status_http_t
 {
     size_t              request_times;
@@ -222,6 +243,8 @@ typedef struct bsp_status_t
                         db_mysql;
     struct bsp_status_db_sqlite_t
                         db_sqlite;
+    struct bsp_status_db_mongodb_t
+                        db_mongodb;
     struct bsp_status_http_t
                         http;
     struct bsp_status_fcgi_t
@@ -241,6 +264,7 @@ void status_op_timer(int op);
 void status_op_script(int op, size_t value);
 void status_op_db_mysql(int op);
 void status_op_db_sqlite(int op);
+void status_op_db_mongodb(int op);
 void status_op_http(int op);
 void status_op_fcgi(int op);
 

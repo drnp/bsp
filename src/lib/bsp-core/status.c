@@ -338,6 +338,43 @@ void status_op_db_sqlite(int op)
     return;
 }
 
+void status_op_db_mongodb(int op)
+{
+    bsp_spin_lock(&slock);
+    switch (op)
+    {
+        case STATUS_OP_DB_MONGODB_CONNECT : 
+            s.db_mongodb.connect_times ++;
+            break;
+        case STATUS_OP_DB_MONGODB_DISCONNECT : 
+            s.db_mongodb.disconnect_times ++;
+            break;
+        case STATUS_OP_DB_MONGODB_QUERY : 
+            s.db_mongodb.query_times ++;
+            break;
+        case STATUS_OP_DB_MONGODB_ERROR : 
+            s.db_mongodb.error_times ++;
+            break;
+        case STATUS_OP_DB_MONGODB_RESULT : 
+            s.db_mongodb.results_total ++;
+            break;
+        case STATUS_OP_DB_MONGODB_FREE : 
+            s.db_mongodb.free_times ++;
+            break;
+        case STATUS_OP_DB_MONGODB_UPDATE : 
+            s.db_mongodb.update_times ++;
+            break;
+        case STATUS_OP_DB_MONGODB_DELETE : 
+            s.db_mongodb.delete_times ++;
+            break;
+        default : 
+            break;
+    }
+    bsp_spin_unlock(&slock);
+
+    return;
+}
+
 void status_op_http(int op)
 {
     bsp_spin_lock(&slock);

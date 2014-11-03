@@ -352,7 +352,7 @@ libbsp_mongo_la_SOURCES = \
 	libmongo-macros.h \
 	libmongo-private.h
 
-libbsp_mongo_la_CFLAGS = 
+libbsp_mongo_la_CFLAGS = -DHAVE_MSG_NOSIGNAL
 libbsp_mongo_la_LDFLAGS = $(AM_LDFLAGS) -avoid-version
 all: all-am
 

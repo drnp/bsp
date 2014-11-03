@@ -52,6 +52,7 @@ static int mysql_mysql_connect(lua_State *s)
     const char *host = lua_tostring(s, -4);
 
     BSP_DB_MYSQL *m = db_mysql_connect(host, user, pass, db);
+    lua_checkstack(s, 1);
     if (!m)
     {
         lua_pushnil(s);
@@ -61,7 +62,7 @@ static int mysql_mysql_connect(lua_State *s)
     {
         lua_pushlightuserdata(s, (void *) m);
     }
-    
+
     return 1;
 }
 
@@ -76,10 +77,10 @@ static int mysql_mysql_close(lua_State *s)
     {
         return 0;
     }
-    
+
     BSP_DB_MYSQL *m = (BSP_DB_MYSQL *) lua_touserdata(s, -1);
     db_mysql_close(m);
-    
+
     return 0;
 }
 
@@ -115,6 +116,7 @@ static int mysql_mysql_error(lua_State *s)
     }
 
     BSP_DB_MYSQL *m = (BSP_DB_MYSQL *) lua_touserdata(s, -1);
+    lua_checkstack(s, 1);
     const char *errmsg = db_mysql_error(m);
     lua_pushstring(s, errmsg);
     
@@ -137,12 +139,11 @@ static int mysql_mysql_query(lua_State *s)
     const char *query = lua_tolstring(s, -1, &len);
     BSP_DB_MYSQL *m = (BSP_DB_MYSQL *) lua_touserdata(s, -2);
     BSP_DB_MYSQL_RES *r = db_mysql_query(m, query, len);
-
+    lua_checkstack(s, 1);
     if (r)
     {
         lua_pushlightuserdata(s, (void *) r);
     }
-
     else
     {
         lua_pushnil(s);
@@ -165,13 +166,12 @@ static int mysql_mysql_fetch_row(lua_State *s)
 
     BSP_DB_MYSQL_RES *r = (BSP_DB_MYSQL_RES *) lua_touserdata(s, -1);
     BSP_OBJECT *row = db_mysql_fetch_row(r);
-
+    lua_checkstack(s, 1);
     if (row)
     {
         object_to_lua_stack(s, row);
         del_object(row);
     }
-
     else
     {
         lua_pushnil(s);
@@ -193,12 +193,11 @@ static int mysql_mysql_num_rows(lua_State *s)
     }
 
     BSP_DB_MYSQL_RES *r = (BSP_DB_MYSQL_RES *) lua_touserdata(s, -1);
-
+    lua_checkstack(s, 1);
     if (r && r->res)
     {
         lua_pushinteger(s, r->num_rows);
     }
-
     else
     {
         lua_pushinteger(s, 0);
@@ -233,6 +232,6 @@ int bsp_module_mysql(lua_State *s)
 
     lua_pushcfunction(s, mysql_mysql_num_rows);
     lua_setglobal(s, "bsp_mysql_num_rows");
-    
+
     return 0;
 }

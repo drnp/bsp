@@ -5,5 +5,6 @@ SUBDIRS = \
 	http \
 	mysql \
 	sqlite \
+	mongodb \
 	word_filter \
 	online

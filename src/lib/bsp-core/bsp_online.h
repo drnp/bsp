@@ -62,4 +62,8 @@ void new_online(int fd, const char *key);
 void del_online_by_bind(int fd);
 void del_online_by_key(const char *key);
 
+// Load and save
+int load_online_data(const char *key);
+int save_online_data(const char *key);
+
 #endif  /* _LIB_BSP_CORE_ONLINE_H */

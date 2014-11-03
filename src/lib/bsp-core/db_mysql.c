@@ -107,8 +107,8 @@ void db_mysql_close(BSP_DB_MYSQL *m)
         return;
     }
 
-    // Clear results
     bsp_spin_lock(&m->query_lock);
+    // Clear results
     BSP_DB_MYSQL_RES *curr = m->result_list, *next = NULL;
     while (curr)
     {
@@ -210,17 +210,16 @@ BSP_DB_MYSQL_RES * db_mysql_query(BSP_DB_MYSQL *m, const char *query, ssize_t le
                 }
                 m->result_list = res_node;
                 status_op_db_mysql(STATUS_OP_DB_MYSQL_RESULT);
-                trace_msg(TRACE_LEVEL_VERBOSE, "MySQL  : MySQL query result storaged");
+                trace_msg(TRACE_LEVEL_VERBOSE, "MySQL  : MySQL query result stored");
             }
         }
     }
-
     else
     {
         status_op_db_mysql(STATUS_OP_DB_MYSQL_ERROR);
         trace_msg(TRACE_LEVEL_ERROR, "MySQL  : MySQL query error : %s", db_mysql_error(m));
     }
-    
+
     bsp_spin_unlock(&m->query_lock);
     m->query_errno = mysql_errno(m->conn);
 
@@ -256,7 +255,7 @@ BSP_OBJECT * db_mysql_fetch_row(BSP_DB_MYSQL_RES *r)
     fields = mysql_fetch_fields(r->res);
     lengths = mysql_fetch_lengths(r->res);
     num_fields = mysql_num_fields(r->res);
-    
+
     BSP_OBJECT *ret = NULL;
     BSP_VALUE *item = NULL;
 

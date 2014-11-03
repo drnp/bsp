@@ -210,9 +210,75 @@ void del_online_by_key(const char *key)
 }
 
 // Load online data by handler
-void load_online_data(const char *key)
+int load_online_data(const char *key)
 {
+    BSP_ONLINE *o = _hash_find(key);
     BSP_THREAD *t = get_thread(MAIN_THREAD);
+    if (!o || !t || !t->script_runner.state)
+    {
+        return BSP_RTN_ERROR_GENERAL;
+    }
+    int ret = BSP_RTN_ERROR_UNKNOWN;
+    lua_settop(t->script_runner.state, 0);
+    bsp_spin_lock(&t->script_runner.lock);
+    lua_getfield(t->script_runner.state, LUA_REGISTRYINDEX, ONLINE_HANDLER_NAME_LOAD);
+    if (lua_isfunction(t->script_runner.state, -1))
+    {
+        // Call
+        lua_pushstring(t->script_runner.state, key);
+        lua_pcall(t->script_runner.state, 1, 1, 0);
+        if (lua_istable(t->script_runner.state, -1))
+        {
+            // Object
+            if (o->data)
+            {
+                del_object(o->data);
+            }
+            o->data = lua_stack_to_object(t->script_runner.state);
+            ret = BSP_RTN_SUCCESS;
+        }
+    }
+    bsp_spin_unlock(&t->script_runner.lock);
+    lua_settop(t->script_runner.state, 0);
 
-    return;
+    return ret;
+}
+
+// Save online data by handler
+int save_online_data(const char *key)
+{
+    BSP_ONLINE *o = _hash_find(key);
+    BSP_THREAD *t = get_thread(MAIN_THREAD);
+    if (!o || !o->data || !t || !t->script_runner.state)
+    {
+        return BSP_RTN_ERROR_GENERAL;
+    }
+    int ret = BSP_RTN_ERROR_UNKNOWN;
+    lua_settop(t->script_runner.state, 0);
+    bsp_spin_lock(&t->script_runner.lock);
+    lua_getfield(t->script_runner.state, LUA_REGISTRYINDEX, ONLINE_HANDLER_NAME_SAVE);
+    if (lua_isfunction(t->script_runner.state, -1))
+    {
+        // Call
+        lua_pushstring(t->script_runner.state, key);
+        object_to_lua_stack(t->script_runner.state, o->data);
+        lua_pcall(t->script_runner.state, 2, 1, 0);
+        if (lua_isboolean(t->script_runner.state, -1))
+        {
+            // Boolean
+            int b = lua_toboolean(t->script_runner.state, -1);
+            if (b)
+            {
+                ret = BSP_RTN_SUCCESS;
+            }
+            else
+            {
+                ret = BSP_RTN_ERROR_SCRIPT;
+            }
+        }
+    }
+    bsp_spin_unlock(&t->script_runner.lock);
+    lua_settop(t->script_runner.state, 0);
+
+    return ret;
 }

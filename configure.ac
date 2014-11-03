@@ -481,6 +481,7 @@ src/modules/standard/Makefile
 src/modules/http/Makefile
 src/modules/mysql/Makefile
 src/modules/sqlite/Makefile
+src/modules/mongodb/Makefile
 src/modules/word_filter/Makefile
 src/modules/online/Makefile
 src/bin/Makefile

@@ -51,6 +51,7 @@ static int bootstrap_load_script(lua_State *s)
         t = get_thread(i);
         if (t && t->script_runner.state)
         {
+            lua_checkstack(t->script_runner.state, 3);
             if (LUA_OK == luaL_dofile(t->script_runner.state, script_name))
             {
                 trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Load script %s to thread %d", script_name, i);

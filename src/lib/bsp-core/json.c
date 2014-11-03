@@ -493,7 +493,7 @@ static BSP_VALUE * _get_value_from_json(BSP_STRING *str)
 
 static void _traverse_json_array(BSP_OBJECT *obj, BSP_STRING *str)
 {
-    if (!obj || OBJECT_TYPE_ARRAY != obj->type)
+    if (!obj || OBJECT_TYPE_ARRAY != obj->type || !str)
     {
         return;
     }
@@ -523,7 +523,7 @@ static void _traverse_json_array(BSP_OBJECT *obj, BSP_STRING *str)
 
 static void _traverse_json_hash(BSP_OBJECT *obj, BSP_STRING *str)
 {
-    if (!obj || OBJECT_TYPE_HASH != obj->type)
+    if (!obj || OBJECT_TYPE_HASH != obj->type || !str)
     {
         return;
     }

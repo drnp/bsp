@@ -33,6 +33,7 @@
 #include "mongo.h"
 
 /* Definations */
+#define MONGODB_QUERY_DOCUMENTS_MAX             1024
 
 /* Macros */
 
@@ -43,9 +44,31 @@ typedef struct bsp_db_mongodb_t
                         *conn;
     size_t              queries;
     BSP_SPINLOCK        query_lock;
+    struct bsp_db_mongodb_res_t
+                        *result_list;
 } BSP_DB_MONGODB;
+
+typedef struct bsp_db_mongodb_res_t
+{
+    mongo_packet        *packet;
+    mongo_sync_cursor   *cursor;
+    const char          *ns;
+    struct bsp_db_mongodb_t
+                        *handler;
+    struct bsp_db_mongodb_res_t
+                        *prev;
+    struct bsp_db_mongodb_res_t
+                        *next;
+} BSP_DB_MONGODB_RES;
 
 /* Functions */
 BSP_DB_MONGODB * db_mongodb_connect(const char *host, int port);
+void db_mongodb_close(BSP_DB_MONGODB *m);
+void db_mongodb_free_result(BSP_DB_MONGODB_RES *r);
+int db_mongodb_update(BSP_DB_MONGODB *m, const char *namespace, BSP_OBJECT *obj, BSP_OBJECT *query);
+int db_mongodb_delete(BSP_DB_MONGODB *m, const char *namespace, BSP_OBJECT *query);
+BSP_DB_MONGODB_RES * db_mongodb_query(BSP_DB_MONGODB *m, const char *namespace, BSP_OBJECT *query);
+const char * db_mongodb_error(BSP_DB_MONGODB *m);
+BSP_OBJECT * db_mongodb_fetch_doc(BSP_DB_MONGODB_RES *r);
 
 #endif  /* _LIB_BSP_CORE_DB_MONGODB_H */
