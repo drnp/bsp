@@ -264,6 +264,7 @@ int core_init()
     save_pid();
     signal_init();
     socket_init();
+    memdb_init();
     online_init();
 
     // Load modules
@@ -431,6 +432,28 @@ int core_loop(void (* server_event)(BSP_CALLBACK *))
     // Let's go
     load_bootstrap();
     trace_msg(TRACE_LEVEL_CORE, "Core   : Main thread loop started");
+
+    debug_object(runtime_settings);
+    BSP_VALUE *r;
+    r = object_get_value(runtime_settings, "global");
+    debug_value(r);
+    r = object_get_value(runtime_settings, "modules");
+    debug_value(r);
+    r = object_get_value(runtime_settings, "global.script_dir");
+    debug_value(r);
+    r = object_get_value(runtime_settings, "modules.2");
+    debug_value(r);
+    r = object_get_value(runtime_settings, "servers.0");
+    debug_value(r);
+    r = object_get_value(runtime_settings, "servers.0.name");
+    debug_value(r);
+    r = object_get_value(runtime_settings, "servers.test");
+    debug_value(r);
+    r = object_get_value(runtime_settings, "global..script_dir");
+    debug_value(r);
+    r = object_get_value(runtime_settings, ".global.script_dir");
+    debug_value(r);
+
     thread_process((void *) t);
 
     return BSP_RTN_SUCCESS;

@@ -134,6 +134,8 @@ BSP_VALUE * object_get_array(BSP_OBJECT *obj, size_t idx);
 BSP_VALUE * object_get_hash(BSP_OBJECT *obj, BSP_STRING *key);
 BSP_VALUE * object_get_hash_str(BSP_OBJECT *obj, const char *key);
 
+BSP_VALUE * object_get_value(BSP_OBJECT *obj, const char *path);
+
 BSP_VALUE * curr_item(BSP_OBJECT *obj);
 size_t curr_array_index(BSP_OBJECT *obj);
 BSP_STRING * curr_hash_key(BSP_OBJECT *obj);

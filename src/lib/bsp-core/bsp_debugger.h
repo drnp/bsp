@@ -47,6 +47,7 @@ void trigger_exit(int level, const char *fmt, ...);
 void debug_str(const char *fmt, ...);
 void debug_hex(const char *data, ssize_t len);
 void debug_object(BSP_OBJECT *obj);
+void debug_value(BSP_VALUE *val);
 void debug_lua_stack(lua_State *l);
 
 #endif  /* _LIB_BSP_CORE_DEBUGGER_H */

@@ -30,7 +30,22 @@
 
 #include "bsp.h"
 
-int cache_init()
+BSP_OBJECT *memdb_base = NULL;
+
+int memdb_init()
 {
+    memdb_base = new_object(OBJECT_TYPE_HASH);
+    if (!memdb_base)
+    {
+        trigger_exit(BSP_RTN_ERROR_MEMORY, "Create memdb base object error");
+    }
+
+    trace_msg(TRACE_LEVEL_DEBUG, "MemDB  : Base object initialized");
+
     return BSP_RTN_SUCCESS;
+}
+
+BSP_VALUE *memdb_get(const char *key)
+{
+    return NULL;
 }

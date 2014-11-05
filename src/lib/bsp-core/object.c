@@ -1327,6 +1327,111 @@ BSP_VALUE * object_get_hash_str(BSP_OBJECT *obj, const char *key)
     return ret;
 }
 
+/* Magic path */
+BSP_VALUE * object_get_value(BSP_OBJECT *obj, const char *path)
+{
+    if (!obj)
+    {
+        return NULL;
+    }
+
+    BSP_VALUE *ret = NULL;
+    BSP_VALUE *curr_val = NULL;
+    BSP_OBJECT *curr_obj = obj;
+    BSP_STRING *key = NULL;
+    size_t idx = 0;
+    size_t i;
+    ssize_t start = -1;
+    int invalid = 0;
+    unsigned char c;
+    char *endptr = NULL;
+    if (OBJECT_TYPE_SINGLE == obj->type)
+    {
+        // Return full
+        ret = object_get_single(obj);
+    }
+    else
+    {
+        if (!path || 0 == strlen(path))
+        {
+            // No path
+        }
+        else
+        {
+            // Parse path normally
+            for (i = 0; i <= strlen(path); i ++)
+            {
+                c = (unsigned char) path[i];
+                if ('.' == c || '\0' == c)
+                {
+                    // Hash seg
+                    if (start < i && start >= 0 && curr_obj)
+                    {
+                        if (OBJECT_TYPE_HASH == curr_obj->type)
+                        {
+                            key = new_string_const(path + start, (i - start));
+                            curr_val = object_get_hash(curr_obj, key);
+                            del_string(key);
+                            if (!curr_val)
+                            {
+                                // False
+                                invalid = 1;
+                                break;
+                            }
+                            curr_obj = value_get_object(curr_val);
+                            start = -1;
+                        }
+                        else if (OBJECT_TYPE_ARRAY == curr_obj->type)
+                        {
+                            idx = (size_t) strtoull(path + start, &endptr, 0);
+                            if (!idx && (path + start) == endptr)
+                            {
+                                // No digital
+                                invalid = 1;
+                                break;
+                            }
+                            curr_val = object_get_array(curr_obj, idx);
+                            if (!curr_val)
+                            {
+                                invalid = 1;
+                                break;
+                            }
+                            curr_obj = value_get_object(curr_val);
+                            start = -1;
+                        }
+                        else
+                        {
+                            // False
+                            curr_val = object_get_single(curr_obj);
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        invalid = 1;
+                        break;
+                    }
+                }
+                else
+                {
+                    // Normal char
+                    if (start < 0)
+                    {
+                        start = i;
+                    }
+                }
+            }
+
+            if (!invalid)
+            {
+                ret = curr_val;
+            }
+        }
+    }
+
+    return ret;
+}
+
 /* Serializer & Unserializer */
 static void _pack_key(BSP_STRING *str, BSP_STRING *key);
 static void _pack_value(BSP_STRING *str, BSP_VALUE *val);
@@ -1684,452 +1789,7 @@ BSP_OBJECT * object_unserialize(BSP_STRING *str)
 
     return ret;
 }
-/*
-// Serialize an object into stream
-static void _insert_item_to_string(BSP_OBJECT_ITEM *item, BSP_STRING *str, int mode, int length_mark)
-{
-    if (!item || !str)
-    {
-        return;
-    }
 
-    char len[8];
-    char key_type[1] = {BSP_VAL_STRING};
-    char end_tags[2] = {BSP_VAL_ARRAY_END, BSP_VAL_OBJECT_END};
-    BSP_OBJECT *next_obj;
-    
-    // Write key first
-    if (SERIALIZE_OBJECT == mode && item->key)
-    {
-        string_append(str, key_type, 1);
-        if (LENGTH_TYPE_32B == length_mark)
-        {
-            set_int32((int32_t) item->key_len, len);
-            string_append(str, len, 4);
-        }
-
-        else
-        {
-            set_int64((int64_t) item->key_len, len);
-            string_append(str, len, 8);
-        }
-        
-        string_append(str, item->key, item->key_len);
-    }
-    
-    switch (item->value.type)
-    {
-        case BSP_VAL_INT8 : 
-            string_append(str, &item->value.type, 1);
-            string_append(str, item->value.lval, 1);
-            break;
-        case BSP_VAL_INT16 : 
-            string_append(str, &item->value.type, 1);
-            string_append(str, item->value.lval, 2);
-            break;
-        case BSP_VAL_INT32 : 
-            string_append(str, &item->value.type, 1);
-            string_append(str, item->value.lval, 4);
-            break;
-        case BSP_VAL_INT64 : 
-            string_append(str, &item->value.type, 1);
-            string_append(str, item->value.lval, 8);
-            break;
-        case BSP_VAL_BOOLEAN : 
-            string_append(str, &item->value.type, 1);
-            string_append(str, item->value.lval, 1);
-            break;
-        case BSP_VAL_FLOAT : 
-            string_append(str, &item->value.type, 1);
-            string_append(str, item->value.lval, 4);
-            break;
-        case BSP_VAL_DOUBLE : 
-            string_append(str, &item->value.type, 1);
-            string_append(str, item->value.lval, 8);
-            break;
-        case BSP_VAL_STRING : 
-            string_append(str, &item->value.type, 1);
-            if (LENGTH_TYPE_32B == length_mark)
-            {
-                set_int32((int32_t) item->value.rval_len, len);
-                string_append(str, len, 4);
-            }
-            else
-            {
-                // Write string length, size_t recognized as uint64_t
-                set_int64((int64_t) item->value.rval_len, len);
-                string_append(str, len, 8);
-            }
-            string_append(str, item->value.rval, item->value.rval_len);
-            break;
-        case BSP_VAL_ARRAY : 
-            // Loop for each item
-            string_append(str, &item->value.type, 1);
-            size_t i;
-            BSP_OBJECT_ITEM **list = (BSP_OBJECT_ITEM **) item->value.rval;
-            if (list)
-            {
-                for (i = 0; i < item->value.rval_len; i ++)
-                {
-                    // Append each line
-                    if (list[i])
-                    {
-                        _insert_item_to_string(list[i], str, SERIALIZE_ARRAY, length_mark);
-                    }
-                }
-            }
-            string_append(str, end_tags, 1);
-            break;
-        case BSP_VAL_OBJECT : 
-            string_append(str, &item->value.type, 1);
-            next_obj = (BSP_OBJECT *) item->value.rval;
-            // Next recursion
-            if (next_obj)
-            {
-                BSP_OBJECT_ITEM *curr = NULL;
-                reset_object(next_obj);
-                while ((curr = curr_item(next_obj)))
-                {
-                    _insert_item_to_string(curr, str, SERIALIZE_OBJECT, length_mark);
-                    next_item(next_obj);
-                }
-                string_append(str, end_tags + 1, 1);
-            }
-            break;
-        case BSP_VAL_NULL : 
-        default : 
-            // Null item
-            item->value.type = BSP_VAL_NULL;
-            string_append(str, &item->value.type, 1);
-            break;
-    }
-}
-
-int object_serialize(BSP_OBJECT *obj, BSP_STRING *output, int length_mark)
-{
-    if (!obj || !output)
-    {
-        return BSP_RTN_ERROR_GENERAL;
-    }
-
-    BSP_OBJECT_ITEM *curr = NULL;
-    bsp_spin_lock(&obj->obj_lock);
-    reset_object(obj);
-    while ((curr = curr_item(obj)))
-    {
-        _insert_item_to_string(curr, output, SERIALIZE_OBJECT, length_mark);
-        next_item(obj);
-    }
-    bsp_spin_unlock(&obj->obj_lock);
-
-    return BSP_RTN_SUCCESS;
-}
-
-// Unserialize stream into object
-size_t _parse_object(const char *input, size_t len, BSP_OBJECT *obj, int length_mark);
-size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int length_mark);
-size_t _parse_item(const char *input, size_t len, BSP_OBJECT_ITEM *item, char val_type, int length_mark)
-{
-    if (!input || !item)
-    {
-        return 0;
-    }
-    
-    size_t remaining = len;
-    char *curr = (char *) input;
-    int64_t str_len;
-    
-    switch (val_type)
-    {
-        case BSP_VAL_INT8 : 
-            if (remaining >= 1)
-            {
-                item->value.type = val_type;
-                memcpy(item->value.lval, curr, 1);
-                remaining -= 1;
-                curr += 1;
-            }
-            break;
-        case BSP_VAL_INT16 : 
-            if (remaining >= 2)
-            {
-                item->value.type = val_type;
-                memcpy(item->value.lval, curr, 2);
-                remaining -= 2;
-                curr += 2;
-            }
-            break;
-        case BSP_VAL_INT32 : 
-            if (remaining >= 4)
-            {
-                item->value.type = val_type;
-                memcpy(item->value.lval, curr, 4);
-                remaining -= 4;
-                curr += 4;
-            }
-            break;
-        case BSP_VAL_INT64 : 
-            if (remaining >= 8)
-            {
-                item->value.type = val_type;
-                memcpy(item->value.lval, curr, 8);
-                remaining -= 8;
-                curr += 8;
-            }
-            break;
-        case BSP_VAL_BOOLEAN : 
-            if (remaining >= 2)
-            {
-                item->value.type = val_type;
-                memcpy(item->value.lval, curr, 1);
-                remaining -= 1;
-                curr += 1;
-            }
-            break;
-        case BSP_VAL_FLOAT : 
-            if (remaining >= 4)
-            {
-                item->value.type = val_type;
-                memcpy(item->value.lval, curr, 4);
-                remaining -= 4;
-                curr += 4;
-            }
-            break;
-        case BSP_VAL_DOUBLE : 
-            if (remaining >= 8)
-            {
-                item->value.type = val_type;
-                memcpy(item->value.lval, curr, 8);
-                remaining -= 8;
-                curr += 8;
-            }
-            break;
-        case BSP_VAL_STRING : 
-            if (LENGTH_TYPE_32B == length_mark)
-            {
-                if (remaining >= 4)
-                {
-                    str_len = get_int32(curr);
-                    remaining -= 4;
-                    curr += 4;
-                    if (remaining >= str_len)
-                    {
-                        set_item_string(item, curr, str_len);
-                        remaining -= str_len;
-                        curr += str_len;
-                    }
-                }
-            }
-            else
-            {
-                if (remaining >= 8)
-                {
-                    str_len = get_int64(curr);
-                    remaining -= 8;
-                    curr += 8;
-                    if (remaining >= str_len)
-                    {
-                        set_item_string(item, curr, str_len);
-                        remaining -= str_len;
-                        curr += str_len;
-                    }
-                }
-            }
-            break;
-        case BSP_VAL_NULL : 
-            set_item_null(item);
-            break;
-        default : 
-            break;
-    }
-    
-    return len - remaining;
-}
-
-size_t _parse_object(const char *input, size_t len, BSP_OBJECT *obj, int length_mark)
-{
-    if (!input || !obj)
-    {
-        return 0;
-    }
-
-    size_t remaining = len;
-    size_t pn;
-    char val_type;
-    char *curr = (char *) input;
-    char *key = NULL;
-    int64_t key_len = 0;
-    
-    BSP_OBJECT *next_obj = NULL;
-    BSP_OBJECT_ITEM *item = NULL;
-    
-    while (remaining > 0)
-    {
-        key = NULL;
-        
-        // Key
-        val_type = *curr;
-        remaining -= 1;
-        curr += 1;
-        
-        if (val_type == BSP_VAL_OBJECT_END)
-        {
-            // Object ending
-            return len - remaining;
-        }
-        
-        if (val_type != BSP_VAL_STRING || remaining < 8)
-        {
-            // Stream broken
-            break;
-        }
-        
-        if (LENGTH_TYPE_32B == length_mark)
-        {
-            key_len = get_int32(curr);
-            remaining -= 4;
-            curr += 4;
-        }
-        
-        else
-        {
-            key_len = get_int64(curr);
-            remaining -= 8;
-            curr += 8;
-        }
-        
-        if (remaining < key_len)
-        {
-            // Key not enough
-            break;
-        }
-        
-        key = curr;
-        remaining -= key_len;
-        curr += key_len;
-        
-        // Value
-        if (remaining > 0)
-        {
-            // Value type
-            val_type = *curr;
-            remaining -= 1;
-            curr += 1;
-            pn = 0;
-
-            switch (val_type)
-            {
-                case BSP_VAL_OBJECT : 
-                    next_obj = new_object();
-                    pn = _parse_object(curr, remaining, next_obj, length_mark);
-                    item = new_object_item(key, key_len);
-                    set_item_object(item, next_obj);
-                    break;
-                case BSP_VAL_ARRAY : 
-                    item = new_object_item(key, key_len);
-                    set_item_array(item);
-                    pn = _parse_array(curr, remaining, item, length_mark);
-                    break;
-                default : 
-                    item = new_object_item(key, key_len);
-                    pn = _parse_item(curr, remaining, item, val_type, length_mark);
-                    break;
-            }
-            object_insert_item(obj, item);
-            remaining -= pn;
-            curr += pn;
-        }
-        // No value
-        else
-        {
-            break;
-        }
-    }
-
-    return len - remaining;
-}
-
-size_t _parse_array(const char *input, size_t len, BSP_OBJECT_ITEM *array, int length_mark)
-{
-    if (!input || !array || array->value.type != BSP_VAL_ARRAY)
-    {
-        return 0;
-    }
-
-    size_t remaining = len;
-    size_t pn;
-    char val_type;
-    char *curr = (char *) input;
-    size_t idx = 0;
-
-    BSP_OBJECT *next_obj = NULL;
-    BSP_OBJECT_ITEM *item = NULL;
-    while (1)
-    {
-        if (remaining > 0)
-        {
-            // Value type
-            val_type = *curr;
-            remaining -= 1;
-            curr += 1;
-            pn = 0;
-
-            switch (val_type)
-            {
-                case BSP_VAL_OBJECT : 
-                    next_obj = new_object();
-                    pn = _parse_object(curr, remaining, next_obj, length_mark);
-                    item = new_object_item(NULL, 0);
-                    set_item_object(item, next_obj);
-                    break;
-                case BSP_VAL_ARRAY : 
-                    item = new_object_item(NULL, 0);
-                    set_item_array(item);
-                    pn = _parse_array(curr, remaining, item, length_mark);
-                    break;
-                case BSP_VAL_ARRAY_END : 
-                    return len - remaining;
-                    break;
-                default : 
-                    item = new_object_item(NULL, 0);
-                    pn = _parse_item(curr, remaining, item, val_type, length_mark);
-                    break;
-            }
-
-            if (item->value.type > 0)
-            {
-                array_set_item(array, item, idx ++);
-            }
-            else
-            {
-                del_object_item(item);
-            }
-            
-            remaining -= pn;
-            curr += pn;
-        }
-        else
-        {
-            break;
-        }
-    }
-
-    return len - remaining;
-}
-
-size_t object_unserialize(const char *input, size_t len, BSP_OBJECT *obj, int length_mark)
-{
-    if (!obj || !input)
-    {
-        return 0;
-    }
-    bsp_spin_lock(&obj->obj_lock);
-    size_t pn = _parse_object(input, len, obj, length_mark);
-    bsp_spin_unlock(&obj->obj_lock);
-
-    return pn;
-}
-*/
 /* Object <-> LUA stack */
 static void _push_value_to_lua(lua_State *s, BSP_VALUE *val);
 static void _push_object_to_lua(lua_State *s, BSP_OBJECT *obj);

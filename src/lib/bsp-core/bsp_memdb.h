@@ -37,11 +37,9 @@
 /* Macros */
 
 /* Structs */
-typedef struct bsp_cache_t
-{
-    
-} BSP_CACHE;
 
 /* Functions */
+int memdb_init();
+BSP_VALUE *memdb_get(const char *key);
 
 #endif  /* _LIB_BSP_CORE_MEMDB_H */

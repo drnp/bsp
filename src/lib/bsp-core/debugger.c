@@ -302,6 +302,7 @@ void debug_object(BSP_OBJECT *obj)
 {
     if (!obj)
     {
+        fprintf(stderr, "\n\033[1;37m === [NOTHING TO DEBUG] ===\033[0m\n\n");
         return;
     }
 
@@ -310,6 +311,19 @@ void debug_object(BSP_OBJECT *obj)
     fprintf(stderr, "\033[1;37m=== [Debug Object] === < END > ===\033[0m\n\n");
 
     return;
+}
+
+void debug_value(BSP_VALUE *val)
+{
+    if (!val)
+    {
+        fprintf(stderr, "\n\033[1;37m === [NOTHING TO DEBUG] ===\033[0m\n\n");
+        return;
+    }
+
+    fprintf(stderr, "\n\033[1;37m=== [Debug Value] === < START > ===\033[0m\n");
+    _dump_value(val, 0);
+    fprintf(stderr, "\033[1;37m=== [Debug Value] === < END > ===\033[0m\n\n");
 }
 
 // Print lua stack
