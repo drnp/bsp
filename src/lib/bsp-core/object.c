@@ -1926,7 +1926,7 @@ void object_to_lua_stack(lua_State *s, BSP_OBJECT *obj)
     {
         return;
     }
-
+    debug_object(obj);
     _push_object_to_lua(s, obj);
 
     return;
