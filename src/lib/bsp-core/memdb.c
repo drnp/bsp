@@ -47,5 +47,7 @@ int memdb_init()
 
 BSP_VALUE *memdb_get(const char *key)
 {
-    return NULL;
+    BSP_VALUE *ret = object_get_value(memdb_base, key);
+
+    return ret;
 }
