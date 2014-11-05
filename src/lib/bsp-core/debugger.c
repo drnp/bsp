@@ -32,6 +32,9 @@
 
 #include "bsp.h"
 
+// To prevent display transplacement
+BSP_SPINLOCK debug_lock = BSP_SPINLOCK_INITIALIZER;
+
 // Print some formatted message with terminal color
 void trace_output(time_t now, int level, const char *msg)
 {
@@ -45,7 +48,7 @@ void trace_output(time_t now, int level, const char *msg)
 
     loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
-    
+    bsp_spin_lock(&debug_lock);
     fprintf(stderr, "\033[1;37m[\033[0m"
                     "\033[0;36m%s\033[0m"
                     "\033[1;37m]\033[0m"
@@ -54,6 +57,7 @@ void trace_output(time_t now, int level, const char *msg)
                     "%s"
                     "\033[1;37m]\033[0m"
                     " : %s\n", tgdate, get_trace_level_str(level, 1), msg);
+    bsp_spin_unlock(&debug_lock);
 
     return;
 }
@@ -97,9 +101,11 @@ void debug_str(const char *fmt, ...)
 
     loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
+    bsp_spin_lock(&debug_lock);
     fprintf(stderr, "\n\033[1;37m=== [Debug String] === <%s START> ===\033[0m\n"
                     "\033[1;33m %s\033[0m\n"
                     "\033[1;37m=== [Debug String] === <%s END  > ===\033[0m\n\n", tgdate, msg, tgdate);
+    bsp_spin_unlock(&debug_lock);
 
     return;
 }
@@ -118,6 +124,7 @@ void debug_hex(const char *data, ssize_t len)
     char tgdate[64];
     loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
+    bsp_spin_lock(&debug_lock);
     fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s START> ===\033[0m\n", (int) len, tgdate);
     for (i = 0; i < len; i ++)
     {
@@ -156,7 +163,8 @@ void debug_hex(const char *data, ssize_t len)
     }
 
     fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s END  > ===\033[0m\n\n", (int) len, tgdate);
-    
+    bsp_spin_unlock(&debug_lock);
+
     return;
 }
 
@@ -302,13 +310,18 @@ void debug_object(BSP_OBJECT *obj)
 {
     if (!obj)
     {
+        bsp_spin_lock(&debug_lock);
         fprintf(stderr, "\n\033[1;37m === [NOTHING TO DEBUG] ===\033[0m\n\n");
+        bsp_spin_unlock(&debug_lock);
+
         return;
     }
 
+    bsp_spin_lock(&debug_lock);
     fprintf(stderr, "\n\033[1;37m=== [Debug Object] === < START > ===\033[0m\n");
     _dump_object(obj, 0);
     fprintf(stderr, "\033[1;37m=== [Debug Object] === < END > ===\033[0m\n\n");
+    bsp_spin_unlock(&debug_lock);
 
     return;
 }
@@ -317,13 +330,20 @@ void debug_value(BSP_VALUE *val)
 {
     if (!val)
     {
+        bsp_spin_lock(&debug_lock);
         fprintf(stderr, "\n\033[1;37m === [NOTHING TO DEBUG] ===\033[0m\n\n");
+        bsp_spin_unlock(&debug_lock);
+
         return;
     }
 
+    bsp_spin_lock(&debug_lock);
     fprintf(stderr, "\n\033[1;37m=== [Debug Value] === < START > ===\033[0m\n");
     _dump_value(val, 0);
     fprintf(stderr, "\033[1;37m=== [Debug Value] === < END > ===\033[0m\n\n");
+    bsp_spin_unlock(&debug_lock);
+
+    return;
 }
 
 // Print lua stack
@@ -334,6 +354,7 @@ void debug_lua_stack(lua_State *l)
         return;
     }
 
+    bsp_spin_lock(&debug_lock);
     fprintf(stderr, "\n\033[1;33m== [Stack top] ==\033[0m\n");
     int size = lua_gettop(l), n, type;
     for (n = 1; n <= size; n ++)
@@ -373,6 +394,7 @@ void debug_lua_stack(lua_State *l)
         }
     }
     fprintf(stderr, "\033[1;33m== [Stack button] ==\033[0m\n\n");
+    bsp_spin_unlock(&debug_lock);
 
     return;
 }
