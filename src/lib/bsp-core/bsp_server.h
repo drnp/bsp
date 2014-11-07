@@ -47,9 +47,6 @@
 #define PACKET_TYPE_CMD                         0x3
 #define PACKET_TYPE_HEARTBEAT                   0x7
 
-#define LENGTH_TYPE_32B                         0x0
-#define LENGTH_TYPE_64B                         0x1
-
 #define SERIALIZE_TYPE_NATIVE                   0x0
 #define SERIALIZE_TYPE_JSON                     0x1
 #define SERIALIZE_TYPE_MSGPACK                  0x2

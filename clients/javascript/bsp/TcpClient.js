@@ -456,7 +456,7 @@ TcpClient.prototype._send_cmd = function(cmd, params) {
 };
 
 TcpClient.prototype.send = function() {
-    if (!this.socket || this.socket.readyState != 1) {
+    if (!this.socket) {
         return -1;
     }
     

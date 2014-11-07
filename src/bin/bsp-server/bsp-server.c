@@ -94,6 +94,12 @@ static void server_callback(BSP_CALLBACK *cb)
         return;
     }
 
+    if (SERVER_CALLBACK_ON_HEARTBEAT == cb->event)
+    {
+        // Ignore heartbeat
+        return;
+    }
+
     BSP_STRING *key;
     BSP_VALUE *val;
 
