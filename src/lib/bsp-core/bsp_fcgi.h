@@ -58,6 +58,7 @@
 #define FCGI_PARAMS_DEFAULT_SERVER_PROTOCOL     "HTTP/1.1"
 #define FCGI_PARAMS_DEFAULT_GATEWAY_INTERFACE   "CGI/1.1"
 #define FCGI_PARAMS_DEFAULT_SERVER_SOFTWARE     "BS.Play_FCGI_Client"
+#define FCGI_CALLBACK_KEY_SUFFIX                "_FCGI_CALLBACK_KEY"
 
 /* Macros */
 
@@ -111,6 +112,7 @@ struct bsp_fcgi_upstream_entry_t
 typedef struct bsp_fcgi_upstream_t
 {
     const char          *name;
+    const char          *callback_key;
     struct bsp_fcgi_upstream_entry_t
                         **pool;
     size_t              pool_size;

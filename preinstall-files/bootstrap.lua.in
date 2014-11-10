@@ -21,7 +21,25 @@ print("Bootstrap for BSP.Server DEMO v1.0 starting...");
 
 bsp_set_fcgi_upstream('websocket_server', {
     {host = 'localhost', port = 9000, script_filename = '/home/np/Projects/web/index.php'}
-});
+}, 
+function(resp)
+    if nil == resp or nil == resp.stdout then
+        return;
+    end
+
+    local data = bsp_json_decode(resp.stdout.body);
+    if data.cmd == 2002 then
+        -- Send data back
+        bsp_var_dump(data);
+        bsp_net_send(data.from, 2002, {from = data.from, msg = data.msg});
+    elseif data.cmd == 1002 then
+        -- Online
+        
+    elseif data.cmd == 1004 then
+        -- Offline
+    end
+end
+);
 
 bsp_set_lua_entry('main_server', 'server');
 bsp_set_lua_entry('internal_server', 'server');

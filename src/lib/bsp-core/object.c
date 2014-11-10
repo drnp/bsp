@@ -1926,7 +1926,6 @@ void object_to_lua_stack(lua_State *s, BSP_OBJECT *obj)
     {
         return;
     }
-    debug_object(obj);
     _push_object_to_lua(s, obj);
 
     return;
@@ -2042,7 +2041,6 @@ static BSP_OBJECT * _lua_table_to_object(lua_State *s)
             lua_pop(s, 1);
         }
     }
-    debug_object(ret);
 
     return ret;
 }

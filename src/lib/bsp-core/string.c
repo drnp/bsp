@@ -763,3 +763,69 @@ BSP_STRING * string_base64_decode(const char *data, ssize_t len)
     return ret;
 }
 
+#include <openssl/md5.h>
+#include <openssl/sha.h>
+#include <openssl/evp.h>
+// MD5
+BSP_STRING * string_md5(const char *data, ssize_t len, int raw)
+{
+    if (!data)
+    {
+        return NULL;
+    }
+
+    if (len < 0)
+    {
+        len = strlen(data);
+    }
+
+    unsigned char hash_val[MD5_DIGEST_LENGTH];
+    BSP_STRING *ret = new_string(NULL, 0);
+    MD5((const unsigned char *) data, (unsigned long) len, hash_val);
+    if (raw)
+    {
+        string_append(ret, (const char *) hash_val, MD5_DIGEST_LENGTH);
+    }
+    else
+    {
+        int i;
+        for (i = 0; i < MD5_DIGEST_LENGTH; i ++)
+        {
+            string_printf(ret, "%02x", (unsigned char) hash_val[i]);
+        }
+    }
+
+    return ret;
+}
+
+// SHA-1
+BSP_STRING * string_sha1(const char *data, ssize_t len, int raw)
+{
+    if (!data)
+    {
+        return NULL;
+    }
+
+    if (len < 0)
+    {
+        len = strlen(data);
+    }
+
+    unsigned char hash_val[SHA_DIGEST_LENGTH];
+    BSP_STRING *ret = new_string(NULL, 0);
+    SHA1((const unsigned char *) data, (unsigned long) len, hash_val);
+    if (raw)
+    {
+        string_append(ret, (const char *) hash_val, SHA_DIGEST_LENGTH);
+    }
+    else
+    {
+        int i;
+        for (i = 0; i < SHA_DIGEST_LENGTH; i ++)
+        {
+            string_printf(ret, "%02x", (unsigned char) hash_val[i]);
+        }
+    }
+
+    return ret;
+}

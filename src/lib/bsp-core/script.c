@@ -74,7 +74,6 @@ int script_load_string(BSP_SCRIPT_STACK *ts, BSP_STRING *code, BSP_SCRIPT_SYMBOL
 
     int ret = BSP_RTN_ERROR_GENERAL;
     int r;
-    debug_hex(STR_STR(code), STR_LEN(code));
     bsp_spin_lock(&ts->lock);
     r = luaL_loadbufferx(ts->state, STR_STR(code), STR_LEN(code), NULL, NULL);
     switch (r)

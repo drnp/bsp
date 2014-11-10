@@ -87,7 +87,7 @@ static int bootstrap_set_lua_entry(lua_State *s)
     if (srv)
     {
         srv->lua_entry = bsp_strdup(callback_entry);
-        trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Server %s LUA entry set", server_name);
+        trace_msg(TRACE_LEVEL_DEBUG, "BStrap : Server %s LUA entry set", server_name);
     }
     else
     {
@@ -100,12 +100,12 @@ static int bootstrap_set_lua_entry(lua_State *s)
 // Set FastCGI pass upstream
 static int bootstrap_set_fcgi_upstream(lua_State *s)
 {
-    if (!s || !lua_istable(s, -1) || !lua_isstring(s, -2))
+    if (!s || !lua_istable(s, 2) || !lua_isstring(s, 1))
     {
         return 0;
     }
 
-    const char *server_name = lua_tostring(s, -2);
+    const char *server_name = lua_tostring(s, 1);
     // Upstream
     BSP_SERVER *srv = get_server(server_name);
     if (!srv)
@@ -114,7 +114,19 @@ static int bootstrap_set_fcgi_upstream(lua_State *s)
         return 0;
     }
 
+    BSP_SCRIPT_SYMBOL sym = {NULL, NULL, 0};
+    BSP_STRING *key = string_base64_encode(server_name, -1);
+    string_append(key, FCGI_CALLBACK_KEY_SUFFIX, -1);
+    char *callback_key = bsp_strndup(STR_STR(key), STR_LEN(key));
+    del_string(key);
     BSP_FCGI_UPSTREAM *upstream = new_fcgi_upstream(server_name);
+    if (!upstream)
+    {
+        trace_msg(TRACE_LEVEL_ERROR, "BStrap : Create FCGI upstream error");
+        bsp_free(callback_key);
+        return 0;
+    }
+    upstream->callback_key = callback_key;
     struct bsp_fcgi_upstream_entry_t *entry = NULL;
     const char *host;
     const char *sock;
@@ -123,7 +135,7 @@ static int bootstrap_set_fcgi_upstream(lua_State *s)
     int weight;
     lua_checkstack(s, 1);
     lua_pushnil(s);
-    while (0 != lua_next(s, -2))
+    while (0 != lua_next(s, 2))
     {
         if (lua_istable(s, -1))
         {
@@ -167,8 +179,18 @@ static int bootstrap_set_fcgi_upstream(lua_State *s)
         }
         lua_pop(s, 1);
     }
+
+    if (lua_isfunction(s, 3))
+    {
+        // Callback
+        lua_pushvalue(s, 3);
+        sym.regkey = callback_key;
+        script_func_to_worker(s, &sym);
+        trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : FCGI callback registered to server %s", server_name);
+        lua_pop(s, 1);
+    }
     srv->fcgi_upstream = upstream;
-    trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Server %s FastCGI upstream set", server_name);
+    trace_msg(TRACE_LEVEL_DEBUG, "BStrap : Server %s FastCGI upstream set", server_name);
 
     return 0;
 }
@@ -189,7 +211,7 @@ static int bootstrap_set_online_handler(lua_State *s)
         // Set load behavior
         sym.regkey = ONLINE_HANDLER_NAME_LOAD;
         script_func_to_worker(s, &sym);
-        trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Online handler <load> set");
+        trace_msg(TRACE_LEVEL_DEBUG, "BStrap : Online handler <load> set");
     }
     lua_pop(s, 1);
 
@@ -199,7 +221,7 @@ static int bootstrap_set_online_handler(lua_State *s)
         // Set save behavior
         sym.regkey = ONLINE_HANDLER_NAME_SAVE;
         script_func_to_worker(s, &sym);
-        trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Online handler <save> set");
+        trace_msg(TRACE_LEVEL_DEBUG, "BStrap : Online handler <save> set");
     }
     lua_pop(s, 1);
 

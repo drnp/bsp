@@ -371,6 +371,133 @@ struct bsp_fcgi_upstream_entry_t * get_fcgi_upstream_entry(BSP_FCGI_UPSTREAM *up
 }
 
 // Send FCGI request
+static void _fcgi_finish(BSP_CONNECTOR *cnt)
+{
+    if (!cnt || !cnt->additional)
+    {
+        return;
+    }
+
+    BSP_FCGI_RESPONSE *resp = (BSP_FCGI_RESPONSE *) cnt->additional;
+    if (!cnt->script_stack.stack || !lua_isfunction(cnt->script_stack.stack, -1) || !resp->is_ended)
+    {
+        return;
+    }
+
+    trace_msg(TRACE_LEVEL_VERBOSE, "FCGI   : FCGI request finished");
+    lua_State *caller = cnt->script_stack.stack;
+    bsp_spin_lock(&cnt->script_stack.lock);
+    lua_checkstack(caller, 3);
+    lua_newtable(caller);
+    lua_pushstring(caller, "app_status");
+    lua_pushinteger(caller, resp->app_status);
+    lua_settable(caller, -3);
+
+    lua_pushstring(caller, "protocol_status");
+    lua_pushinteger(caller, resp->protocol_status);
+    lua_settable(caller, -3);
+
+    if (resp->data_stdout)
+    {
+        lua_pushstring(caller, "stdout");
+        lua_newtable(caller);
+        // Find {CRLF}{CRLF}
+        size_t i;
+        int has_header = 0;
+        for (i = 0; i < STR_LEN(resp->data_stdout) - 3; i ++)
+        {
+            unsigned char *t = (unsigned char *) STR_STR(resp->data_stdout) + i;
+            if (0xd == t[0] && 0xa == t[1] && 0xd == t[2] && 0xa == t[3])
+            {
+                // Split into header & body
+                has_header = 1;
+                break;
+            }
+        }
+        if (has_header)
+        {
+            lua_pushstring(caller, "header");
+            lua_pushlstring(caller, STR_STR(resp->data_stdout), i);
+            lua_settable(caller, -3);
+
+            lua_pushstring(caller, "body");
+            lua_pushlstring(caller, STR_STR(resp->data_stdout) + i + 4, STR_LEN(resp->data_stdout) - i - 4);
+            lua_settable(caller, -3);
+        }
+        else
+        {
+            lua_pushstring(caller, "body");
+            lua_pushlstring(caller, STR_STR(resp->data_stdout), STR_LEN(resp->data_stdout));
+            lua_settable(caller, -3);
+        }
+
+        lua_settable(caller, -3);
+    }
+
+    if (resp->data_stderr)
+    {
+        lua_pushstring(caller, "stderr");
+        lua_pushlstring(caller, STR_STR(resp->data_stderr), STR_LEN(resp->data_stderr));
+        lua_settable(caller, -3);
+    }
+
+    lua_pcall(caller, 1, 0, 0);
+    bsp_spin_unlock(&cnt->script_stack.lock);
+
+    return;
+}
+
+static size_t _fcgi_on_data(BSP_CONNECTOR *cnt, const char *data, ssize_t len)
+{
+    BSP_FCGI_RESPONSE *resp = NULL;
+    if (!cnt->additional)
+    {
+        resp = bsp_calloc(1, sizeof(BSP_FCGI_RESPONSE));
+        if (!resp)
+        {
+            trigger_exit(BSP_RTN_ERROR_MEMORY, "Cannot alloc FCGI response");
+        }
+        cnt->additional = (void *) resp;
+    }
+    else
+    {
+        resp = (BSP_FCGI_RESPONSE *) cnt->additional;
+    }
+
+    size_t ret = parse_fcgi_response(resp, new_string_const(data, len));
+    if (resp->is_ended)
+    {
+        _fcgi_finish(cnt);
+        del_string(resp->data_stdout);
+        del_string(resp->data_stderr);
+        bsp_free(resp);
+        cnt->additional = NULL;
+        free_connector(cnt);
+    }
+
+    return ret;
+}
+
+static void _fcgi_on_close(BSP_CONNECTOR *cnt)
+{
+    if (!cnt || !cnt->additional)
+    {
+        return;
+    }
+
+    trace_msg(TRACE_LEVEL_NOTICE, "FCGI   : Conenction peer closed by remote FCGI server");
+    BSP_FCGI_RESPONSE *resp = (BSP_FCGI_RESPONSE *) cnt->additional;
+    if (resp->is_ended)
+    {
+        _fcgi_finish(cnt);
+        del_string(resp->data_stdout);
+        del_string(resp->data_stderr);
+        bsp_free(resp);
+        cnt->additional = NULL;
+    }
+
+    return;
+}
 int fcgi_call(BSP_FCGI_UPSTREAM *upstream, BSP_OBJECT *p, struct sockaddr_storage *addr)
 {
     if (!upstream || !p)
@@ -389,8 +516,8 @@ int fcgi_call(BSP_FCGI_UPSTREAM *upstream, BSP_OBJECT *p, struct sockaddr_storag
         return BSP_RTN_ERROR_GENERAL;
     }
 
-    char len_str[16];
-    memset(len_str, 0, 16);
+    char len_str[16] = {0};
+    //memset(len_str, 0, 16);
     snprintf(len_str, 15, "%llu", (long long unsigned int) STR_LEN(data));
     BSP_FCGI_PARAMS fp;
     memset(&fp, 0, sizeof(BSP_FCGI_PARAMS));
@@ -436,7 +563,17 @@ int fcgi_call(BSP_FCGI_UPSTREAM *upstream, BSP_OBJECT *p, struct sockaddr_storag
     }
     if (cnt)
     {
+        cnt->on_close = _fcgi_on_close;
+        cnt->on_data = _fcgi_on_data;
         dispatch_to_thread(SFD(cnt), curr_thread_id());
+        if (cnt->script_stack.stack && upstream->callback_key)
+        {
+            lua_getfield(cnt->script_stack.stack, LUA_REGISTRYINDEX, upstream->callback_key);
+            if (!lua_isfunction(cnt->script_stack.stack, -1))
+            {
+                trace_msg(TRACE_LEVEL_NOTICE, "FCGI   : Cannot find registered callback function %s", upstream->callback_key);
+            }
+        }
         append_data_socket(&SCK(cnt), request);
         flush_socket(&SCK(cnt));
         status_op_fcgi(STATUS_OP_FCGI_REQUEST);

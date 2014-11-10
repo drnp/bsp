@@ -102,7 +102,7 @@ static int standard_net_send(lua_State *s)
         // Send nothing
         ret = 0;
     }
-    
+
     lua_pushinteger(s, ret);
     
     return 1;
@@ -172,7 +172,7 @@ static int standard_net_info(lua_State *s)
     {
         lua_pushnil(s);
     }
-    
+
     return 1;
 }
 
@@ -220,7 +220,7 @@ static int standard_timer_delete(lua_State *s)
     {
         return 0;
     }
-    
+
     int fd = lua_tointeger(s, -1);
     int fd_type = FD_TYPE_TIMER;
     BSP_TIMER *tmr = (BSP_TIMER *) get_fd(fd, &fd_type);
@@ -228,9 +228,9 @@ static int standard_timer_delete(lua_State *s)
     {
         return 0;
     }
-    
+
     free_timer(tmr);
-    
+
     return 0;
 }
 
@@ -365,7 +365,6 @@ static int standard_deep_copy(lua_State *s)
             // Swap position
             lua_remove(s, -3);
         }
-
         else
         {
             lua_checkstack(s, 2);
@@ -374,7 +373,7 @@ static int standard_deep_copy(lua_State *s)
             // New value
             lua_pushvalue(s, -2);
         }
-        
+
         lua_settable(s, -5);
         lua_pop(s, 1);
     }
@@ -434,7 +433,6 @@ static int standard_json_encode(lua_State *s)
     }
 
     BSP_OBJECT *obj = lua_stack_to_object(s);
-    debug_object(obj);
     BSP_STRING *json = json_nd_encode(obj);
     lua_pushlstring(s, STR_STR(json), STR_LEN(json));
     del_object(obj);
@@ -478,46 +476,31 @@ static int standard_md5(lua_State *s)
         return 0;
     }
 
-    unsigned char hash_val[MD5_DIGEST_LENGTH];
-    char hash_str[MD5_DIGEST_LENGTH * 2];
+    int raw = 0;
     size_t len;
     const char *input;
 
     if (lua_gettop(s) > 1 && lua_isboolean(s, -1) && lua_isstring(s, -2))
     {
         input = lua_tolstring(s, -2, &len);
-        MD5((const unsigned char *) input, (unsigned long) len, hash_val);
         if (lua_toboolean(s, -1) > 0)
         {
-            int i;
-            char bit[3];
-            for (i = 0; i < MD5_DIGEST_LENGTH; i ++)
-            {
-                snprintf(bit, 3, "%02x", (unsigned char) hash_val[i]);
-                hash_str[i * 2] = bit[0];
-                hash_str[i * 2 + 1] = bit[1];
-            }
-
-            lua_pushlstring(s, (const char *) hash_str, MD5_DIGEST_LENGTH * 2);
-        }
-
-        else
-        {
-            lua_pushlstring(s, (const char *) hash_val, MD5_DIGEST_LENGTH);
+            // Need raw data
+            raw = 1;
         }
     }
-
     else if (lua_gettop(s) > 0 && lua_isstring(s, -1))
     {
         input = lua_tolstring(s, -1, &len);
-        MD5((const unsigned char *) input, (unsigned long) len, hash_val);
-        lua_pushlstring(s, (const char *) hash_val, MD5_DIGEST_LENGTH);
     }
-    
     else
     {
         return 0;
     }
+
+    BSP_STRING *output = string_md5(input, len, raw);
+    lua_pushlstring(s, STR_STR(output), STR_LEN(output));
+    del_string(output);
 
     return 1;
 }
@@ -529,46 +512,31 @@ static int standard_sha1(lua_State *s)
         return 0;
     }
 
-    unsigned char hash_val[SHA_DIGEST_LENGTH];
-    char hash_str[SHA_DIGEST_LENGTH * 2];
+    int raw = 0;
     size_t len;
     const char *input;
 
     if (lua_gettop(s) > 1 && lua_isboolean(s, -1) && lua_isstring(s, -2))
     {
         input = lua_tolstring(s, -2, &len);
-        SHA1((const unsigned char *) input, (unsigned long) len, hash_val);
         if (lua_toboolean(s, -1) > 0)
         {
-            int i;
-            char bit[3];
-            for (i = 0; i < SHA_DIGEST_LENGTH; i ++)
-            {
-                snprintf(bit, 3, "%02x", (unsigned char) hash_val[i]);
-                hash_str[i * 2] = bit[0];
-                hash_str[i * 2 + 1] = bit[1];
-            }
-
-            lua_pushlstring(s, (const char *) hash_str, SHA_DIGEST_LENGTH * 2);
-        }
-
-        else
-        {
-            lua_pushlstring(s, (const char *) hash_val, SHA_DIGEST_LENGTH);
+            // Need raw data
+            raw = 1;
         }
     }
-
     else if (lua_gettop(s) > 0 && lua_isstring(s, -1))
     {
         input = lua_tolstring(s, -1, &len);
-        SHA1((const unsigned char *) input, (unsigned long) len, hash_val);
-        lua_pushlstring(s, (const char *) hash_val, SHA_DIGEST_LENGTH);
     }
-    
     else
     {
         return 0;
     }
+
+    BSP_STRING *output = string_sha1(input, len, raw);
+    lua_pushlstring(s, STR_STR(output), STR_LEN(output));
+    del_string(output);
 
     return 1;
 }
@@ -630,7 +598,7 @@ static int standard_log_open(lua_State *s)
     {
         lua_pushnil(s);
     }
-    
+
     return 1;
 }
 
@@ -649,7 +617,7 @@ static int standard_log_close(lua_State *s)
         unreg_fd(fileno(f));
         fclose(f);
     }
-    
+
     return 0;
 }
 
@@ -666,234 +634,36 @@ static int standard_log(lua_State *s)
     {
         return 0;
     }
-    
+
     char tgdate[64];
     time_t now = time(NULL);
     struct tm *loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
     fprintf(f, "[%s] : %s\n", tgdate, content);
-    
+
     return 0;
 }
 
-/** Global variable **/
-struct _global_entry_t *global_hash_table[GLOBAL_HASH_SIZE];
-BSP_SPINLOCK global_lock;
-static void _global_init()
+/** Memdb **/
+static int standard_set_cache(lua_State *s)
 {
-    bsp_spin_init(&global_lock);
-    memset(global_hash_table, 0, sizeof(struct _global_entry_t *) * GLOBAL_HASH_SIZE);
-    return;
-}
-
-static struct _global_entry_t * _global_new(const char *key)
-{
-    if (!key)
-    {
-        return NULL;
-    }
-    // Generate a new hash entry
-    uint32_t hash_value = bsp_hash(key, -1);
-    int slot = hash_value % GLOBAL_HASH_SIZE;
-    struct _global_entry_t *g = bsp_calloc(1, sizeof(struct _global_entry_t));
-    if (!g)
-    {
-        return NULL;
-    }
-    bsp_spin_lock(&global_lock);
-    g->next = global_hash_table[slot];
-    global_hash_table[slot] = g;
-    bsp_spin_unlock(&global_lock);
-    
-    return g;
-}
-
-static struct _global_entry_t * _global_find(const char *key)
-{
-    if (!key)
-    {
-        return NULL;
-    }
-    // Search hash
-    uint32_t hash_value = bsp_hash(key, -1);
-    int slot = hash_value % GLOBAL_HASH_SIZE;
-    bsp_spin_lock(&global_lock);
-    struct _global_entry_t *g = global_hash_table[slot];
-    while (g)
-    {
-        if (0 == strcmp(key, g->key))
-        {
-            break;
-        }
-        g = g->next;
-    }
-    bsp_spin_unlock(&global_lock);
-    return g;
-}
-
-static int standard_set_global(lua_State *s)
-{
-    if (!s || lua_gettop(s) < 2 || !lua_isstring(s, -2))
-    {
-        return 0;
-    }
-
-    const char *key = lua_tostring(s, -2);
-    if (!key)
-    {
-        return 0;
-    }
-
-    // Find exist
-    struct _global_entry_t *g = _global_find(key);
-    lua_Number vn;
-    int vb;
-    const char *vs;
-    void *value;
-    BSP_OBJECT *vt;
-    
-    if (!g)
-    {
-        g = _global_new(key);
-        if (!g)
-        {
-            return 0;
-        }
-        // Set key
-        strncpy(g->key, key, GLOBAL_NAME_LENGTH - 1);
-        g->key[GLOBAL_NAME_LENGTH - 1] = 0x0;
-    }
-    else
-    {
-        // Clean value
-        if (LUA_TSTRING == g->type)
-        {
-            memcpy(&value, g->value, sizeof(void *));
-            if (value && g->value_len)
-            {
-                bsp_free(value);
-                memset(g->value, 0, 8);
-                g->value_len = 0;
-            }
-        }
-
-        else if (LUA_TTABLE == g->type)
-        {
-            memcpy(&vt, g->value, sizeof(BSP_OBJECT *));
-            if (vt)
-            {
-                del_object(vt);
-                memset(g->value, 0, 8);
-                g->value_len = 0;
-            }
-        }
-    }
-    
-    switch (lua_type(s, -1))
-    {
-        case LUA_TNIL : 
-            g->type = LUA_TNIL;
-            break;
-        case LUA_TNUMBER : 
-            g->type = LUA_TNUMBER;
-            vn = lua_tonumber(s, -1);
-            memcpy(g->value, &vn, sizeof(lua_Number));
-            break;
-        case LUA_TBOOLEAN : 
-            g->type = LUA_TBOOLEAN;
-            vb = lua_toboolean(s, -1);
-            g->value[0] = (char) vb;
-            break;
-        case LUA_TSTRING : 
-            g->type = LUA_TSTRING;
-            vs = lua_tolstring(s, -1, &g->value_len);
-            value = bsp_malloc(g->value_len);
-            if (!value)
-            {
-                return 0;
-            }
-            memcpy(value, vs, g->value_len);
-            memcpy(g->value, &value, sizeof(void *));
-            break;
-        case LUA_TLIGHTUSERDATA : 
-            g->type = LUA_TLIGHTUSERDATA;
-            value = lua_touserdata(s, -1);
-            memcpy(g->value, &value, sizeof(void *));
-            break;
-        case LUA_TTABLE : 
-            g->type = LUA_TTABLE;
-            vt = lua_stack_to_object(s);
-            memcpy(g->value, &vt, sizeof(BSP_OBJECT *));
-            break;
-        case LUA_TFUNCTION : 
-        case LUA_TUSERDATA : 
-        case LUA_TTHREAD : 
-        default : 
-            // Chen Qie Zuo Bu Dao A!!!~~~
-            g->type = LUA_TNONE;
-            break;
-    }
-    
     return 0;
 }
 
-static int standard_get_global(lua_State *s)
+static int standard_get_cache(lua_State *s)
 {
-    if (!s || lua_gettop(s) < 1 || !lua_isstring(s, -1))
-    {
-        return 0;
-    }
-
-    const char *key = lua_tostring(s, -1);
-    if (!key)
-    {
-        return 0;
-    }
-
-    // Find exist
-    struct _global_entry_t *g = _global_find(key);
-    if (!g)
-    {
-        lua_pushnil(s);
-        return 1;
-    }
-    lua_Number vn;
-    int vb;
-    const char *vs;
-    void *value;
-    BSP_OBJECT *vt;
-    
-    switch (g->type)
-    {
-        case LUA_TNIL : 
-            lua_pushnil(s);
-            break;
-        case LUA_TNUMBER : 
-            memcpy(&vn, g->value, sizeof(lua_Number));
-            lua_pushnumber(s, vn);
-            break;
-        case LUA_TBOOLEAN : 
-            vb = g->value[0];
-            lua_pushboolean(s, vb);
-            break;
-        case LUA_TSTRING : 
-            memcpy(&vs, g->value, sizeof(const char *));
-            lua_pushlstring(s, vs, g->value_len);
-            break;
-        case LUA_TLIGHTUSERDATA : 
-            memcpy(&value, g->value, sizeof(void *));
-            lua_pushlightuserdata(s, value);
-            break;
-        case LUA_TTABLE : 
-            memcpy(&vt, g->value, sizeof(BSP_OBJECT *));
-            object_to_lua_stack(s, vt);
-            break;
-        default : 
-            lua_pushnil(s);
-            break;
-    }
-    
     return 1;
+}
+
+/** Online **/
+static int standard_set_online(lua_State *s)
+{
+    return 0;
+}
+
+static int standard_set_offline(lua_State *s)
+{
+    return 0;
 }
 
 /* Module */
@@ -904,8 +674,6 @@ int bsp_module_standard(lua_State *s)
         return 0;
     }
 
-    _global_init();
-    
     lua_pushcfunction(s, standard_net_send);
     lua_setglobal(s, "bsp_net_send");
 
@@ -960,13 +728,19 @@ int bsp_module_standard(lua_State *s)
     lua_pushcfunction(s, standard_log);
     lua_setglobal(s, "bsp_log");
 
-    lua_pushcfunction(s, standard_set_global);
-    lua_setglobal(s, "bsp_set_global");
+    lua_pushcfunction(s, standard_set_cache);
+    lua_setglobal(s, "bsp_set_cache");
 
-    lua_pushcfunction(s, standard_get_global);
-    lua_setglobal(s, "bsp_get_global");
+    lua_pushcfunction(s, standard_get_cache);
+    lua_setglobal(s, "bsp_get_cache");
+
+    lua_pushcfunction(s, standard_set_online);
+    lua_setglobal(s, "bsp_set_online");
+
+    lua_pushcfunction(s, standard_set_offline);
+    lua_setglobal(s, "bsp_set_offline");
 
     lua_settop(s, 0);
-    
+
     return 0;
 }

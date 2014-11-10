@@ -121,4 +121,10 @@ BSP_STRING * string_base64_encode(const char *data, ssize_t len);
 // Base64_decode
 BSP_STRING * string_base64_decode(const char *data, ssize_t len);
 
+// MD5
+BSP_STRING * string_md5(const char *data, ssize_t len, int raw);
+
+// SHA-1
+BSP_STRING * string_sha1(const char *data, ssize_t len, int raw);
+
 #endif  /* _LIB_BSP_CORE_STRING_H */

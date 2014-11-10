@@ -109,13 +109,13 @@ BSP_HTTP_REQUEST * new_http_request()
     {
         return NULL;
     }
-    
+
     // Default values;
     http_request_set_version(req, HTTP_VERSION_1_1, -1);
     http_request_set_method(req, HTTP_METHOD_GET, -1);
     http_request_set_user_agent(req, HTTP_DEFAULT_USER_AGENT, -1);
     req->port = HTTP_DEFAULT_PORT;
-    
+
     return req;
 }
 
@@ -139,7 +139,7 @@ void http_request_set_version(BSP_HTTP_REQUEST *req, const char *version, ssize_
         {
             bsp_free(req->version);
         }
-        
+
         req->version = bsp_strndup(version, len);
     }
 
@@ -154,7 +154,7 @@ void http_request_set_method(BSP_HTTP_REQUEST *req, const char *method, ssize_t 
         {
             bsp_free(req->method);
         }
-        
+
         req->method = bsp_strndup(method, len);
     }
 
@@ -169,7 +169,7 @@ void http_request_set_user_agent(BSP_HTTP_REQUEST *req, const char *agent, ssize
         {
             bsp_free(req->user_agent);
         }
-        
+
         req->user_agent = bsp_strndup(agent, len);
     }
 
@@ -407,7 +407,7 @@ BSP_HTTP_RESPONSE * new_http_response()
     {
         return NULL;
     }
-    
+
     memset(resp, 0, sizeof(BSP_HTTP_RESPONSE));
 
     return resp;
@@ -419,7 +419,7 @@ void del_http_response(BSP_HTTP_RESPONSE *resp)
     {
         clear_http_response(resp);
     }
-    
+
     bsp_free(resp);
 
     return;
@@ -533,7 +533,7 @@ void http_response_append_content(BSP_HTTP_RESPONSE *resp, const char *content, 
             resp->content_length += len;
         }
     }
-    
+
     return;
 }
 
@@ -740,7 +740,7 @@ size_t parse_http_request(const char *data, ssize_t len, BSP_HTTP_REQUEST *req)
                 req_value_len = (data + i) - req_value;
             }
         }
-        
+
         if (data[i] == 0x0a)
         {
             new_line = 1;
@@ -753,62 +753,51 @@ size_t parse_http_request(const char *data, ssize_t len, BSP_HTTP_REQUEST *req)
             {
                 http_request_set_method(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("request_uri", req_key, 11))
             {
                 http_request_set_request_uri(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("host", req_key, 4))
             {
                 http_request_set_host(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("user-agent", req_key, 10))
             {
                 http_request_set_user_agent(req, req_value, req_value_len);
             }
-            
             else if (0 == strncasecmp("upgrade", req_key, 7))
             {
                 http_request_set_upgrade(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("origin", req_key, 6))
             {
                 http_request_set_origin(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("connection", req_key, 10))
             {
                 http_request_set_connection(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("sec-websocket-version", req_key, 21))
             {
                 http_request_set_sec_websocket_version(req, atoi(req_value));
             }
-
             else if (0 == strncasecmp("sec-websocket-protocol", req_key, 22))
             {
                 http_request_set_sec_websocket_protocol(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("sec-websocket-key1", req_key, 18))
             {
                 http_request_set_sec_websocket_key1(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("sec-websocket-key2", req_key, 18))
             {
                 http_request_set_sec_websocket_key2(req, req_value, req_value_len);
             }
-
             else if (0 == strncasecmp("sec-websocket-key", req_key, 17))
             {
                 http_request_set_sec_websocket_key(req, req_value, req_value_len);
             }
-            
+
             req_key = NULL;
             req_value = NULL;
             req_value_len = 0;
@@ -882,7 +871,7 @@ size_t parse_http_response(const char *data, ssize_t len, BSP_HTTP_RESPONSE *res
     {
         return 0;
     }
-    
+
     if (len < 0)
     {
         len = strlen(data);
@@ -980,17 +969,14 @@ size_t parse_http_response(const char *data, ssize_t len, BSP_HTTP_RESPONSE *res
             {
                 http_response_set_content_type(resp, resp_value, resp_value_len);
             }
-
             else if (0 == strncasecmp("content-length", resp_key, 14))
             {
                 http_response_set_content_length(resp, (size_t) strtoll(resp_value, NULL, 10));
             }
-
             else if (0 == strncasecmp("transfer-encoding", resp_key, 17))
             {
                 http_response_set_transfer_encoding(resp, resp_value, resp_value_len);
             }
-
             else if (0 == strncasecmp("connection", resp_key, 10))
             {
                 http_response_set_connection(resp, resp_value, resp_value_len);
@@ -1054,14 +1040,12 @@ int websocket_handshake(BSP_HTTP_REQUEST *req, BSP_HTTP_RESPONSE *resp)
                 http_response_set_sec_websocket_accept(resp, key_accept->str, -1);
                 del_string(key_accept);
             }
-
             else
             {
                 // Sha1 error
                 http_response_set_sec_websocket_accept(resp, req->sec_websocket_key, -1);
             }
         }
-
         else if(req->sec_websocket_key1 && req->sec_websocket_key2)
         {
             // Version.7.5 7.6
@@ -1116,7 +1100,6 @@ size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRI
         data_len = (size_t) get_int16(data + 2);
         remaining -= 4;
     }
-
     else if (127 == data_len)
     {
         // Next eight bytes
@@ -1129,7 +1112,6 @@ size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRI
         data_len = (size_t) get_int64(data + 2);
         remaining -= 10;
     }
-
     else
     {
         remaining -= 2;
@@ -1154,7 +1136,7 @@ size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRI
         *opcode = 0xF;
         return 0;
     }
-    
+
     const char *start = data + (len - remaining);
     if (mask)
     {
@@ -1166,7 +1148,6 @@ size_t parse_websocket_data(const char *data, ssize_t len, int *opcode, BSP_STRI
             data_str->str[i] = start[i] ^ mask_data[i & 3];
         }
     }
-
     else
     {
         string_append(data_str, start, data_len);
@@ -1191,14 +1172,12 @@ BSP_STRING * generate_websocket_data(BSP_STRING *data, int opcode, int mask)
         set_int64(len, &head[2]);
         head_len = 10;
     }
-
     else if (len > 126)
     {
         head[1] = mask << 7 | 0x7E;
         set_int16(len, &head[2]);
         head_len = 4;
     }
-
     else
     {
         head[1] = mask << 7 | len;
@@ -1219,7 +1198,6 @@ BSP_STRING * generate_websocket_data(BSP_STRING *data, int opcode, int mask)
         {
             string_append(ret, STR_STR(data), len);
         }
-
         else
         {
             // XOR with mask

@@ -33,21 +33,10 @@
 /* Headers */
 
 /* Definations */
-#define GLOBAL_NAME_LENGTH                      32
-#define GLOBAL_HASH_SIZE                        64
 
 /* Macros */
 
 /* Structs */
-struct _global_entry_t
-{
-    char                key[GLOBAL_NAME_LENGTH];
-    char                value[8];
-    size_t              value_len;
-    int                 type;
-    struct _global_entry_t
-                        *next;
-};
 
 /* Functions */
 int bsp_module_standard(lua_State *s);

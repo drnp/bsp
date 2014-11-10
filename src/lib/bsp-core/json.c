@@ -260,7 +260,6 @@ static BSP_VALUE * _get_value_from_json(BSP_STRING *str)
     while (STR_REMAIN(str) > 0)
     {
         c = STR_CHAR(str);
-        //fprintf(stderr, "%d => %03d => %c\n", (int) STR_NOW(str), c, c);
         if (status & JSON_DECODE_STATUS_STR)
         {
             // In string
@@ -273,9 +272,9 @@ static BSP_VALUE * _get_value_from_json(BSP_STRING *str)
                 {
                     string_append(v_str, STR_STR(str) + normal, (STR_NOW(str) - normal));
                 }
+                STR_NEXT(str);
             }
-
-            if (status & JSON_DECODE_STATUS_STRIP)
+            else if (status & JSON_DECODE_STATUS_STRIP)
             {
                 switch (c)
                 {
