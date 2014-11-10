@@ -102,6 +102,7 @@ static void server_callback(BSP_CALLBACK *cb)
 
     BSP_STRING *key;
     BSP_VALUE *val;
+    BSP_SCRIPT_SYMBOL sym = {NULL, NULL, 0};
 
     key = new_string_const("server_name", -1);
     val = new_value();
@@ -174,7 +175,8 @@ static void server_callback(BSP_CALLBACK *cb)
 
     if (cb->server->lua_entry && cb->client->script_stack.stack)
     {
-        script_call(&cb->client->script_stack, cb->server->lua_entry, p);
+        sym.func = cb->server->lua_entry;
+        script_call(&cb->client->script_stack, &sym, p);
     }
 
     if (cb->server->fcgi_upstream)

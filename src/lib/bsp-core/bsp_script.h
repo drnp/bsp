@@ -76,45 +76,22 @@ typedef struct bsp_script_stack_t
     BSP_SPINLOCK        lock;
 } BSP_SCRIPT_STACK;
 
-struct bsp_script_t
+typedef struct bsp_script_symbol_t
 {
-    char                *identifier;
-    char                *func_on_load;
-    char                *func_on_reload;
-    char                *func_on_exit;
-    char                *func_on_sub_load;
-    char                *func_on_sub_reload;
-    char                *func_on_sub_exit;
-    void                (* code_reader) (const char *identifier, BSP_STRING *code);
-    void                (* allocator);
-    BSP_STRING          *code;
-};
+    const char          *func;
+    const char          *regkey;
+    int                 regref;
+} BSP_SCRIPT_SYMBOL;
 
 /* Functions */
-/*
-// Initialization
-int script_init();
-
-// Call a LUA function specialed by <func> in thread <thread>
-void script_caller_call_func(lua_State *caller, const char *func, BSP_SCRIPT_CALL_PARAM p[]);
-void script_caller_call_idx(lua_State *caller, int idx, BSP_SCRIPT_CALL_PARAM p[]);
-void script_call_func(const char *func, BSP_SCRIPT_CALL_PARAM p[]);
-void script_call_idx(int idx, BSP_SCRIPT_CALL_PARAM p[]);
-
-// Set script identifier
-void script_set_identifier(const char *identifier);
-
-// Set hooks
-void script_set_hook(int hook, const char *func);
-*/
 // Load script code block
-int script_load_string(lua_State *l, BSP_STRING *code);
+int script_load_string(BSP_SCRIPT_STACK *ts, BSP_STRING *code, BSP_SCRIPT_SYMBOL *sym);
 
 // Load script code from file
-int script_load_file(lua_State *l, const char *filename);
+int script_load_file(BSP_SCRIPT_STACK *ts, const char *filename, BSP_SCRIPT_SYMBOL *sym);
 
 // Call a script function with given parameters
-int script_call(BSP_SCRIPT_STACK *caller, const char *func, BSP_OBJECT *p);
+int script_call(BSP_SCRIPT_STACK *caller, BSP_SCRIPT_SYMBOL *sym, BSP_OBJECT *p);
 
 // New state(runner), create a new LUA state
 lua_State * script_new_state();
@@ -127,5 +104,8 @@ int script_remove_stack(BSP_SCRIPT_STACK *ts);
 
 // Load LUA modules to script
 int script_load_module(BSP_STRING *module, int enable_main_thread);
+
+// Dump function to all worker with given name
+int script_func_to_worker(lua_State *s, BSP_SCRIPT_SYMBOL *sym);
 
 #endif  /* _LIB_BSP_CORE_SCRIPT_H */

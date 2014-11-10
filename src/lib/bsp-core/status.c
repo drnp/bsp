@@ -577,6 +577,25 @@ void debug_status()
             (long long unsigned int) ds->db_sqlite.free_times);
     fprintf(stderr, "\n");
 
+    // MongoDB
+    fprintf(stderr, "\033[1;33m  DB::MONGODB :\033[0m\n");
+    fprintf(stderr, "\033[1;36m    Connect times                :\033[0m %llu\n"
+                    "\033[1;36m    Disconnect times             :\033[0m %llu\n"
+                    "\033[1;36m    Query times                  :\033[0m %llu\n"
+                    "\033[1;36m    Error times                  :\033[0m %llu\n"
+                    "\033[1;36m    Results total                :\033[0m %llu\n"
+                    "\033[1;36m    Free times                   :\033[0m %llu\n"
+                    "\033[1;36m    Update times                 :\033[0m %llu\n"
+                    "\033[1;36m    Delete times                 :\033[0m %llu\n", 
+            (long long unsigned int) ds->db_mongodb.connect_times, 
+            (long long unsigned int) ds->db_mongodb.disconnect_times, 
+            (long long unsigned int) ds->db_mongodb.query_times, 
+            (long long unsigned int) ds->db_mongodb.error_times, 
+            (long long unsigned int) ds->db_mongodb.results_total, 
+            (long long unsigned int) ds->db_mongodb.free_times, 
+            (long long unsigned int) ds->db_mongodb.update_times, 
+            (long long unsigned int) ds->db_mongodb.delete_times);
+
     // HTTP
     fprintf(stderr, "\033[1;33m  HTTP OPERATES :\033[0m\n");
     fprintf(stderr, "\033[1;36m    Request times                :\033[0m %llu\n"

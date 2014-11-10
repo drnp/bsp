@@ -182,29 +182,26 @@ static int bootstrap_set_online_handler(lua_State *s)
     }
 
     BSP_CORE_SETTING *settings = get_core_setting();
+    BSP_SCRIPT_SYMBOL sym = {NULL, NULL, 0};
     lua_getfield(s, -1, "load");
     if (lua_isfunction(s, -1))
     {
         // Set load behavior
-        lua_setfield(s, LUA_REGISTRYINDEX, ONLINE_HANDLER_NAME_LOAD);
+        sym.regkey = ONLINE_HANDLER_NAME_LOAD;
+        script_func_to_worker(s, &sym);
         trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Online handler <load> set");
     }
-    else
-    {
-        lua_pop(s, 1);
-    }
+    lua_pop(s, 1);
 
     lua_getfield(s, -1, "save");
     if (lua_isfunction(s, -1))
     {
         // Set save behavior
-        lua_setfield(s, LUA_REGISTRYINDEX, ONLINE_HANDLER_NAME_SAVE);
+        sym.regkey = ONLINE_HANDLER_NAME_SAVE;
+        script_func_to_worker(s, &sym);
         trace_msg(TRACE_LEVEL_VERBOSE, "BStrap : Online handler <save> set");
     }
-    else
-    {
-        lua_pop(s, 1);
-    }
+    lua_pop(s, 1);
 
     lua_getfield(s, -1, "autosave");
     if (lua_isnumber(s, -1))
@@ -212,6 +209,7 @@ static int bootstrap_set_online_handler(lua_State *s)
         // Set auto-save interval
         settings->online_autosave_interval = lua_tointeger(s, -1);
     }
+    lua_pop(s, 1);
 
     return 0;
 }
@@ -248,7 +246,7 @@ int start_bootstrap(BSP_STRING *bs)
         trace_msg(TRACE_LEVEL_ERROR, "BStrap : Cannot change current working directory to %s", settings->script_dir);
     }
 
-    if (BSP_RTN_SUCCESS == script_load_string(t->script_runner.state, bs))
+    if (BSP_RTN_SUCCESS == script_load_string(&t->script_runner, bs, NULL))
     {
         // Run code
         script_call(&t->script_runner, NULL, NULL);

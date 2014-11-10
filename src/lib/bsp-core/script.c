@@ -65,46 +65,71 @@ static void * _default_allocator(void *ud, void *ptr, size_t osize, size_t nsize
 }
 
 // Load script code block
-int script_load_string(lua_State *l, BSP_STRING *code)
+int script_load_string(BSP_SCRIPT_STACK *ts, BSP_STRING *code, BSP_SCRIPT_SYMBOL *sym)
 {
-    if (!l || !code)
+    if (!ts || !ts->state || !code)
     {
         return BSP_RTN_ERROR_SCRIPT;
     }
 
-    int ret = luaL_loadbufferx(l, STR_STR(code), STR_LEN(code), NULL, NULL);
-    switch (ret)
+    int ret = BSP_RTN_ERROR_GENERAL;
+    int r;
+    debug_hex(STR_STR(code), STR_LEN(code));
+    bsp_spin_lock(&ts->lock);
+    r = luaL_loadbufferx(ts->state, STR_STR(code), STR_LEN(code), NULL, NULL);
+    switch (r)
     {
         case LUA_OK : 
-            return BSP_RTN_SUCCESS;
+            if (lua_isfunction(ts->state, -1) && sym)
+            {
+                if (sym->func)
+                {
+                    // Set global
+                    lua_setglobal(ts->state, sym->func);
+                }
+                else if (sym->regkey)
+                {
+                    // Set register
+                    lua_setfield(ts->state, LUA_REGISTRYINDEX, sym->regkey);
+                }
+                else if (sym->regref < 0)
+                {
+                    // Set reference
+                    sym->regref = luaL_ref(ts->state, LUA_REGISTRYINDEX);
+                }
+            }
+            trace_msg(TRACE_LEVEL_VERBOSE, "Script : Code chunk loaded into state");
+            ret = BSP_RTN_SUCCESS;
             break;
         case LUA_ERRSYNTAX : 
-            trace_msg(TRACE_LEVEL_ERROR, "Lua script syntax error : %s", lua_tostring(l, -1));
-            return BSP_RTN_ERROR_SCRIPT;
+            trace_msg(TRACE_LEVEL_ERROR, "Script : Lua script syntax error : %s", lua_tostring(ts->state, -1));
+            ret = BSP_RTN_ERROR_SCRIPT;
             break;
         case LUA_ERRMEM : 
-            trace_msg(TRACE_LEVEL_ERROR, "Memory error to load Lua script");
-            return BSP_RTN_ERROR_MEMORY;
+            trace_msg(TRACE_LEVEL_ERROR, "Script : Memory error to load Lua script");
+            ret = BSP_RTN_ERROR_MEMORY;
             break;
         case LUA_ERRGCMM : 
         default : 
+            bsp_spin_unlock(&ts->lock);
             trigger_exit(BSP_RTN_FATAL, "Script error");
             break;
     }
+    bsp_spin_unlock(&ts->lock);
 
-    return BSP_RTN_ERROR_GENERAL;
+    return ret;
 }
 
 // Load script code from file
-int script_load_file(lua_State *l, const char *filename)
+int script_load_file(BSP_SCRIPT_STACK *ts, const char *filename, BSP_SCRIPT_SYMBOL *sym)
 {
-    if (!l || !filename)
+    if (!ts || !ts->state || !filename)
     {
-        return BSP_RTN_ERROR_SCRIPT;
+        return BSP_RTN_ERROR_GENERAL;
     }
 
     BSP_STRING *code = new_string_from_file(filename);
-    int ret = script_load_string(l, code);
+    int ret = script_load_string(ts, code, sym);
     del_string(code);
 
     return ret;
@@ -118,7 +143,7 @@ static int _cont(lua_State *l)
     return 0;
 }
 
-int script_call(BSP_SCRIPT_STACK *caller, const char *func, BSP_OBJECT *p)
+int script_call(BSP_SCRIPT_STACK *caller, BSP_SCRIPT_SYMBOL *sym, BSP_OBJECT *p)
 {
     int ret, status, nargs = 0;
 
@@ -130,10 +155,25 @@ int script_call(BSP_SCRIPT_STACK *caller, const char *func, BSP_OBJECT *p)
     lua_State *l = (caller->stack) ? (caller->stack) : (caller->state);
 
     //bsp_spin_lock(&caller->lock);
-    if (func)
+    if (sym)
     {
+        // Try get function
         lua_checkstack(l, 1);
-        lua_getglobal(l, func);
+        if (sym->func)
+        {
+            // From global table
+            lua_getglobal(l, sym->func);
+        }
+        else if (sym->regkey)
+        {
+            // From register
+            lua_getfield(l, LUA_REGISTRYINDEX, sym->regkey);
+        }
+        else if (sym->regref > 0)
+        {
+            // From reference(register table)
+            lua_rawgeti(l, LUA_REGISTRYINDEX, sym->regref);
+        }
     }
 
     if (!lua_isfunction(l, -1))
@@ -281,9 +321,11 @@ int script_load_module(BSP_STRING *module, int enable_main_thread)
             if (enable_main_thread)
             {
                 t = get_thread(MAIN_THREAD);
-                if (t)
+                if (t && t->script_runner.state)
                 {
+                    bsp_spin_lock(&t->script_runner.lock);
                     loader(t->script_runner.state);
+                    bsp_spin_unlock(&t->script_runner.lock);
                     trace_msg(TRACE_LEVEL_VERBOSE, "Script : Symbol %s loaded into main thread", symbol);
                 }
             }
@@ -291,9 +333,11 @@ int script_load_module(BSP_STRING *module, int enable_main_thread)
             for (i = 0; i < settings->static_workers; i ++)
             {
                 t = get_thread(i);
-                if (t)
+                if (t && t->script_runner.state)
                 {
+                    bsp_spin_lock(&t->script_runner.lock);
                     loader(t->script_runner.state);
+                    bsp_spin_unlock(&t->script_runner.lock);
                     trace_msg(TRACE_LEVEL_VERBOSE, "Script : Symbol %s loaded into thread %d", symbol, i);
                 }
             }
@@ -310,6 +354,51 @@ int script_load_module(BSP_STRING *module, int enable_main_thread)
         trace_msg(TRACE_LEVEL_ERROR, "Script : Cannot open module file %s", file_name);
         return BSP_RTN_ERROR_IO;
     }
+
+    return BSP_RTN_SUCCESS;
+}
+
+// Dump (copy) a LUA function (chunk) to all worker
+static int _dump_chunk_to_str(lua_State *s, const void *p, size_t len, void *ud)
+{
+    if (!p || !len || !ud)
+    {
+        return BSP_RTN_ERROR_GENERAL;
+    }
+
+    BSP_STRING *chunk = (BSP_STRING *) ud;
+    string_append(chunk, (const char *) p, len);
+
+    return BSP_RTN_SUCCESS;
+}
+
+int script_func_to_worker(lua_State *s, BSP_SCRIPT_SYMBOL *sym)
+{
+    if (!s)
+    {
+        return BSP_RTN_ERROR_GENERAL;
+    }
+
+    if (!lua_isfunction(s, -1))
+    {
+        return BSP_RTN_ERROR_SCRIPT;
+    }
+
+    BSP_STRING *chunk = new_string(NULL, 0);
+    lua_dump(s, _dump_chunk_to_str, (void *) chunk);
+    BSP_CORE_SETTING *settings = get_core_setting();
+    BSP_THREAD *t = NULL;
+    int i;
+
+    for (i = 0; i < settings->static_workers; i ++)
+    {
+        t = get_thread(i);
+        if (t && t->script_runner.state)
+        {
+            script_load_string(&t->script_runner, chunk, sym);
+        }
+    }
+    del_string(chunk);
 
     return BSP_RTN_SUCCESS;
 }
