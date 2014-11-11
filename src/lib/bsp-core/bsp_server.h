@@ -45,6 +45,7 @@
 #define PACKET_TYPE_RAW                         0x1
 #define PACKET_TYPE_OBJ                         0x2
 #define PACKET_TYPE_CMD                         0x3
+#define PACKET_TYPE_UNDEFINED                   0x6
 #define PACKET_TYPE_HEARTBEAT                   0x7
 
 #define SERIALIZE_TYPE_NATIVE                   0x0

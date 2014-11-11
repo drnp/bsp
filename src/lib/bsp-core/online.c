@@ -162,7 +162,7 @@ void new_online(int fd, const char *key)
             _hash_insert(entry);
         }
     }
-    trace_msg(TRACE_LEVEL_VERBOSE, "Online : New online info registered");
+    trace_msg(TRACE_LEVEL_VERBOSE, "Online : New online info <%d>:[%s] registered", fd, key);
 
     // Bind entry to fd
     set_fd_online(fd, entry);
@@ -173,6 +173,11 @@ void new_online(int fd, const char *key)
 // Remove online(set offline) by given fd(bind)
 void del_online_by_bind(int fd)
 {
+    if (!fd || !online_hash)
+    {
+        return;
+    }
+
     BSP_ONLINE *entry = get_fd_online(fd);
     if (entry)
     {
@@ -193,6 +198,11 @@ void del_online_by_bind(int fd)
 // Remove online by given key
 void del_online_by_key(const char *key)
 {
+    if (!key || !online_hash)
+    {
+        return;
+    }
+
     BSP_ONLINE *entry = _hash_remove(key);
     if (entry)
     {
@@ -210,10 +220,14 @@ void del_online_by_key(const char *key)
 }
 
 // Load online data by handler
-int load_online_data(const char *key)
+static int _load_online_data(BSP_ONLINE *o)
 {
-    BSP_ONLINE *o = _hash_find(key);
-    BSP_THREAD *t = get_thread(MAIN_THREAD);
+    if (!o || !online_hash)
+    {
+        return BSP_RTN_ERROR_GENERAL;
+    }
+
+    BSP_THREAD *t = curr_thread();
     if (!o || !t || !t->script_runner.state)
     {
         return BSP_RTN_ERROR_GENERAL;
@@ -225,7 +239,7 @@ int load_online_data(const char *key)
     if (lua_isfunction(t->script_runner.state, -1))
     {
         // Call
-        lua_pushstring(t->script_runner.state, key);
+        lua_pushstring(t->script_runner.state, o->key);
         lua_pcall(t->script_runner.state, 1, 1, 0);
         if (lua_istable(t->script_runner.state, -1))
         {
@@ -244,11 +258,27 @@ int load_online_data(const char *key)
     return ret;
 }
 
-// Save online data by handler
-int save_online_data(const char *key)
+int load_online_data_by_bind(int fd)
+{
+    BSP_ONLINE *o = get_fd_online(fd);
+    return _load_online_data(o);
+}
+
+int load_online_data_by_key(const char *key)
 {
     BSP_ONLINE *o = _hash_find(key);
-    BSP_THREAD *t = get_thread(MAIN_THREAD);
+    return _load_online_data(o);
+}
+
+// Save online data by handler
+static int _save_online_data(BSP_ONLINE *o)
+{
+    if (!o || !online_hash)
+    {
+        return BSP_RTN_ERROR_GENERAL;
+    }
+
+    BSP_THREAD *t = curr_thread();
     if (!o || !o->data || !t || !t->script_runner.state)
     {
         return BSP_RTN_ERROR_GENERAL;
@@ -260,7 +290,7 @@ int save_online_data(const char *key)
     if (lua_isfunction(t->script_runner.state, -1))
     {
         // Call
-        lua_pushstring(t->script_runner.state, key);
+        lua_pushstring(t->script_runner.state, o->key);
         object_to_lua_stack(t->script_runner.state, o->data);
         lua_pcall(t->script_runner.state, 2, 1, 0);
         if (lua_isboolean(t->script_runner.state, -1))
@@ -279,6 +309,85 @@ int save_online_data(const char *key)
     }
     bsp_spin_unlock(&t->script_runner.lock);
     lua_settop(t->script_runner.state, 0);
+
+    return ret;
+}
+
+int save_online_data_by_bind(int fd)
+{
+    BSP_ONLINE *o = get_fd_online(fd);
+    return _save_online_data(o);
+}
+
+int save_online_data_by_key(const char *key)
+{
+    BSP_ONLINE *o = _hash_find(key);
+    return _save_online_data(o);
+}
+
+// Get online data
+BSP_OBJECT * get_online_data_by_key(const char *key)
+{
+    if (!key || !online_hash)
+    {
+        return NULL;
+    }
+
+    BSP_ONLINE *o = _hash_find(key);
+    if (o)
+    {
+        return o->data;
+    }
+
+    return NULL;
+}
+
+BSP_OBJECT * get_online_data_by_bind(int fd)
+{
+    if (!fd || !online_hash)
+    {
+        return NULL;
+    }
+
+    BSP_ONLINE *o = get_fd_online(fd);
+    if (o)
+    {
+        return o->data;
+    }
+
+    return NULL;
+}
+
+// Online list
+BSP_OBJECT * get_online_list(const char *condition)
+{
+    if (!online_hash)
+    {
+        return NULL;
+    }
+
+    if (!condition)
+    {
+        // All
+    }
+
+    BSP_OBJECT *ret = new_object(OBJECT_TYPE_ARRAY);
+    BSP_VALUE *val = NULL;
+    BSP_ONLINE *o = NULL;
+    int i;
+    bsp_spin_lock(&hash_lock);
+    for (i = 0; i < ONLINE_HASH_SIZE; i ++)
+    {
+        o = online_hash[i];
+        while (o)
+        {
+            val = new_value();
+            value_set_int(val, o->bind);
+            object_set_array(ret, -1, val);
+            o = o->next;
+        }
+    }
+    bsp_spin_unlock(&hash_lock);
 
     return ret;
 }

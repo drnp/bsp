@@ -62,49 +62,104 @@ static int standard_net_send(lua_State *s)
     size_t len = 0, ret = 0;
     int client_fd = 0;
     int cmd = 0;
-    const char *data = NULL;
+    const char *raw = NULL;
     // Make space for command_id and length
     BSP_OBJECT *obj = NULL;
     int fd_type = FD_TYPE_SOCKET_CLIENT;
     BSP_CLIENT *clt = NULL;
+    int data_type = PACKET_TYPE_UNDEFINED;
 
-    if (lua_istable(s, -1) && lua_isnumber(s, -2))
+    if (!lua_istable(s, 1) && !lua_isnumber(s, 1))
     {
-        obj = lua_stack_to_object(s);
-        if (lua_isnumber(s, -3))
-        {
-            // CMD
-            cmd = lua_tointeger(s, -2);
-            client_fd = lua_tointeger(s, -3);
-            clt = (BSP_CLIENT *) get_fd(client_fd, &fd_type);
-            ret = output_client_cmd(clt, cmd, obj);
-        }
-        else
-        {
-            // OBJ
-            client_fd = lua_tointeger(s, -2);
-            clt = (BSP_CLIENT *) get_fd(client_fd, &fd_type);
-            ret = output_client_obj(clt, obj);
-        }
-
-        del_object(obj);
+        // Not valid client fd
+        lua_pushnil(s);
+        return 1;
     }
-    else if (lua_isstring(s, -1) && lua_isnumber(s, -2))
+
+    if (lua_istable(s, 2) && 2 == lua_gettop(s))
+    {
+        // OBJ
+        obj = lua_stack_to_object(s);
+        data_type = PACKET_TYPE_OBJ;
+    }
+    else if (lua_isnumber(s, 2) && lua_istable(s, 3) && 3 == lua_gettop(s))
+    {
+        // CMD
+        cmd = lua_tointeger(s, 2);
+        obj = lua_stack_to_object(s);
+        data_type = PACKET_TYPE_CMD;
+    }
+    else if (lua_isstring(s, 2) && 2 == lua_gettop(s))
     {
         // RAW
-        data = (const char *) lua_tolstring(s, -1, &len);
-        client_fd = lua_tointeger(s, -2);
-        clt = (BSP_CLIENT *) get_fd(client_fd, &fd_type);
-        ret = output_client_raw(clt, data, len);
+        raw = (const char *) lua_tolstring(s, 2, &len);
+        data_type = PACKET_TYPE_RAW;
     }
     else
     {
-        // Send nothing
-        ret = 0;
+        // Invalid
+        lua_pushinteger(s, 0);
+        return 1;
+    }
+
+    if (lua_isnumber(s, 1))
+    {
+        // Send to single client
+        client_fd = lua_tointeger(s, 1);
+        clt = (BSP_CLIENT *) get_fd(client_fd, &fd_type);
+        if (clt)
+        {
+            switch (data_type)
+            {
+                case PACKET_TYPE_RAW : 
+                    output_client_raw(clt, raw, len);
+                    break;
+                case PACKET_TYPE_OBJ : 
+                    output_client_obj(clt, obj);
+                    break;
+                case PACKET_TYPE_CMD : 
+                    output_client_cmd(clt, cmd, obj);
+                default : 
+                    break;
+            }
+            ret = 1;
+        }
+    }
+    else
+    {
+        // Send to group
+        lua_checkstack(s, 3);
+        lua_pushnil(s);
+        while (0 != lua_next(s, 1))
+        {
+            if (lua_isnumber(s, -1))
+            {
+                client_fd = lua_tonumber(s, -1);
+                clt = (BSP_CLIENT *) get_fd(client_fd, &fd_type);
+                if (clt)
+                {
+                    switch (data_type)
+                    {
+                        case PACKET_TYPE_RAW : 
+                            output_client_raw(clt, raw, len);
+                            break;
+                        case PACKET_TYPE_OBJ : 
+                            output_client_obj(clt, obj);
+                            break;
+                        case PACKET_TYPE_CMD : 
+                            output_client_cmd(clt, cmd, obj);
+                        default : 
+                            break;
+                    }
+                    ret ++;
+                }
+            }
+            lua_pop(s, 1);
+        }
     }
 
     lua_pushinteger(s, ret);
-    
+
     return 1;
 }
 
@@ -377,7 +432,7 @@ static int standard_deep_copy(lua_State *s)
         lua_settable(s, -5);
         lua_pop(s, 1);
     }
-    
+
     return 1;
 }
 
@@ -658,12 +713,80 @@ static int standard_get_cache(lua_State *s)
 /** Online **/
 static int standard_set_online(lua_State *s)
 {
+    if (!s || !lua_isnumber(s, -2))
+    {
+        return 0;
+    }
+
+    const char *key = lua_tostring(s, -1);
+    int fd = lua_tointeger(s, -2);
+    new_online(fd, key);
+    load_online_data_by_key(key);
+
     return 0;
 }
 
 static int standard_set_offline(lua_State *s)
 {
+    if (!s)
+    {
+        return 0;
+    }
+
+    if (lua_isnumber(s, -1))
+    {
+        int fd = lua_tointeger(s, -1);
+        save_online_data_by_bind(fd);
+        del_online_by_bind(fd);
+    }
+    else
+    {
+        const char *key = lua_tostring(s, -1);
+        save_online_data_by_key(key);
+        del_online_by_key(key);
+    }
+
     return 0;
+}
+
+static int standard_online_data(lua_State *s)
+{
+    if (!s)
+    {
+        return 0;
+    }
+
+    BSP_OBJECT *data = NULL;
+    if (lua_isnumber(s, -1))
+    {
+        int fd = lua_tointeger(s, -1);
+        data = get_online_data_by_bind(fd);
+    }
+    else
+    {
+        const char *key = lua_tostring(s, -1);
+        data = get_online_data_by_key(key);
+    }
+
+    lua_checkstack(s, 1);
+    object_to_lua_stack(s, data);
+
+    return 1;
+}
+
+static int standard_online_list(lua_State *s)
+{
+    if (!s)
+    {
+        return 0;
+    }
+
+    BSP_OBJECT *list = get_online_list(NULL);
+    lua_checkstack(s, 1);
+    object_to_lua_stack(s, list);
+    del_object(list);
+
+    return 1;
 }
 
 /* Module */
@@ -739,6 +862,12 @@ int bsp_module_standard(lua_State *s)
 
     lua_pushcfunction(s, standard_set_offline);
     lua_setglobal(s, "bsp_set_offline");
+
+    lua_pushcfunction(s, standard_online_data);
+    lua_setglobal(s, "bsp_online_data");
+
+    lua_pushcfunction(s, standard_online_list);
+    lua_setglobal(s, "bsp_online_list");
 
     lua_settop(s, 0);
 

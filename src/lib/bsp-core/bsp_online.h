@@ -63,7 +63,16 @@ void del_online_by_bind(int fd);
 void del_online_by_key(const char *key);
 
 // Load and save
-int load_online_data(const char *key);
-int save_online_data(const char *key);
+int load_online_data_by_bind(int fd);
+int load_online_data_by_key(const char *key);
+int save_online_data_by_bind(int fd);
+int save_online_data_by_key(const char *key);
+
+// Get data
+BSP_OBJECT * get_online_data_by_key(const char *key);
+BSP_OBJECT * get_online_data_by_bind(int fd);
+
+// Online list
+BSP_OBJECT * get_online_list(const char *condition);
 
 #endif  /* _LIB_BSP_CORE_ONLINE_H */

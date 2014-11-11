@@ -117,6 +117,11 @@ static void server_callback(BSP_CALLBACK *cb)
 
     switch (cb->event)
     {
+        case SERVER_CALLBACK_ON_ACCEPT : 
+            key = new_string_const("event", -1);
+            val = new_value();
+            value_set_string(val, new_string_const("accept", -1));
+            object_set_hash(p, key, val);
         case SERVER_CALLBACK_ON_CONNECT : 
             key = new_string_const("event", -1);
             val = new_value();
@@ -181,6 +186,7 @@ static void server_callback(BSP_CALLBACK *cb)
 
     if (cb->server->fcgi_upstream)
     {
+        debug_object(p);
         fcgi_call(cb->server->fcgi_upstream, p, &cb->client->sck.saddr);
     }
 

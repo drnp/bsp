@@ -28,15 +28,18 @@ function(resp)
     end
 
     local data = bsp_json_decode(resp.stdout.body);
+    bsp_var_dump(data);
     if data.cmd == 2002 then
         -- Send data back
-        bsp_var_dump(data);
-        bsp_net_send(data.from, 2002, {from = data.from, msg = data.msg});
+        local list = bsp_online_list();
+        bsp_var_dump(list);
+        bsp_net_send(list, 2002, {from = data.from, msg = data.msg});
     elseif data.cmd == 1002 then
         -- Online
-        
+        bsp_set_online(data.fd, data.uid);
     elseif data.cmd == 1004 then
         -- Offline
+        bsp_set_offline(data.fd);
     end
 end
 );

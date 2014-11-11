@@ -3,7 +3,7 @@
         "script_dir"        : "/opt/bsp/script/9173/", 
         "instance_id"       : 9173, 
         "debug_output"      : true, 
-        "debug_connector_input" : false, 
+        "debug_connector_input" : true, 
         "enable_log"        : false
     }, 
 
@@ -37,8 +37,8 @@
             "port"          : 9174, 
             "websocket"     : true, 
             "data_type"     : "packet", 
-            "debug_input"   : false, 
-            "debug_output"  : false
+            "debug_input"   : true, 
+            "debug_output"  : true
         }, 
         {
             "name"          : "internal_server", 
