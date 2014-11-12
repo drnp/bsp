@@ -49,13 +49,12 @@ int fd_init(size_t nfds)
 
     if (fd_list)
     {
-        bsp_free(fd_list);
+        return BSP_RTN_ERROR_GENERAL;
     }
 
-    BSP_FD *tmp = bsp_calloc(nfds, sizeof(BSP_FD));
-    if (tmp)
+    fd_list = bsp_calloc(nfds, sizeof(BSP_FD));
+    if (fd_list)
     {
-        fd_list = tmp;
         fd_list_size = nfds;
         trace_msg(TRACE_LEVEL_DEBUG, "FileDs : File descriptor list inited as size %d", nfds);
         status_op_fd(STATUS_OP_FD_TOTAL, fd_list_size);
@@ -86,6 +85,7 @@ int reg_fd(const int fd, const int type, void *ptr)
         fd_list[fd].type = type;
         fd_list[fd].tid = UNBOUNDED_THREAD;
         fd_list[fd].ptr = ptr;
+        fd_list[fd].online = NULL;
         status_op_fd(STATUS_OP_FD_REG, 0);
         trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : FD %d registed as type %d", fd, type);
 
@@ -110,6 +110,7 @@ int unreg_fd(const int fd)
         fd_list[fd].type = 0;
         fd_list[fd].tid = UNBOUNDED_THREAD;
         fd_list[fd].ptr = NULL;
+        fd_list[fd].online = NULL;
         status_op_fd(STATUS_OP_FD_UNREG, 0);
         trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : FD %d unregisted from list", fd);
 
@@ -140,14 +141,11 @@ void * get_fd(const int fd, int *type)
     void *ptr = NULL;
     if (fd >= 0 && fd < fd_list_size && fd_list[fd].fd == fd)
     {
-        if (*type != FD_TYPE_ANY)
+        if (*type != FD_TYPE_ANY && fd_list[fd].type == *type)
         {
             // Appointed fd type
-            if (fd_list[fd].type == *type)
-            {
-                ptr = fd_list[fd].ptr;
-                trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : Get appointed FD %d, type %d", fd, *type);
-            }
+            ptr = fd_list[fd].ptr;
+            trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : Get appointed FD %d, type %d", fd, *type);
         }
         else
         {
@@ -179,7 +177,7 @@ void set_fd_thread(const int fd, const int tid)
 // Get worker thread id
 int get_fd_thread(const int fd)
 {
-    if (fd >= 0 && fd < fd_list_size && fd_list[fd].fd == fd)
+    if (fd >= 0 && fd < fd_list_size)
     {
         return fd_list[fd].tid;
     }
@@ -202,7 +200,7 @@ void set_fd_online(const int fd, BSP_ONLINE *online)
 // Get fd online info
 BSP_ONLINE * get_fd_online(const int fd)
 {
-    if (fd > 0 && fd < fd_list_size && fd_list[fd].fd == fd)
+    if (fd > 0 && fd < fd_list_size)
     {
         return fd_list[fd].online;
     }

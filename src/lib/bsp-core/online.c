@@ -179,6 +179,7 @@ void del_online_by_bind(int fd)
     }
 
     BSP_ONLINE *entry = get_fd_online(fd);
+    fprintf(stderr, "%d %p\n", fd, entry);
     if (entry)
     {
         _hash_remove(entry->key);

@@ -51,13 +51,12 @@ static inline void _spin_sleep(BSP_SPINLOCK *lock)
     {
         return;
     }
-    
+
     if ((lock->_loop_times & 0xF) == 0)
     {
         nanosleep(&ts, NULL);
         lock->_loop_times = 0;
     }
-
     else
     {
         __asm__ __volatile__("pause");
@@ -74,7 +73,7 @@ static inline uint8_t _spin_trylock(BSP_SPINLOCK *lock)
     {
         return 0;
     }
-    
+
     return _spin_cas(SPIN_FREE, SPIN_LOCKED, &lock->_lock);
 }
 
@@ -86,6 +85,8 @@ void spin_init(BSP_SPINLOCK *lock)
         lock->_lock = SPIN_FREE;
         lock->_loop_times = 0;
     }
+
+    return;
 }
 
 // Try lock a spin
@@ -95,7 +96,7 @@ void spin_lock(BSP_SPINLOCK *lock)
     {
         return;
     }
-    
+
     do
     {
         while (lock->_lock != SPIN_FREE)
@@ -107,7 +108,7 @@ void spin_lock(BSP_SPINLOCK *lock)
     } while (!_spin_trylock(lock));
 
     lock->_loop_times = 0;
-    
+
     return;
 }
 
@@ -121,7 +122,7 @@ void spin_unlock(BSP_SPINLOCK *lock)
 
     __asm__ __volatile__("" : : : "memory");
     lock->_lock = SPIN_FREE;
-    
+
     return;
 }
 

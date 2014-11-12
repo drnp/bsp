@@ -32,14 +32,21 @@ function(resp)
     if data.cmd == 2002 then
         -- Send data back
         local list = bsp_online_list();
-        bsp_var_dump(list);
-        bsp_net_send(list, 2002, {from = data.from, msg = data.msg});
+        bsp_net_send(list, 2002, {name = data.name, msg = data.msg});
     elseif data.cmd == 1002 then
+        -- Login
+        bsp_net_send(data.fd, 1002, {name = data.name});
+        local list = bsp_online_list();
+        bsp_net_send(list, 1012, {name = data.name});
+    elseif data.cmd == 1012 then
         -- Online
-        bsp_set_online(data.fd, data.uid);
-    elseif data.cmd == 1004 then
+        bsp_set_online(data.fd, bsp_base64_encode(data.fd));
+    elseif data.cmd == 1014 then
         -- Offline
         bsp_set_offline(data.fd);
+        local list = bsp_online_list();
+        bsp_var_dump(list);
+        bsp_net_send(list, 1014, {name = data.fd});
     end
 end
 );

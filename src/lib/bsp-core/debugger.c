@@ -212,7 +212,7 @@ static void _dump_value(BSP_VALUE *val, int layer)
             }
             else
             {
-                fprintf(stderr, "\033[1,31m### NULL_STRING ###\033[0m");
+                fprintf(stderr, "\033[1;31m### NULL_STRING ###\033[0m");
             }
             fprintf(stderr, "\n");
             break;

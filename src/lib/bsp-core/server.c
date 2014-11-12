@@ -533,6 +533,7 @@ static size_t _proc_stream(BSP_CLIENT *clt, const char *data, size_t len)
                         {
                             int cmd = (int) get_int32(STR_STR(str));
                             BSP_STRING *body = new_string_const(STR_STR(str) + 4, STR_LEN(str) - 4);
+                            debug_hex(STR_STR(body), STR_LEN(body));
                             if (body)
                             {
                                 switch (s_type)
