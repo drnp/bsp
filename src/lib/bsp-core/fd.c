@@ -194,7 +194,6 @@ void set_fd_online(const int fd, BSP_ONLINE *online)
 {
     if (fd >= 0 && fd < fd_list_size && fd_list[fd].fd == fd)
     {
-        fprintf(stderr, "%p\n", online);
         fd_list[fd].online = online;
         trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : Set FD %d's online info", fd);
     }
@@ -207,7 +206,6 @@ BSP_ONLINE * get_fd_online(const int fd)
 {
     if (fd > 0 && fd < fd_list_size)
     {
-        fprintf(stderr, "%p\n", fd_list[fd].online);
         return fd_list[fd].online;
     }
 
