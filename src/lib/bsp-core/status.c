@@ -50,6 +50,7 @@ void status_close()
 // Status ops
 void status_op_core(int op, size_t value)
 {
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_INSTANCE_ID : 
@@ -61,6 +62,7 @@ void status_op_core(int op, size_t value)
         default : 
             break;
     }
+    //bsp_spin_unlock(&slock);
 }
 
 void status_op_mempool(int slab_id, int op, size_t value)
@@ -69,21 +71,25 @@ void status_op_mempool(int slab_id, int op, size_t value)
     // Huge memory block
     if (STATUS_OP_MEMPOOL_HUGE_ALLOC == op)
     {
+        //bsp_spin_lock(&slock);
         s.mempool.huge_item_alloc_times ++;
         s.mempool.huge_item_alloced += value;
         s.mempool.alloc_times ++;
         s.mempool.dissociative_space += value;
-        
+        //bsp_spin_unlock(&slock);
+
         return;
     }
 
     if (STATUS_OP_MEMPOOL_HUGE_FREE == op)
     {
+        //bsp_spin_lock(&slock);
         s.mempool.huge_item_free_times ++;
         s.mempool.huge_item_freed += value;
         s.mempool.free_times ++;
         s.mempool.dissociative_space -= value;
-        
+        //bsp_spin_unlock(&slock);
+
         return;
     }
     
@@ -92,6 +98,7 @@ void status_op_mempool(int slab_id, int op, size_t value)
         return;
     }
     struct bsp_status_mempool_slab_t *ms = &s.mempool.slab[slab_id];
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_MEMPOOL_ALLOC : 
@@ -118,12 +125,14 @@ void status_op_mempool(int slab_id, int op, size_t value)
         default : 
             break;
     }
+    //bsp_spin_unlock(&slock);
 #endif
     return;
 }
 
 void status_op_fd(int op, size_t value)
 {
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_FD_TOTAL : 
@@ -141,6 +150,7 @@ void status_op_fd(int op, size_t value)
         default : 
             break;
     }
+    //bsp_spin_unlock(&slock);
 
     return;
 }
@@ -148,7 +158,7 @@ void status_op_fd(int op, size_t value)
 void status_op_socket(int fd, int op, size_t value)
 {
     int i;
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_SOCKET_SERVER_ADD : 
@@ -207,14 +217,14 @@ void status_op_socket(int fd, int op, size_t value)
             }
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }
 
 void status_op_timer(int op)
 {
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_TIMER_ADD : 
@@ -229,14 +239,14 @@ void status_op_timer(int op)
         default : 
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }
 
 void status_op_script(int op, size_t value)
 {
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_SCRIPT_STATE_ADD : 
@@ -271,14 +281,14 @@ void status_op_script(int op, size_t value)
         default : 
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }
 
 void status_op_db_mysql(int op)
 {
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_DB_MYSQL_CONNECT : 
@@ -302,14 +312,14 @@ void status_op_db_mysql(int op)
         default : 
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }
 
 void status_op_db_sqlite(int op)
 {
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_DB_SQLITE_OPEN : 
@@ -333,14 +343,14 @@ void status_op_db_sqlite(int op)
         default : 
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }
 
 void status_op_db_mongodb(int op)
 {
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_DB_MONGODB_CONNECT : 
@@ -370,14 +380,14 @@ void status_op_db_mongodb(int op)
         default : 
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }
 
 void status_op_http(int op)
 {
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_HTTP_REQUEST : 
@@ -389,14 +399,14 @@ void status_op_http(int op)
         default : 
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }
 
 void status_op_fcgi(int op)
 {
-    bsp_spin_lock(&slock);
+    //bsp_spin_lock(&slock);
     switch (op)
     {
         case STATUS_OP_FCGI_REQUEST : 
@@ -408,7 +418,7 @@ void status_op_fcgi(int op)
         default : 
             break;
     }
-    bsp_spin_unlock(&slock);
+    //bsp_spin_unlock(&slock);
 
     return;
 }

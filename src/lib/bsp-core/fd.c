@@ -110,7 +110,11 @@ int unreg_fd(const int fd)
         fd_list[fd].type = 0;
         fd_list[fd].tid = UNBOUNDED_THREAD;
         fd_list[fd].ptr = NULL;
-        fd_list[fd].online = NULL;
+        if (fd_list[fd].online)
+        {
+            // Remove from online list
+            del_online_by_key(fd_list[fd].online->key);
+        }
         status_op_fd(STATUS_OP_FD_UNREG, 0);
         trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : FD %d unregisted from list", fd);
 
@@ -190,8 +194,9 @@ void set_fd_online(const int fd, BSP_ONLINE *online)
 {
     if (fd >= 0 && fd < fd_list_size && fd_list[fd].fd == fd)
     {
+        fprintf(stderr, "%p\n", online);
         fd_list[fd].online = online;
-        trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : Set FD %d's online info");
+        trace_msg(TRACE_LEVEL_VERBOSE, "FileDs : Set FD %d's online info", fd);
     }
 
     return;
@@ -202,6 +207,7 @@ BSP_ONLINE * get_fd_online(const int fd)
 {
     if (fd > 0 && fd < fd_list_size)
     {
+        fprintf(stderr, "%p\n", fd_list[fd].online);
         return fd_list[fd].online;
     }
 

@@ -82,7 +82,7 @@ static int _get_new_node(struct word_filter_t *flt)
 
     flt->node_used ++;
     bsp_spin_unlock(&flt->node_lock);
-    
+
     return ret;
 }
 
@@ -128,7 +128,7 @@ static int new_word_filter(lua_State *s)
     // Make root
     flt->root = _get_new_node(flt);
     lua_pushlightuserdata(s, (void *) flt);
-    
+
     return 1;
 }
 
@@ -146,7 +146,7 @@ static int del_word_filter(lua_State *s)
     }
     // Clean all block
     bsp_free(flt);
-    
+
     return 0;
 }
 
@@ -156,7 +156,7 @@ static int add_word(lua_State *s)
     size_t word_len = 0;
     int dsp_len = 0;
     int value = 1;
-    
+
     if (!s || lua_gettop(s) < 2 || !lua_istable(s, -1) || !lua_islightuserdata(s, -2))
     {
         return 0;
@@ -244,14 +244,14 @@ static int del_word(lua_State *s)
         int n;
         unsigned char code;
         struct hash_tree_node_t *curr = _get_node(flt, flt->root);
-        
+
         for (n = 0; n < word_len; n ++)
         {
             if (!curr)
             {
                 return 0;
             }
-            
+
             code = (unsigned char) word[n];
             if (!curr->path[code])
             {
@@ -338,14 +338,14 @@ static int do_filter(lua_State *s)
                 replacement = DEFAULT_REPLACEMENT;
             }
         }
-        
+
         for (n = 0; n < content_len; n ++)
         {
             if (!all && matched)
             {
                 break;
             }
-            
+
             curr = root;
             start = n;
             for (j = n; j <= content_len; j ++)
@@ -384,7 +384,7 @@ static int do_filter(lua_State *s)
                 {
                     break;
                 }
-                
+
                 code = (unsigned char) content[j];
                 if (!curr->path[code])
                 {
@@ -431,6 +431,7 @@ int bsp_module_word_filter(lua_State *s)
     {
         return 0;
     }
+
     lua_pushcfunction(s, new_word_filter);
     lua_setglobal(s, "bsp_new_word_filter");
 
@@ -447,6 +448,6 @@ int bsp_module_word_filter(lua_State *s)
     lua_setglobal(s, "bsp_word_filter_do");
 
     lua_settop(s, 0);
-    
+
     return 0;
 }

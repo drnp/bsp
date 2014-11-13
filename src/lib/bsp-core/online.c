@@ -179,10 +179,10 @@ void del_online_by_bind(int fd)
     }
 
     BSP_ONLINE *entry = get_fd_online(fd);
-    fprintf(stderr, "%d %p\n", fd, entry);
     if (entry)
     {
         _hash_remove(entry->key);
+        set_fd_online(fd, NULL);
         if (entry->data)
         {
             del_object(entry->data);
@@ -190,7 +190,6 @@ void del_online_by_bind(int fd)
         bsp_free(entry->key);
         bsp_free(entry);
     }
-    set_fd_online(fd, NULL);
     trace_msg(TRACE_LEVEL_VERBOSE, "Online : Online info <%d> removed", fd);
 
     return;

@@ -30,15 +30,7 @@
 #include "bsp.h"
 
 int log_fd = -1;
-BSP_SPINLOCK log_lock;
-
-// Initialize log file pointor
-void log_init()
-{
-    bsp_spin_init(&log_lock);
-    
-    return;
-}
+BSP_SPINLOCK log_lock = BSP_SPINLOCK_INITIALIZER;
 
 // Record one line into log file
 void log_add(time_t now, int level, const char *msg)
@@ -46,12 +38,12 @@ void log_add(time_t now, int level, const char *msg)
     struct tm *loctime;
     char tgdate[64];
     char line[MAX_LOG_LINE_LENGTH];
-    
+
     if (!level || !msg)
     {
         return;
     }
-    
+
     if (log_fd > 0)
     {
         loctime = localtime(&now);
@@ -62,7 +54,7 @@ void log_add(time_t now, int level, const char *msg)
         write(log_fd, line, nbytes);
         bsp_spin_unlock(&log_lock);
     }
-    
+
     return;
 }
 // Open log file
@@ -72,7 +64,7 @@ void log_open()
     char path[_POSIX_PATH_MAX];
     char *dir = settings->log_dir ? settings->log_dir : DEFAULT_LOG_DIR;
     memset(path, 0, _POSIX_PATH_MAX);
-    
+
     // Check sub-directory
     snprintf(path, _POSIX_PATH_MAX - 1, "%s/%d/", dir, settings->instance_id);
     if (0 != mkdir(path, 0755) && errno != EEXIST)
@@ -80,7 +72,7 @@ void log_open()
         // Dir error
         return;
     }
-    
+
     time_t now = time(NULL);
     struct tm *loctime = localtime(&now);
     char tgdate[64];
@@ -96,7 +88,7 @@ void log_open()
     {
         reg_fd(log_fd, FD_TYPE_LOG, NULL);
     }
-    
+
     return;
 }
 
@@ -109,6 +101,6 @@ void log_close()
         close(log_fd);
         log_fd = -1;
     }
-    
+
     return;
 }

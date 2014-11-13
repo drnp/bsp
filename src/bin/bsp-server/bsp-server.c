@@ -186,7 +186,6 @@ static void server_callback(BSP_CALLBACK *cb)
 
     if (cb->server->fcgi_upstream)
     {
-        debug_object(p);
         fcgi_call(cb->server->fcgi_upstream, p, &cb->client->sck.saddr);
     }
 

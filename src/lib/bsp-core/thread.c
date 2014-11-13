@@ -149,7 +149,7 @@ int create_worker(BSP_THREAD *t)
     epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, t->exit_fd, &ev_exit);
 
     t->nfds = 0;
-    bsp_spin_init(&t->fd_lock);
+    //bsp_spin_init(&t->fd_lock);
 
     if (t->id >= 0)
     {
@@ -518,20 +518,21 @@ int dispatch_to_thread(const int fd, int tid)
                 break;
         }
     }
-    bsp_spin_lock(&t->fd_lock);
+    //bsp_spin_lock(&t->fd_lock);
     set_fd_thread(fd, tid);
     if (0 == epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, fd, ev))
     {
         trace_msg(TRACE_LEVEL_DEBUG, "Thread : FD %d dispatch to thread %d", fd, tid);
-        set_fd_thread(fd, tid);
+        //set_fd_thread(fd, tid);
         t->nfds ++;
     }
     else
     {
         trace_msg(TRACE_LEVEL_ERROR, "Thread : Epoll operate failed");
+        //bsp_spin_unlock(&t->fd_lock);
         return BSP_RTN_ERROR_IO;
     }
-    bsp_spin_unlock(&t->fd_lock);
+    //bsp_spin_unlock(&t->fd_lock);
 
     // Send a signal to it
     static char sig_buff[8] = {0, 0, 0, 0, 0, 0, 0, 1};
@@ -599,7 +600,7 @@ int remove_from_thread(const int fd)
 
     if (t && t->pid)
     {
-        bsp_spin_lock(&t->fd_lock);
+        //bsp_spin_lock(&t->fd_lock);
         if (0 == epoll_ctl(t->loop_fd, EPOLL_CTL_DEL, fd, NULL))
         {
             set_fd_thread(fd, UNBOUNDED_THREAD);
@@ -611,11 +612,11 @@ int remove_from_thread(const int fd)
         else
         {
             trace_msg(TRACE_LEVEL_ERROR, "Thread : EpollCtl error, remove FD %d failed", fd);
-            bsp_spin_unlock(&t->fd_lock);
+            //bsp_spin_unlock(&t->fd_lock);
             return BSP_RTN_ERROR_EPOLL;
         }
 
-        bsp_spin_unlock(&t->fd_lock);
+        //bsp_spin_unlock(&t->fd_lock);
     }
 
     return BSP_RTN_SUCCESS;
@@ -631,13 +632,13 @@ int modify_fd_events(const int fd, struct epoll_event *ev)
     if (!t)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Thread : FD %d not in thread", fd);
-        
+
         return BSP_RTN_ERROR_GENERAL;
     }
     
     if (t && t->pid)
     {
-        bsp_spin_lock(&t->fd_lock);
+        //bsp_spin_lock(&t->fd_lock);
         if (0 == epoll_ctl(t->loop_fd, EPOLL_CTL_MOD, fd, ev))
         {
             // Send a signal to thread to end epoll_wait
@@ -647,13 +648,13 @@ int modify_fd_events(const int fd, struct epoll_event *ev)
         else
         {
             trace_msg(TRACE_LEVEL_ERROR, "Thread : FD %s's event update failed", fd);
-            bsp_spin_unlock(&t->fd_lock);
+            //bsp_spin_unlock(&t->fd_lock);
             return BSP_RTN_ERROR_EPOLL;
         }
-        
-        bsp_spin_unlock(&t->fd_lock);
+
+        //bsp_spin_unlock(&t->fd_lock);
     }
-    
+
     return BSP_RTN_SUCCESS;
 }
 

@@ -42,7 +42,6 @@
 /* Structs */
 
 /* Functions */
-void log_init();
 void log_add(time_t now, int level, const char *msg);
 void log_open();
 void log_close();

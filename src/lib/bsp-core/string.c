@@ -226,6 +226,7 @@ ssize_t string_append(BSP_STRING *str, const char *data, ssize_t len)
     if (!new_str)
     {
         // Alloc error
+        bsp_spin_unlock(&str->lock);
         return -1;
     }
 

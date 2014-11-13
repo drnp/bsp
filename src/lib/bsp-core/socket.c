@@ -48,7 +48,7 @@ static void maximize_udpbuf(const int fd)
     socklen_t intsize = sizeof(int);
     int min, max, avg;
     int old_size;
-    
+
     if (getsockopt(fd, SOL_SOCKET, SO_SNDBUF, &old_size, &intsize) != 0)
     {
         trace_msg(TRACE_LEVEL_ERROR, "Socket : Getsockopt to FD %d error", fd);

@@ -144,7 +144,7 @@ size_t trace_msg(int level, const char *fmt, ...)
         return 0;
     }
 
-    bsp_spin_lock(&trace_lock);
+    //bsp_spin_lock(&trace_lock);
     time_t now = time((time_t *) NULL);
     va_list ap;
     va_start(ap, fmt);
@@ -165,7 +165,7 @@ size_t trace_msg(int level, const char *fmt, ...)
         settings->trace_printer(now, level, msg);
     }
 
-    bsp_spin_unlock(&trace_lock);
+    //bsp_spin_unlock(&trace_lock);
 
     return nbytes;
 }

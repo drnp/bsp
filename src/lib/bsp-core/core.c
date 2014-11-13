@@ -257,7 +257,6 @@ int core_init()
     }
 
     fd_init(0);
-    log_init();
     load_runtime_setting();
     status_op_core(STATUS_OP_INSTANCE_ID, (size_t) core_settings.instance_id);
     thread_init();
