@@ -41,7 +41,7 @@
 /* Macros */
 
 /* Structs */
-#ifdef ENABLE_SPIN
+#ifdef ENABLE_BSP_SPIN
     typedef struct bsp_spinlock_t
     {
         uint8_t             _lock;
