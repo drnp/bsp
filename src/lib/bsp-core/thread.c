@@ -139,12 +139,16 @@ int create_worker(BSP_THREAD *t)
     // Add notify to epoll
     struct epoll_event ev_notify;
     ev_notify.data.fd = t->notify_fd;
+    ev_notify.data.u32 = 0;
+    ev_notify.data.u64 = 0;
     ev_notify.events = EPOLLIN;
     epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, t->notify_fd, &ev_notify);
 
     // Add exit to epoll
     struct epoll_event ev_exit;
     ev_exit.data.fd = t->exit_fd;
+    ev_exit.data.u32 = 0;
+    ev_exit.data.u64 = 0;
     ev_exit.events = EPOLLIN;
     epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, t->exit_fd, &ev_exit);
 
