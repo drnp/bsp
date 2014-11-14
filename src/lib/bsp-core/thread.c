@@ -139,16 +139,12 @@ int create_worker(BSP_THREAD *t)
     // Add notify to epoll
     struct epoll_event ev_notify;
     ev_notify.data.fd = t->notify_fd;
-    ev_notify.data.u32 = 0;
-    ev_notify.data.u64 = 0;
     ev_notify.events = EPOLLIN;
     epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, t->notify_fd, &ev_notify);
 
     // Add exit to epoll
     struct epoll_event ev_exit;
     ev_exit.data.fd = t->exit_fd;
-    ev_exit.data.u32 = 0;
-    ev_exit.data.u64 = 0;
     ev_exit.events = EPOLLIN;
     epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, t->exit_fd, &ev_exit);
 
@@ -211,14 +207,13 @@ void * thread_process(void *arg)
 
     while (1)
     {
-        memset(events, 0, sizeof(struct epoll_event) * settings->epoll_wait_conns);
+        //memset(events, 0, sizeof(struct epoll_event) * settings->epoll_wait_conns);
         nfds = epoll_wait(me->loop_fd, events, settings->epoll_wait_conns, -1);
         for (i = 0; i < nfds; i ++)
         {
             what = events[i].events;
             fd_type = FD_TYPE_ANY;
             ptr = get_fd(events[i].data.fd, &fd_type);
-            memset(notify_buff, 0, 8);
             switch (fd_type)
             {
                 case FD_TYPE_EVENT : 
@@ -522,8 +517,9 @@ int dispatch_to_thread(const int fd, int tid)
                 break;
         }
     }
-    //bsp_spin_lock(&t->fd_lock);
+
     set_fd_thread(fd, tid);
+
     if (0 == epoll_ctl(t->loop_fd, EPOLL_CTL_ADD, fd, ev))
     {
         trace_msg(TRACE_LEVEL_DEBUG, "Thread : FD %d dispatch to thread %d", fd, tid);
@@ -536,7 +532,6 @@ int dispatch_to_thread(const int fd, int tid)
         //bsp_spin_unlock(&t->fd_lock);
         return BSP_RTN_ERROR_IO;
     }
-    //bsp_spin_unlock(&t->fd_lock);
 
     // Send a signal to it
     static char sig_buff[8] = {0, 0, 0, 0, 0, 0, 0, 1};
@@ -604,7 +599,6 @@ int remove_from_thread(const int fd)
 
     if (t && t->pid)
     {
-        //bsp_spin_lock(&t->fd_lock);
         if (0 == epoll_ctl(t->loop_fd, EPOLL_CTL_DEL, fd, NULL))
         {
             set_fd_thread(fd, UNBOUNDED_THREAD);
@@ -616,11 +610,8 @@ int remove_from_thread(const int fd)
         else
         {
             trace_msg(TRACE_LEVEL_ERROR, "Thread : EpollCtl error, remove FD %d failed", fd);
-            //bsp_spin_unlock(&t->fd_lock);
             return BSP_RTN_ERROR_EPOLL;
         }
-
-        //bsp_spin_unlock(&t->fd_lock);
     }
 
     return BSP_RTN_SUCCESS;
@@ -642,7 +633,6 @@ int modify_fd_events(const int fd, struct epoll_event *ev)
     
     if (t && t->pid)
     {
-        //bsp_spin_lock(&t->fd_lock);
         if (0 == epoll_ctl(t->loop_fd, EPOLL_CTL_MOD, fd, ev))
         {
             // Send a signal to thread to end epoll_wait
@@ -652,11 +642,8 @@ int modify_fd_events(const int fd, struct epoll_event *ev)
         else
         {
             trace_msg(TRACE_LEVEL_ERROR, "Thread : FD %s's event update failed", fd);
-            //bsp_spin_unlock(&t->fd_lock);
             return BSP_RTN_ERROR_EPOLL;
         }
-
-        //bsp_spin_unlock(&t->fd_lock);
     }
 
     return BSP_RTN_SUCCESS;
@@ -694,7 +681,7 @@ void stop_workers()
             write(t->exit_fd, buff, 8);
         }
     }
-    
+
     return;
 }
 
@@ -727,7 +714,7 @@ BSP_THREAD * curr_thread()
     {
         memcpy(&id, addr, sizeof(int));
     }
-    
+
     return get_thread(id);
 }
 

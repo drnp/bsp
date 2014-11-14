@@ -62,7 +62,6 @@ typedef struct bsp_thread_t
     int                 notify_fd;
     int                 exit_fd;
     size_t              nfds;
-    //BSP_SPINLOCK        fd_lock;
 
     // Critical
     BSP_SCRIPT_STACK    script_runner;
