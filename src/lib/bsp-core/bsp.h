@@ -208,7 +208,7 @@
     #define bsp_free(ptr)                       free(ptr)
 #endif
 
-#ifdef ENABLE_SPIN
+#ifdef ENABLE_BSP_SPIN
 // With BSP.Spinlock
     #define bsp_spin_init(lock)                 spin_init(lock)
     #define bsp_spin_lock(lock)                 spin_lock(lock)
