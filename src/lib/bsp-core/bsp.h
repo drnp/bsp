@@ -178,7 +178,7 @@
     #define MGR_DATA_LOG                        0xA011
 #endif
 
-#ifdef ENABLE_SPIN
+#ifdef ENABLE_BSP_SPIN
     #define BSP_SPINLOCK_INITIALIZER            {._lock = SPIN_FREE, ._loop_times = 0}
 #else
     #define BSP_SPINLOCK_INITIALIZER            1
