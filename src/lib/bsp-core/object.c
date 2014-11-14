@@ -1796,8 +1796,14 @@ static void _push_object_to_lua(lua_State *s, BSP_OBJECT *obj);
 
 static void _push_value_to_lua(lua_State *s, BSP_VALUE *val)
 {
-    if (!s || !val)
+    if (!s)
     {
+        return;
+    }
+
+    if (!val)
+    {
+        lua_pushnil(s);
         return;
     }
 
@@ -1852,8 +1858,14 @@ static void _push_value_to_lua(lua_State *s, BSP_VALUE *val)
 
 static void _push_object_to_lua(lua_State *s, BSP_OBJECT *obj)
 {
-    if (!obj || !s)
+    if (!s)
     {
+        return;
+    }
+
+    if (!obj)
+    {
+        lua_pushnil(s);
         return;
     }
 
