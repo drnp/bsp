@@ -178,6 +178,7 @@ void status_op_socket(int fd, int op, size_t value)
             tmp->bytes_sent = 0;
             break;
         case STATUS_OP_SOCKET_CONNECTOR_CONNECT : 
+            fprintf(stderr, "C\n");
             s.socket.connector.connect_times ++;
             break;
         case STATUS_OP_SOCKET_CONNECTOR_DISCONNECT : 
@@ -605,6 +606,7 @@ void debug_status()
             (long long unsigned int) ds->db_mongodb.free_times, 
             (long long unsigned int) ds->db_mongodb.update_times, 
             (long long unsigned int) ds->db_mongodb.delete_times);
+    fprintf(stderr, "\n");
 
     // HTTP
     fprintf(stderr, "\033[1;33m  HTTP OPERATES :\033[0m\n");
