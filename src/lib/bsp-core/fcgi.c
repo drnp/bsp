@@ -385,6 +385,7 @@ static void _fcgi_finish(BSP_CONNECTOR *cnt)
     }
 
     trace_msg(TRACE_LEVEL_VERBOSE, "FCGI   : FCGI request finished");
+    status_op_fcgi(STATUS_OP_FCGI_RESPONSE);
     lua_State *caller = cnt->script_stack.stack;
     bsp_spin_lock(&cnt->script_stack.lock);
     lua_checkstack(caller, 3);
@@ -442,7 +443,6 @@ static void _fcgi_finish(BSP_CONNECTOR *cnt)
     }
 
     lua_pcall(caller, 1, 0, 0);
-    status_op_fcgi(STATUS_OP_FCGI_RESPONSE);
     bsp_spin_unlock(&cnt->script_stack.lock);
 
     return;
