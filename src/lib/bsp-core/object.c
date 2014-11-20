@@ -1918,9 +1918,10 @@ static void _push_object_to_lua(lua_State *s, BSP_OBJECT *obj)
                     lua_checkstack(s, 2);
                     lua_pushlstring(s, STR_STR(key), STR_LEN(key));
                     _push_value_to_lua(s, val);
-                    if (!s) fprintf(stderr, "No Stack\n");
-                    else if (!lua_istable(s, -3)) debug_lua_stack(s);
-                    lua_settable(s, -3);
+                    if (lua_istable(s, -3))
+                    {
+                        lua_settable(s, -3);
+                    }
                 }
                 next_item(obj);
                 val = curr_item(obj);
@@ -1928,6 +1929,7 @@ static void _push_object_to_lua(lua_State *s, BSP_OBJECT *obj)
             break;
         case OBJECT_TYPE_UNDETERMINED : 
         default : 
+            lua_pushnil(s);
             break;
     }
     bsp_spin_unlock(&obj->lock);
@@ -2006,6 +2008,7 @@ static BSP_VALUE * _lua_value_to_value(lua_State *s)
                 value_set_object(ret, v_obj);
                 break;
             default : 
+                value_set_null(ret);
                 break;
         }
     }
