@@ -229,7 +229,7 @@ size_t parse_fcgi_response(BSP_FCGI_RESPONSE *resp, BSP_STRING *data)
             {
                 resp->data_stdout = new_string(NULL, 0);
             }
-            
+
             if (content_length > 0)
             {
                 string_append(resp->data_stdout, STR_STR(data) + curr + 8, content_length);
@@ -442,6 +442,7 @@ static void _fcgi_finish(BSP_CONNECTOR *cnt)
     }
 
     lua_pcall(caller, 1, 0, 0);
+    status_op_fcgi(STATUS_OP_FCGI_RESPONSE);
     bsp_spin_unlock(&cnt->script_stack.lock);
 
     return;
