@@ -122,6 +122,7 @@ static void server_callback(BSP_CALLBACK *cb)
             val = new_value();
             value_set_string(val, new_string_const("accept", -1));
             object_set_hash(p, key, val);
+            break;
         case SERVER_CALLBACK_ON_CONNECT : 
             key = new_string_const("event", -1);
             val = new_value();

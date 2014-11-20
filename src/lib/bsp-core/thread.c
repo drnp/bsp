@@ -290,7 +290,7 @@ void * thread_process(void *arg)
                                             trace_msg(TRACE_LEVEL_VERBOSE, "Thread : Server %d ON_ACCEPT event triggered", srv->sck.fd);
                                             cb.server = srv;
                                             cb.client = clt;
-                                            cb.event = SERVER_CALLBACK_ON_CONNECT;
+                                            cb.event = SERVER_CALLBACK_ON_ACCEPT;
                                             settings->on_srv_events(&cb);
                                         }
                                     }
