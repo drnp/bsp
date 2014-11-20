@@ -121,7 +121,7 @@
 
 /* Definations */
 // General
-#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20141103-dev"
+#define BSP_CORE_VERSION                        "BS.Play(SickyCat)-20141120-dev"
 #define BSP_PACKAGE_NAME                        "bsp"
 
 // Instances

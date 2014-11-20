@@ -1212,8 +1212,8 @@ static BSP_CONNECTOR * _new_unix_connector(const char *path)
     }
     _init_socket(&cnt->sck, fd, NULL, NULL);
     bsp_spin_init(&cnt->script_stack.lock);
-
     reg_fd(fd, FD_TYPE_SOCKET_CONNECTOR, (void *) cnt);
+    status_op_socket(0, STATUS_OP_SOCKET_CONNECTOR_CONNECT, 0);
     trace_msg(TRACE_LEVEL_DEBUG, "Socket : UNIX connector %d connected to %s", fd, path);
 
     return cnt;
@@ -1353,7 +1353,6 @@ BSP_CONNECTOR * new_connector(const char *addr, int port, int inet_type, int soc
         set_fd_nonblock(fd);
         _init_socket(&cnt->sck, fd, (struct sockaddr_storage *) ai->ai_addr, ai);
         bsp_spin_init(&cnt->script_stack.lock);
-
         reg_fd(fd, FD_TYPE_SOCKET_CONNECTOR, (void *) cnt);
         status_op_socket(0, STATUS_OP_SOCKET_CONNECTOR_CONNECT, 0);
         trace_msg(TRACE_LEVEL_DEBUG, "Socket : Connector %d connected to %s:%d", fd, addr, port);

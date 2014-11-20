@@ -178,7 +178,6 @@ void status_op_socket(int fd, int op, size_t value)
             tmp->bytes_sent = 0;
             break;
         case STATUS_OP_SOCKET_CONNECTOR_CONNECT : 
-            fprintf(stderr, "C\n");
             s.socket.connector.connect_times ++;
             break;
         case STATUS_OP_SOCKET_CONNECTOR_DISCONNECT : 
