@@ -1918,6 +1918,8 @@ static void _push_object_to_lua(lua_State *s, BSP_OBJECT *obj)
                     lua_checkstack(s, 2);
                     lua_pushlstring(s, STR_STR(key), STR_LEN(key));
                     _push_value_to_lua(s, val);
+                    if (!s) fprintf(stderr, "No Stack\n");
+                    else if (!lua_istable(s, -3)) debug_lua_stack(s);
                     lua_settable(s, -3);
                 }
                 next_item(obj);
