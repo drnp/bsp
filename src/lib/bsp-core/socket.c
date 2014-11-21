@@ -514,7 +514,7 @@ int drive_socket(struct bsp_socket_t *sck)
                 {
                     if (srv->debug_hex_input && !settings->is_daemonize)
                     {
-                        debug_str("Client %d read data ...\n", sck->fd);
+                        debug_printf("Client %d read data ...", sck->fd);
                         debug_hex(SOCKET_RDATA(clt), SOCKET_RLEN(clt));
                     }
                     status_op_socket(SFD(srv), STATUS_OP_SOCKET_SERVER_READ, len);
@@ -547,7 +547,7 @@ int drive_socket(struct bsp_socket_t *sck)
                 // Connector
                 if (settings->debug_hex_connector_input && !settings->is_daemonize)
                 {
-                    debug_str("Connector %d read data ...\n", sck->fd);
+                    debug_printf("Connector %d read data ...", sck->fd);
                     debug_hex(SOCKET_RDATA(cnt), SOCKET_RLEN(cnt));
                 }
                 status_op_socket(0, STATUS_OP_SOCKET_CONNECTOR_READ, len);
@@ -633,7 +633,7 @@ size_t append_data_socket(struct bsp_socket_t *sck, BSP_STRING *data)
     BSP_CORE_SETTING *settings = get_core_setting();
     if (settings->debug_hex_output && !settings->is_daemonize)
     {
-        debug_str("Appendding data to socket %d ...\n", sck->fd);
+        debug_printf("Appendding data to socket %d ...", sck->fd);
         debug_hex(STR_STR(data), STR_LEN(data));
     }
 

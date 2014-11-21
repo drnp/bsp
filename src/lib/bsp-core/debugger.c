@@ -83,7 +83,7 @@ void trigger_exit(int level, const char *fmt, ...)
 }
 
 // Output some message
-void debug_str(const char *fmt, ...)
+void debug_printf(const char *fmt, ...)
 {
     time_t now = time((time_t *) NULL);
     struct tm *loctime;
@@ -113,6 +113,12 @@ void debug_str(const char *fmt, ...)
 // Print one memory block as also human-readable and a hexadecimal table
 void debug_hex(const char *data, ssize_t len)
 {
+    if (!data)
+    {
+        fprintf(stderr, "\n\033[1;36m=== [NOTHING TO OUTPUT] ===\033[0m\n");
+        return;
+    }
+
     int i;
     if (len < 0)
     {
@@ -125,7 +131,7 @@ void debug_hex(const char *data, ssize_t len)
     loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
     bsp_spin_lock(&debug_lock);
-    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s START> ===\033[0m\n", (int) len, tgdate);
+    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s ORIGIN> ===\033[0m\n", (int) len, tgdate);
     for (i = 0; i < len; i ++)
     {
         fprintf(stderr, "\033[1;33m%02X\033[0m ", (unsigned char) data[i]);
@@ -133,7 +139,6 @@ void debug_hex(const char *data, ssize_t len)
         {
             fprintf(stderr, "\n");
         }
-        
         else if (i % 8 == 7)
         {
             fprintf(stderr, "  ");
@@ -164,6 +169,22 @@ void debug_hex(const char *data, ssize_t len)
 
     fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s END  > ===\033[0m\n\n", (int) len, tgdate);
     bsp_spin_unlock(&debug_lock);
+
+    return;
+}
+
+// Output string
+void debug_string(BSP_STRING *str)
+{
+    if (!str)
+    {
+        fprintf(stderr, "\n\033[1;36m=== [NOTHING TO OUTPUT] ===\033[0m\n");
+        return;
+    }
+    fprintf(stderr, "\n\033[1;36m=== [Debug string] <%s> <%s> ===\033[0m", 
+            (str->is_const) ? "Const" : "Normal", 
+            (COMPRESS_TYPE_NONE == str->compress_type) ? "Uncompressed" : "Compressed");
+    debug_hex(STR_STR(str), STR_LEN(str));
 
     return;
 }
@@ -300,6 +321,7 @@ static void _dump_object(BSP_OBJECT *obj, int layer)
         case OBJECT_TYPE_UNDETERMINED : 
         default : 
             // Null
+            fprintf(stderr, "\033[1;36mObject type : [UNKNOWN]\033[0m\n");
             break;
     }
 

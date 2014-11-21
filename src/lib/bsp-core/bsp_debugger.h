@@ -44,8 +44,9 @@ void trace_output(time_t now, int level, const char *msg);
 void trigger_exit(int level, const char *fmt, ...);
 
 // Output a formatted string
-void debug_str(const char *fmt, ...);
+void debug_printf(const char *fmt, ...);
 void debug_hex(const char *data, ssize_t len);
+void debug_string(BSP_STRING *str);
 void debug_object(BSP_OBJECT *obj);
 void debug_value(BSP_VALUE *val);
 void debug_lua_stack(lua_State *l);

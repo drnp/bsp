@@ -269,7 +269,7 @@ int main(int argc, char **argv)
 #ifndef ENABLE_STANDALONE
     is_daemonize = 1;
 #endif
-    debug_str("BS.Play generic server started");
+    debug_printf("BS.Play generic server. %s", BSP_CORE_VERSION);
 
     // Current working directory
     set_dir((const char *) prefix);
