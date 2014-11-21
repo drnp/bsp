@@ -518,7 +518,6 @@ int fcgi_call(BSP_FCGI_UPSTREAM *upstream, BSP_OBJECT *p, struct sockaddr_storag
     }
 
     char len_str[16] = {0};
-    //memset(len_str, 0, 16);
     snprintf(len_str, 15, "%llu", (long long unsigned int) STR_LEN(data));
     BSP_FCGI_PARAMS fp;
     memset(&fp, 0, sizeof(BSP_FCGI_PARAMS));
@@ -552,6 +551,7 @@ int fcgi_call(BSP_FCGI_UPSTREAM *upstream, BSP_OBJECT *p, struct sockaddr_storag
             fp.remote_port = port;
         }
     }
+    trace_msg(TRACE_LEVEL_NOTICE, "Try to make a FCGI request to %s", upstream->name);
     BSP_STRING *request = build_fcgi_request(&fp, data);
     BSP_CONNECTOR *cnt = NULL;
     if (entry->host && entry->port)

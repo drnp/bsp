@@ -94,9 +94,9 @@ static void server_callback(BSP_CALLBACK *cb)
         return;
     }
 
-    if (SERVER_CALLBACK_ON_HEARTBEAT == cb->event)
+    if (SERVER_CALLBACK_ON_HEARTBEAT == cb->event || SERVER_CALLBACK_ON_ACCEPT == cb->event)
     {
-        // Ignore heartbeat
+        // Ignore heartbeat and accept
         return;
     }
 
@@ -117,12 +117,6 @@ static void server_callback(BSP_CALLBACK *cb)
 
     switch (cb->event)
     {
-        case SERVER_CALLBACK_ON_ACCEPT : 
-            key = new_string_const("event", -1);
-            val = new_value();
-            value_set_string(val, new_string_const("accept", -1));
-            object_set_hash(p, key, val);
-            break;
         case SERVER_CALLBACK_ON_CONNECT : 
             key = new_string_const("event", -1);
             val = new_value();

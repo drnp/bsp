@@ -1016,7 +1016,6 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
     }
 
     clt->srv_fd = -1;
-    
     if (IS_UDP((&srv->sck)))
     {
         // An UDP server, make a new socket
@@ -1089,7 +1088,7 @@ BSP_CLIENT * new_client(BSP_SERVER *srv, struct sockaddr_storage *clt_addr)
     else
     {
         // TCP server
-        trace_msg(TRACE_LEVEL_NOTICE, "Socket : A TCP client try to accept by server");
+        trace_msg(TRACE_LEVEL_NOTICE, "Socket : A TCP client try to accept by server %s", srv->name);
         socklen_t len = sizeof(clt->sck.addr);
         fd = accept(SFD(srv), (struct sockaddr *) &clt->sck.saddr, &len);
         

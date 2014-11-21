@@ -131,7 +131,7 @@ void debug_hex(const char *data, ssize_t len)
     loctime = localtime(&now);
     strftime(tgdate, 64, "%m/%d/%Y %H:%M:%S", loctime);
     bsp_spin_lock(&debug_lock);
-    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s ORIGIN> ===\033[0m\n", (int) len, tgdate);
+    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s ORIGIN > ===\033[0m\n", (int) len, tgdate);
     for (i = 0; i < len; i ++)
     {
         fprintf(stderr, "\033[1;33m%02X\033[0m ", (unsigned char) data[i]);
@@ -145,7 +145,7 @@ void debug_hex(const char *data, ssize_t len)
         }
     }
 
-    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s DATA > ===\033[0m\n", (int) len, tgdate);
+    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s DATA   > ===\033[0m\n", (int) len, tgdate);
     for (i = 0; i < len; i ++)
     {
         if (data[i] >= 32 && data[i] <= 127)
@@ -167,7 +167,7 @@ void debug_hex(const char *data, ssize_t len)
         }
     }
 
-    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s END  > ===\033[0m\n\n", (int) len, tgdate);
+    fprintf(stderr, "\n\033[1;37m=== [Debug Hex %d bytes] === <%s END    > ===\033[0m\n\n", (int) len, tgdate);
     bsp_spin_unlock(&debug_lock);
 
     return;
